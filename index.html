@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Геополітичні Події - Інтерактивна Платформа</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Theme Toggle -->
+    <div class="theme-toggle" id="themeToggle">
+        <button class="theme-btn" data-theme="light">☀️</button>
+        <button class="theme-btn active" data-theme="dark">🌙</button>
+    </div>
+
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
+    <div class="app-container">
+        <!-- Header with Search -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="app-title">Геополітичні Події</h1>
+                <div class="search-container">
+                    <input type="text" id="searchInput" class="search-input" placeholder="Пошук подій...">
+                    <div id="searchSuggestions" class="search-suggestions"></div>
+                </div>
+                <div class="header-stats">
+                    <span id="totalEvents" class="stat-badge">Всього подій: 0</span>
+                    <span id="filteredEvents" class="stat-badge">Відфільтровано: 0</span>
+                    <div class="playback-mode-indicator" id="playbackIndicator">
+                        <span class="indicator-dot"></span>
+                        <span>Live режим</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Left Sidebar - Filters -->
+            <aside class="sidebar left-sidebar" id="leftSidebar">
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">Фільтри</h3>
+                    
+                    <!-- Quick Filters -->
+                    <div class="quick-filters">
+                        <button class="quick-filter-btn active" data-filter="all">Всі</button>
+                        <button class="quick-filter-btn" data-filter="recent">Останні</button>
+                        <button class="quick-filter-btn" data-filter="conflicts">Конфлікти</button>
+                        <button class="quick-filter-btn" data-filter="important">Важливі</button>
+                    </div>
+
+                    <!-- Category Filters -->
+                    <div class="filter-group">
+                        <h4 class="filter-title">Категорії подій</h4>
+                        <div id="categoryFilters" class="checkbox-group"></div>
+                    </div>
+
+                    <!-- Date Range Filter -->
+                    <div class="filter-group">
+                        <h4 class="filter-title">Період</h4>
+                        <div class="date-range">
+                            <input type="date" id="dateFrom" class="form-control date-input">
+                            <span class="date-separator">до</span>
+                            <input type="date" id="dateTo" class="form-control date-input">
+                        </div>
+                    </div>
+
+                    <!-- Region Filter -->
+                    <div class="filter-group">
+                        <h4 class="filter-title">Регіони</h4>
+                        <select id="regionFilter" class="form-control">
+                            <option value="">Всі регіони</option>
+                        </select>
+                    </div>
+
+                    <button id="clearFilters" class="btn btn--secondary btn--full-width">Очистити фільтри</button>
+                </div>
+
+                <!-- Statistics Panel -->
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">Статистика</h3>
+                    <div class="stats-container">
+                        <canvas id="categoryChart" class="chart-canvas"></canvas>
+                        <canvas id="timelineChart" class="chart-canvas"></canvas>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Map Container -->
+            <main class="map-container">
+                <div id="map" class="map"></div>
+                <div class="map-controls">
+                    <div class="control-group">
+                        <button id="resetView" class="btn btn--outline map-btn" title="Скинути вид">
+                            <span class="btn-icon">🏠</span>
+                        </button>
+                        <button id="fullscreen" class="btn btn--outline map-btn" title="Повний екран">
+                            <span class="btn-icon">⛶</span>
+                        </button>
+                        <button id="layersToggle" class="btn btn--outline map-btn" title="Шари">
+                            <span class="btn-icon">🗂</span>
+                        </button>
+                    </div>
+                    <div class="control-group">
+                        <button id="heatmapToggle" class="btn btn--outline map-btn" title="Теплова карта">
+                            <span class="btn-icon">🔥</span>
+                        </button>
+                        <button id="connectionsToggle" class="btn btn--outline map-btn" title="Зв'язки">
+                            <span class="btn-icon">🔗</span>
+                        </button>
+                        <button id="shareMap" class="btn btn--outline map-btn" title="Поділитися">
+                            <span class="btn-icon">📤</span>
+                        </button>
+                    </div>
+                    <div class="control-group">
+                        <button id="exportData" class="btn btn--outline map-btn" title="Експорт">
+                            <span class="btn-icon">💾</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Mobile Touch Controls -->
+                <div class="mobile-touch-controls" id="mobileControls">
+                    <div class="touch-gesture-hint">
+                        <span>Pinch to zoom • Swipe to pan • Double tap to focus</span>
+                    </div>
+                </div>
+
+                <!-- Map Loading Indicator -->
+                <div class="map-loading" id="mapLoading">
+                    <div class="loading-spinner"></div>
+                    <span>Завантаження карти...</span>
+                </div>
+            </main>
+
+            <!-- Right Sidebar - Event Details -->
+            <aside class="sidebar right-sidebar" id="rightSidebar">
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">Деталі події</h3>
+                    <div id="eventDetails" class="event-details">
+                        <div class="no-selection">
+                            <p>Оберіть подію на карті або в часовій шкалі для перегляду деталей</p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <!-- Timeline -->
+        <div class="timeline-container">
+            <div class="timeline-header">
+                <h3 class="timeline-title">Часова шкала</h3>
+                <div class="timeline-controls">
+                    <div class="playback-controls">
+                        <button id="timelinePlay" class="btn btn--sm timeline-btn" title="Відтворити">
+                            <span class="play-icon">▶</span>
+                        </button>
+                        <button id="timelinePause" class="btn btn--sm timeline-btn" title="Пауза">
+                            <span class="pause-icon">⏸</span>
+                        </button>
+                        <button id="timelineReset" class="btn btn--sm timeline-btn" title="Скинути">
+                            <span class="reset-icon">⏹</span>
+                        </button>
+                    </div>
+                    <div class="speed-controls">
+                        <label for="playbackSpeed" class="speed-label">Швидкість:</label>
+                        <select id="playbackSpeed" class="speed-select">
+                            <option value="0.5">0.5x</option>
+                            <option value="1" selected>1x</option>
+                            <option value="2">2x</option>
+                            <option value="5">5x</option>
+                        </select>
+                    </div>
+                    <div class="timeline-progress">
+                        <div class="progress-bar" id="timelineProgressBar">
+                            <div class="progress-fill" id="timelineProgressFill"></div>
+                            <div class="progress-handle" id="timelineProgressHandle"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="timeline-content">
+                <div id="timeline" class="timeline"></div>
+                <div class="timeline-scale" id="timelineScale"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p>Завантаження даних...</p>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

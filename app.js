@@ -1,0 +1,1617 @@
+// Geopolitical Events Platform
+class GeopoliticalApp {
+    constructor() {
+        this.events = [];
+        this.categories = [];
+        this.regions = [];
+        this.filteredEvents = [];
+        this.map = null;
+        this.markers = [];
+        this.selectedEvent = null;
+        this.timelineAnimation = null;
+        this.charts = {};
+        this.heatmapLayer = null;
+        this.connectionLines = [];
+        
+        // Enhanced properties for mobile and playback
+        this.isPlaying = false;
+        this.playbackSpeed = 1;
+        this.currentPlaybackIndex = 0;
+        this.playbackEvents = [];
+        this.isMobile = window.innerWidth <= 768;
+        this.theme = 'dark';
+        this.sidebarVisible = false;
+        
+        // Touch handling
+        this.touchHandler = new TouchHandler(this);
+        this.cameraController = new SmartCameraController(this);
+        
+        this.initializeData();
+        this.initializeApp();
+        this.setupEventListeners();
+    }
+
+    initializeData() {
+        // Enhanced data with the provided Ukrainian geopolitical events
+        this.events = [
+            // Keep existing events for demo
+            {
+                id: 1,
+                title: "Підготовка Європи до війни з Росією",
+                channel: "Неаполітичні",
+                date: "2024-10-10",
+                category: "Війни та конфлікти",
+                region: "Європа",
+                country: "ЄС",
+                lat: 50.8503,
+                lng: 4.3517,
+                description: "Аналіз підготовки європейських країн до потенційного конфлікту",
+                participants: ["ЄС", "НАТО", "Росія"],
+                impact: "Зростання напруженості",
+                importance: 9,
+                sources: ["Неаполітичні YouTube"]
+            },
+            {
+                id: 2,
+                title: "Падіння режиму Асада в Сирії",
+                channel: "Неаполітичні",
+                date: "2024-09-27",
+                category: "Політичні зміни",
+                region: "Близький Схід",
+                country: "Сирія",
+                lat: 33.5138,
+                lng: 36.2765,
+                description: "Аналіз падіння режиму Башара Асада",
+                participants: ["Сирія", "Росія", "Іран"],
+                impact: "Зміна балансу на Близькому Сході",
+                importance: 8,
+                sources: ["Неаполітичні YouTube"]
+            },
+            {
+                id: 3,
+                title: "Global Britain після Brexit",
+                channel: "Good Times Bad Times UA",
+                date: "2024-10-08",
+                category: "Політичні зміни",
+                region: "Європа",
+                country: "Великобританія",
+                lat: 51.5074,
+                lng: -0.1278,
+                description: "Нова глобальна роль Великобританії",
+                participants: ["Великобританія", "ЄС", "США"],
+                impact: "Переформатування британської політики",
+                importance: 6,
+                sources: ["GTBT UA YouTube"]
+            },
+            {
+                id: 4,
+                title: "Ядерна гонка озброєнь",
+                channel: "Good Times Bad Times UA",
+                date: "2024-09-27",
+                category: "Технологічні зміни",
+                region: "Глобально",
+                country: "Світ",
+                lat: 0,
+                lng: 0,
+                description: "Нова ядерна гонка озброєнь",
+                participants: ["США", "Китай", "Росія"],
+                impact: "Трансформація енергетики",
+                importance: 8,
+                sources: ["GTBT UA YouTube"]
+            },
+            {
+                id: 5,
+                title: "90% чіпів виробляються в Тайвані",
+                channel: "Чотири сторони",
+                date: "2024-08-26",
+                category: "Технологічні зміни",
+                region: "Азія",
+                country: "Тайвань",
+                lat: 25.0330,
+                lng: 121.5654,
+                description: "Домінування Тайваню у виробництві чіпів",
+                participants: ["Тайвань", "США", "Китай"],
+                impact: "Геополітичне значення технологій",
+                importance: 9,
+                sources: ["Чотири сторони YouTube"]
+            },
+            {
+                id: 6,
+                title: "NEOM - місто за $8 трлн",
+                channel: "Чотири сторони",
+                date: "2024-08-03",
+                category: "Економічні зміни",
+                region: "Близький Схід",
+                country: "Саудівська Аравія",
+                lat: 24.7136,
+                lng: 46.6753,
+                description: "Футуристичне місто в пустелі",
+                participants: ["Саудівська Аравія"],
+                impact: "Диверсифікація економіки",
+                importance: 6,
+                sources: ["Чотири сторони YouTube"]
+            },
+            {
+                id: 7,
+                title: "Росія купує бензин у Китаю",
+                channel: "Ціна Держави",
+                date: "2024-10-08",
+                category: "Економічні зміни",
+                region: "Азія",
+                country: "Росія",
+                lat: 55.7558,
+                lng: 37.6173,
+                description: "Енергетична залежність Росії",
+                participants: ["Росія", "Китай"],
+                impact: "Санкційний тиск",
+                importance: 6,
+                sources: ["Ціна Держави YouTube"]
+            },
+            {
+                id: 8,
+                title: "Казахстан - успішна диктатура",
+                channel: "Ціна Держави",
+                date: "2024-09-21",
+                category: "Політичні системи",
+                region: "Азія",
+                country: "Казахстан",
+                lat: 51.1694,
+                lng: 71.4491,
+                description: "Авторитарна модель розвитку",
+                participants: ["Казахстан"],
+                impact: "Ресурсна економіка",
+                importance: 5,
+                sources: ["Ціна Держави YouTube"]
+            },
+            {
+                id: 1,
+                title: "Початок Другої світової війни",
+                date: "1939-09-01",
+                category: "Війни та конфлікти",
+                region: "Європа",
+                country: "Польща",
+                lat: 52.2297,
+                lng: 21.0122,
+                description: "Німецьке вторгнення в Польщу ознаменувало початок найруйнівнішої війни в історії людства",
+                participants: ["Німеччина", "Польща", "Великобританія", "Франція"],
+                impact: "Глобальний конфлікт, який змінив геополітичну карту світу",
+                sources: ["BBC History", "Encyclopedia Britannica"]
+            },
+            {
+                id: 2,
+                title: "Утворення НАТО",
+                date: "1949-04-04",
+                category: "Союзи та договори",
+                region: "Північна Америка",
+                country: "США",
+                lat: 38.9072,
+                lng: -77.0369,
+                description: "Підписання Północноатлантичного договору для колективної безпеки",
+                participants: ["США", "Канада", "Великобританія", "Франція", "Італія"],
+                impact: "Формування біполярного світу часів Холодної війни",
+                sources: ["NATO Official", "US State Department"]
+            },
+            {
+                id: 3,
+                title: "Падіння Берлінської стіни",
+                date: "1989-11-09",
+                category: "Політичні зміни",
+                region: "Європа",
+                country: "Німеччина",
+                lat: 52.5200,
+                lng: 13.4050,
+                description: "Символічне завершення Холодної війни та поділу Європи",
+                participants: ["Східна Німеччина", "Західна Німеччина", "СССР"],
+                impact: "Об'єднання Німеччини та початок краху комуністичного блоку",
+                sources: ["Deutsche Welle", "History Channel"]
+            },
+            {
+                id: 4,
+                title: "Розпад СРСР",
+                date: "1991-12-26",
+                category: "Політичні зміни",
+                region: "Євразія",
+                country: "Росія",
+                lat: 55.7558,
+                lng: 37.6173,
+                description: "Офіційне припинення існування Радянського Союзу",
+                participants: ["СРСР", "15 союзних республік"],
+                impact: "Кінець біполярного світу, поява нових незалежних держав",
+                sources: ["Kremlin Archives", "BBC"]
+            },
+            {
+                id: 5,
+                title: "Утворення Європейського Союзу",
+                date: "1993-11-01",
+                category: "Союзи та договори",
+                region: "Європа",
+                country: "Бельгія",
+                lat: 50.8503,
+                lng: 4.3517,
+                description: "Набрання чинності Маастрихтським договором, що створив ЄС",
+                participants: ["12 країн-засновниць ЄС"],
+                impact: "Поглиблення європейської інтеграції та створення єдиної валюти",
+                sources: ["EU Official", "European Council"]
+            },
+            {
+                id: 6,
+                title: "Теракти 11 вересня",
+                date: "2001-09-11",
+                category: "Тероризм",
+                region: "Північна Америка",
+                country: "США",
+                lat: 40.7128,
+                lng: -74.0060,
+                description: "Терористичні атаки Аль-Каїди на Всесвітній торговий центр та Пентагон",
+                participants: ["Аль-Каїда", "США"],
+                impact: "Початок глобальної війни з тероризмом, зміна міжнародної безпекової політики",
+                sources: ["9/11 Commission Report", "FBI"]
+            },
+            {
+                id: 7,
+                title: "Вторгнення Росії в Україну",
+                date: "2022-02-24",
+                category: "Війни та конфлікти",
+                region: "Європа",
+                country: "Україна",
+                lat: 50.4501,
+                lng: 30.5234,
+                description: "Повномасштабне вторгнення Російської Федерації в Україну",
+                participants: ["Росія", "Україна", "НАТО", "ЄС"],
+                impact: "Найбільший конфлікт в Європі після Другої світової війни",
+                sources: ["UN Security Council", "Reuters", "BBC"]
+            },
+            {
+                id: 8,
+                title: "Brexit - вихід Великобританії з ЄС",
+                date: "2020-01-31",
+                category: "Політичні зміни",
+                region: "Європа",
+                country: "Великобританія",
+                lat: 51.5074,
+                lng: -0.1278,
+                description: "Офіційний вихід Великобританії з Європейського Союзу",
+                participants: ["Великобританія", "Європейський Союз"],
+                impact: "Перший випадок виходу країни з ЄС, вплив на європейську інтеграцію",
+                sources: ["UK Parliament", "European Commission"]
+            },
+            {
+                id: 9,
+                title: "Пандемія COVID-19",
+                date: "2020-03-11",
+                category: "Глобальні кризи",
+                region: "Глобально",
+                country: "Світ",
+                lat: 0,
+                lng: 0,
+                description: "ВООЗ оголосила пандемію COVID-19",
+                participants: ["Всі країни світу", "ВООЗ"],
+                impact: "Глобальна економічна криза, зміна міжнародних відносин",
+                sources: ["WHO", "Johns Hopkins University"]
+            },
+            {
+                id: 10,
+                title: "Китайська економічна реформа",
+                date: "1978-12-18",
+                category: "Економічні зміни",
+                region: "Азія",
+                country: "Китай",
+                lat: 39.9042,
+                lng: 116.4074,
+                description: "Початок економічних реформ Ден Сяопіна в Китаї",
+                participants: ["КНР", "Ден Сяопін"],
+                impact: "Перетворення Китаю на другу економіку світу",
+                sources: ["Chinese Government", "World Bank"]
+            }
+        ];
+
+        this.categories = [
+            { name: "Війни та конфлікти", color: "#e74c3c", icon: "⚔️", count: 0 },
+            { name: "Політичні зміни", color: "#9b59b6", icon: "🏛️", count: 0 },
+            { name: "Економічні зміни", color: "#27ae60", icon: "💰", count: 0 },
+            { name: "Технологічні зміни", color: "#3498db", icon: "⚡", count: 0 },
+            { name: "Політичні системи", color: "#c0392b", icon: "⚖️", count: 0 },
+            { name: "Союзи та договори", color: "#f39c12", icon: "🤝", count: 0 },
+            { name: "Тероризм", color: "#34495e", icon: "💥", count: 0 },
+            { name: "Глобальні кризи", color: "#e67e22", icon: "🌍", count: 0 }
+        ];
+        
+        this.channels = [
+            { name: "Неаполітичні", color: "#e74c3c" },
+            { name: "Good Times Bad Times UA", color: "#3498db" },
+            { name: "Чотири сторони", color: "#f39c12" },
+            { name: "Ціна Держави", color: "#27ae60" }
+        ];
+
+        this.regions = ["Європа", "Азія", "Близький Схід", "Північна Америка", "Євразія", "Глобально"];
+        
+        // Calculate category counts
+        this.categories.forEach(category => {
+            category.count = this.events.filter(event => event.category === category.name).length;
+        });
+
+        this.filteredEvents = [...this.events];
+    }
+
+    async initializeApp() {
+        this.showLoading();
+        
+        try {
+            this.setupTheme();
+            await this.initializeMap();
+            this.initializeFilters();
+            this.initializeSearch();
+            this.initializeTimeline();
+            this.initializeEventHandlers();
+            this.initializeCharts();
+            this.setupMobileOptimizations();
+            this.updateDisplay();
+        } catch (error) {
+            console.error('Error initializing app:', error);
+        } finally {
+            this.hideLoading();
+        }
+    }
+    
+    setupTheme() {
+        // Set initial theme
+        document.body.classList.add('dark-theme');
+        
+        // Theme toggle handlers
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const theme = btn.dataset.theme;
+                this.switchTheme(theme);
+            });
+        });
+    }
+    
+    switchTheme(theme) {
+        this.theme = theme;
+        document.body.className = `${theme}-theme`;
+        
+        // Update active theme button
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.theme === theme);
+        });
+        
+        // Reinitialize map tiles for theme
+        if (this.map) {
+            this.map.eachLayer(layer => {
+                if (layer.options && layer.options.id === 'tileLayer') {
+                    this.map.removeLayer(layer);
+                }
+            });
+            this.addMapTileLayer();
+        }
+    }
+    
+    setupMobileOptimizations() {
+        if (this.isMobile) {
+            // Setup mobile menu toggle
+            const menuToggle = document.getElementById('mobileMenuToggle');
+            menuToggle.addEventListener('click', () => {
+                this.toggleMobileMenu();
+            });
+            
+            // Setup mobile touch gestures
+            this.touchHandler.initialize();
+            
+            // Show mobile touch hints
+            setTimeout(() => {
+                const hints = document.querySelector('.mobile-touch-controls');
+                if (hints) hints.style.display = 'block';
+            }, 2000);
+        }
+    }
+    
+    toggleMobileMenu() {
+        this.sidebarVisible = !this.sidebarVisible;
+        const sidebar = document.getElementById('leftSidebar');
+        const menuToggle = document.getElementById('mobileMenuToggle');
+        const overlay = document.querySelector('.sidebar-overlay');
+        
+        if (this.sidebarVisible) {
+            sidebar.classList.add('mobile-visible');
+            menuToggle.classList.add('active');
+            if (!overlay) {
+                const overlayElement = document.createElement('div');
+                overlayElement.className = 'sidebar-overlay';
+                overlayElement.addEventListener('click', () => this.toggleMobileMenu());
+                document.body.appendChild(overlayElement);
+            }
+            setTimeout(() => {
+                document.querySelector('.sidebar-overlay').classList.add('visible');
+            }, 10);
+        } else {
+            sidebar.classList.remove('mobile-visible');
+            menuToggle.classList.remove('active');
+            const overlayElement = document.querySelector('.sidebar-overlay');
+            if (overlayElement) {
+                overlayElement.classList.remove('visible');
+                setTimeout(() => {
+                    overlayElement.remove();
+                }, 250);
+            }
+        }
+    }
+
+    showLoading() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) overlay.style.display = 'flex';
+    }
+
+    hideLoading() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) overlay.style.display = 'none';
+    }
+
+    async initializeMap() {
+        // Show map loading indicator
+        const loadingIndicator = document.getElementById('mapLoading');
+        loadingIndicator.classList.add('visible');
+        
+        // Initialize Leaflet map with enhanced mobile options
+        this.map = L.map('map', {
+            center: [50, 10],
+            zoom: 3,
+            zoomControl: !this.isMobile, // Hide default zoom on mobile
+            scrollWheelZoom: true,
+            doubleClickZoom: true,
+            touchZoom: true,
+            tap: true,
+            tapTolerance: 15,
+            zoomAnimation: true,
+            fadeAnimation: true,
+            markerZoomAnimation: true,
+            bounceAtZoomLimits: true,
+            wheelDebounceTime: 60,
+            wheelPxPerZoomLevel: 60
+        });
+        
+        // Add custom zoom control for mobile
+        if (this.isMobile) {
+            const customZoomControl = L.control.zoom({
+                position: 'bottomright'
+            });
+            customZoomControl.addTo(this.map);
+        }
+        
+        // Add tile layer based on theme
+        this.addMapTileLayer();
+        
+        // Initialize smart camera controller
+        this.cameraController.initialize();
+        
+        // Setup map event handlers
+        this.setupMapEventHandlers();
+        
+        // Add markers
+        this.addMarkersToMap();
+        
+        // Hide loading indicator
+        setTimeout(() => {
+            loadingIndicator.classList.remove('visible');
+        }, 1000);
+    }
+    
+    addMapTileLayer() {
+        const isDark = this.theme === 'dark';
+        const tileUrl = isDark 
+            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+            
+        const tileLayer = L.tileLayer(tileUrl, {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 18,
+            id: 'tileLayer'
+        });
+        
+        tileLayer.addTo(this.map);
+    }
+    
+    setupMapEventHandlers() {
+        this.map.on('movestart', () => {
+            document.querySelector('.map-loading').style.opacity = '0.3';
+        });
+        
+        this.map.on('moveend', () => {
+            document.querySelector('.map-loading').style.opacity = '0';
+        });
+        
+        this.map.on('zoomstart', () => {
+            this.markers.forEach(marker => {
+                marker.setOpacity(0.7);
+            });
+        });
+        
+        this.map.on('zoomend', () => {
+            this.markers.forEach(marker => {
+                marker.setOpacity(1);
+            });
+        });
+    }
+
+    addMarkersToMap() {
+        // Clear existing markers and connections
+        this.clearMarkersAndConnections();
+
+        this.filteredEvents.forEach(event => {
+            const category = this.categories.find(cat => cat.name === event.category);
+            const channel = this.channels.find(ch => ch.name === event.channel);
+            const color = category ? category.color : '#333';
+            const icon = category ? category.icon : '📍';
+
+            // Create enhanced marker with importance-based sizing
+            const radius = Math.max(6, Math.min(16, event.importance * 1.5));
+            
+            const marker = L.circleMarker([event.lat, event.lng], {
+                radius: radius,
+                fillColor: color,
+                color: channel ? channel.color : '#fff',
+                weight: 3,
+                opacity: 1,
+                fillOpacity: 0.8,
+                className: 'map-marker'
+            });
+
+            // Add enhanced popup with channel info
+            const popupContent = `
+                <div class="marker-popup">
+                    <div class="popup-header">
+                        <span class="popup-icon">${icon}</span>
+                        <h4>${event.title}</h4>
+                    </div>
+                    <div class="popup-meta">
+                        <p><strong>📅 Дата:</strong> ${this.formatDate(event.date)}</p>
+                        <p><strong>📂 Категорія:</strong> ${event.category}</p>
+                        <p><strong>🌍 Регіон:</strong> ${event.region}</p>
+                        <p><strong>📺 Канал:</strong> <span style="color: ${channel?.color}">${event.channel}</span></p>
+                        <p><strong>⭐ Важливість:</strong> ${event.importance}/10</p>
+                    </div>
+                    <div class="popup-actions">
+                        <button onclick="app.selectEvent(${event.id})" class="btn btn--sm btn--primary">Детальніше</button>
+                        <button onclick="app.shareEvent(${event.id})" class="btn btn--sm btn--outline">📤 Поділитися</button>
+                    </div>
+                </div>
+            `;
+
+            marker.bindPopup(popupContent, {
+                maxWidth: 300,
+                className: 'custom-popup'
+            });
+            
+            // Enhanced click handler with animation
+            marker.on('click', (e) => {
+                this.selectEvent(event.id);
+                e.target.getElement().classList.add('highlight');
+                setTimeout(() => {
+                    e.target.getElement().classList.remove('highlight');
+                }, 1000);
+            });
+
+            // Store event data with marker
+            marker.eventData = event;
+            marker.addTo(this.map);
+            this.markers.push(marker);
+        });
+        
+        // Add connections if enabled
+        if (document.getElementById('connectionsToggle')?.classList.contains('active')) {
+            this.addConnectionLines();
+        }
+    }
+    
+    clearMarkersAndConnections() {
+        this.markers.forEach(marker => this.map.removeLayer(marker));
+        this.markers = [];
+        this.connectionLines.forEach(line => this.map.removeLayer(line));
+        this.connectionLines = [];
+    }
+    
+    addConnectionLines() {
+        // Connect related events (same region or participants)
+        for (let i = 0; i < this.filteredEvents.length; i++) {
+            for (let j = i + 1; j < this.filteredEvents.length; j++) {
+                const event1 = this.filteredEvents[i];
+                const event2 = this.filteredEvents[j];
+                
+                // Check if events are related
+                const sameRegion = event1.region === event2.region;
+                const sharedParticipants = event1.participants.some(p => event2.participants.includes(p));
+                const timeDiff = Math.abs(new Date(event1.date) - new Date(event2.date)) / (1000 * 60 * 60 * 24);
+                const sameChannel = event1.channel === event2.channel;
+                
+                if ((sameRegion || sharedParticipants || sameChannel) && timeDiff < 365) {
+                    const line = L.polyline(
+                        [[event1.lat, event1.lng], [event2.lat, event2.lng]], 
+                        {
+                            color: '#32a8b8',
+                            weight: 2,
+                            opacity: 0.6,
+                            dashArray: '5, 10',
+                            className: 'event-connection-line'
+                        }
+                    );
+                    
+                    line.addTo(this.map);
+                    this.connectionLines.push(line);
+                }
+            }
+        }
+    }
+
+    initializeFilters() {
+        // Quick filters
+        document.querySelectorAll('.quick-filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.quick-filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.applyQuickFilter(btn.dataset.filter);
+            });
+        });
+        
+        // Category filters with icons
+        const categoryContainer = document.getElementById('categoryFilters');
+        categoryContainer.innerHTML = '';
+
+        this.categories.forEach(category => {
+            const checkboxHtml = `
+                <div class="checkbox-item" data-category="${category.name}">
+                    <input type="checkbox" id="cat-${category.name}" value="${category.name}" checked>
+                    <label for="cat-${category.name}">
+                        <span class="category-icon">${category.icon}</span>
+                        ${category.name} (${category.count})
+                    </label>
+                    <div class="category-color" style="background-color: ${category.color}"></div>
+                </div>
+            `;
+            categoryContainer.insertAdjacentHTML('beforeend', checkboxHtml);
+        });
+
+        // Region filter
+        const regionSelect = document.getElementById('regionFilter');
+        this.regions.forEach(region => {
+            const option = document.createElement('option');
+            option.value = region;
+            option.textContent = region;
+            regionSelect.appendChild(option);
+        });
+
+        // Set default date range
+        const dateFrom = document.getElementById('dateFrom');
+        const dateTo = document.getElementById('dateTo');
+        dateFrom.value = '2024-01-01';
+        dateTo.value = '2025-12-31';
+
+        // Add event listeners
+        categoryContainer.addEventListener('change', () => this.applyFilters());
+        regionSelect.addEventListener('change', () => this.applyFilters());
+        dateFrom.addEventListener('change', () => this.applyFilters());
+        dateTo.addEventListener('change', () => this.applyFilters());
+    }
+    
+    applyQuickFilter(filter) {
+        const now = new Date();
+        let filterFunction;
+        
+        switch(filter) {
+            case 'recent':
+                filterFunction = (event) => {
+                    const eventDate = new Date(event.date);
+                    const daysDiff = (now - eventDate) / (1000 * 60 * 60 * 24);
+                    return daysDiff <= 90; // Last 3 months
+                };
+                break;
+            case 'conflicts':
+                filterFunction = (event) => {
+                    return event.category === 'Війни та конфлікти' || 
+                           event.participants.some(p => ['Росія', 'Україна', 'НАТО'].includes(p));
+                };
+                break;
+            case 'important':
+                filterFunction = (event) => event.importance >= 8;
+                break;
+            default:
+                filterFunction = () => true;
+        }
+        
+        this.filteredEvents = this.events.filter(filterFunction);
+        this.updateDisplay();
+    }
+
+    initializeSearch() {
+        const searchInput = document.getElementById('searchInput');
+        const searchSuggestions = document.getElementById('searchSuggestions');
+
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+
+            if (query.length < 2) {
+                searchSuggestions.style.display = 'none';
+                return;
+            }
+
+            const matches = this.events.filter(event => 
+                event.title.toLowerCase().includes(query) ||
+                event.description.toLowerCase().includes(query) ||
+                event.country.toLowerCase().includes(query)
+            ).slice(0, 5);
+
+            if (matches.length > 0) {
+                searchSuggestions.innerHTML = matches.map(event => 
+                    `<div class="search-suggestion" onclick="app.selectEventAndSearch(${event.id}, '${event.title}')">
+                        ${event.title} (${this.formatDate(event.date)})
+                    </div>`
+                ).join('');
+                searchSuggestions.style.display = 'block';
+            } else {
+                searchSuggestions.style.display = 'none';
+            }
+        });
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !searchSuggestions.contains(e.target)) {
+                searchSuggestions.style.display = 'none';
+            }
+        });
+    }
+
+    selectEventAndSearch(eventId, title) {
+        document.getElementById('searchInput').value = title;
+        document.getElementById('searchSuggestions').style.display = 'none';
+        this.selectEvent(eventId);
+    }
+
+    initializeTimeline() {
+        const timeline = document.getElementById('timeline');
+        const scale = document.getElementById('timelineScale');
+        
+        // Sort events by date
+        const sortedEvents = [...this.events].sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        const minYear = new Date(sortedEvents[0].date).getFullYear();
+        const maxYear = new Date(sortedEvents[sortedEvents.length - 1].date).getFullYear();
+        const yearRange = maxYear - minYear;
+        
+        timeline.innerHTML = '';
+        scale.innerHTML = '';
+        
+        // Add events to timeline
+        sortedEvents.forEach(event => {
+            const eventYear = new Date(event.date).getFullYear();
+            const position = ((eventYear - minYear) / yearRange) * 100;
+            
+            const category = this.categories.find(cat => cat.name === event.category);
+            const color = category ? category.color : '#333';
+            
+            const eventElement = document.createElement('div');
+            eventElement.className = 'timeline-event';
+            eventElement.style.left = `${position}%`;
+            eventElement.style.backgroundColor = color;
+            eventElement.dataset.eventId = event.id;
+            
+            const tooltip = document.createElement('div');
+            tooltip.className = 'timeline-tooltip';
+            tooltip.textContent = `${event.title} (${eventYear})`;
+            eventElement.appendChild(tooltip);
+            
+            eventElement.addEventListener('click', () => {
+                this.selectEvent(event.id);
+            });
+            
+            timeline.appendChild(eventElement);
+        });
+        
+        // Add year markers
+        for (let year = minYear; year <= maxYear; year += 10) {
+            const position = ((year - minYear) / yearRange) * 100;
+            const yearElement = document.createElement('div');
+            yearElement.className = 'timeline-year';
+            yearElement.style.left = `${position}%`;
+            yearElement.textContent = year;
+            scale.appendChild(yearElement);
+        }
+    }
+
+    initializeEventHandlers() {
+        // Clear filters button
+        document.getElementById('clearFilters').addEventListener('click', () => {
+            this.clearFilters();
+        });
+
+        // Enhanced map controls
+        document.getElementById('resetView').addEventListener('click', () => {
+            this.cameraController.resetView();
+        });
+        
+        document.getElementById('fullscreen').addEventListener('click', () => {
+            this.toggleFullscreen();
+        });
+        
+        document.getElementById('layersToggle').addEventListener('click', () => {
+            this.toggleLayers();
+        });
+        
+        document.getElementById('heatmapToggle').addEventListener('click', () => {
+            this.toggleHeatmap();
+        });
+        
+        document.getElementById('connectionsToggle').addEventListener('click', () => {
+            this.toggleConnections();
+        });
+        
+        document.getElementById('shareMap').addEventListener('click', () => {
+            this.shareCurrentView();
+        });
+
+        document.getElementById('exportData').addEventListener('click', () => {
+            this.exportToCSV();
+        });
+
+        // Enhanced timeline controls
+        document.getElementById('timelinePlay').addEventListener('click', () => {
+            this.playTimelineAnimation();
+        });
+
+        document.getElementById('timelinePause').addEventListener('click', () => {
+            this.pauseTimelineAnimation();
+        });
+
+        document.getElementById('timelineReset').addEventListener('click', () => {
+            this.resetTimelineAnimation();
+        });
+        
+        // Speed control
+        document.getElementById('playbackSpeed').addEventListener('change', (e) => {
+            this.playbackSpeed = parseFloat(e.target.value);
+        });
+        
+        // Progress bar interaction
+        const progressBar = document.getElementById('timelineProgressBar');
+        progressBar.addEventListener('click', (e) => {
+            this.seekToProgress(e);
+        });
+    }
+
+    initializeCharts() {
+        // Category distribution chart
+        const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+        this.charts.category = new Chart(categoryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: this.categories.map(cat => cat.name),
+                datasets: [{
+                    data: this.categories.map(cat => cat.count),
+                    backgroundColor: this.categories.map(cat => cat.color),
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        // Timeline distribution chart
+        const timelineCtx = document.getElementById('timelineChart').getContext('2d');
+        const timelinePeriods = [
+            { period: "1930-1950", events: 1 },
+            { period: "1950-1970", events: 1 },
+            { period: "1970-1990", events: 2 },
+            { period: "1990-2010", events: 4 },
+            { period: "2010-2025", events: 2 }
+        ];
+
+        this.charts.timeline = new Chart(timelineCtx, {
+            type: 'bar',
+            data: {
+                labels: timelinePeriods.map(p => p.period),
+                datasets: [{
+                    label: 'Події',
+                    data: timelinePeriods.map(p => p.events),
+                    backgroundColor: '#32a8b8',
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    applyFilters() {
+        const selectedCategories = Array.from(
+            document.querySelectorAll('#categoryFilters input[type="checkbox"]:checked')
+        ).map(checkbox => checkbox.value);
+
+        const selectedRegion = document.getElementById('regionFilter').value;
+        const dateFrom = new Date(document.getElementById('dateFrom').value);
+        const dateTo = new Date(document.getElementById('dateTo').value);
+
+        this.filteredEvents = this.events.filter(event => {
+            const eventDate = new Date(event.date);
+            
+            const categoryMatch = selectedCategories.includes(event.category);
+            const regionMatch = !selectedRegion || event.region === selectedRegion;
+            const dateMatch = eventDate >= dateFrom && eventDate <= dateTo;
+
+            return categoryMatch && regionMatch && dateMatch;
+        });
+
+        this.updateDisplay();
+    }
+
+    clearFilters() {
+        // Reset category checkboxes
+        document.querySelectorAll('#categoryFilters input[type="checkbox"]').forEach(checkbox => {
+            checkbox.checked = true;
+        });
+
+        // Reset region filter
+        document.getElementById('regionFilter').value = '';
+
+        // Reset date range
+        document.getElementById('dateFrom').value = '1930-01-01';
+        document.getElementById('dateTo').value = '2025-12-31';
+
+        this.applyFilters();
+    }
+
+    updateDisplay() {
+        // Update map markers
+        this.addMarkersToMap();
+
+        // Update statistics
+        document.getElementById('totalEvents').textContent = `Всього подій: ${this.events.length}`;
+        document.getElementById('filteredEvents').textContent = `Відфільтровано: ${this.filteredEvents.length}`;
+    }
+
+    selectEvent(eventId) {
+        const event = this.events.find(e => e.id === eventId);
+        if (!event) return;
+
+        this.selectedEvent = event;
+
+        // Update timeline active state
+        document.querySelectorAll('.timeline-event').forEach(el => {
+            el.classList.remove('active');
+        });
+        const timelineEvent = document.querySelector(`[data-event-id="${eventId}"]`);
+        if (timelineEvent) {
+            timelineEvent.classList.add('active');
+        }
+
+        // Smart camera transition to event
+        this.cameraController.focusOnEvent(event);
+        
+        // Highlight marker
+        this.highlightMarker(event);
+
+        // Update details panel
+        this.displayEventDetails(event);
+        
+        // Close mobile menu if open
+        if (this.isMobile && this.sidebarVisible) {
+            this.toggleMobileMenu();
+        }
+    }
+    
+    highlightMarker(event) {
+        // Reset all markers
+        this.markers.forEach(marker => {
+            marker.getElement()?.classList.remove('highlight');
+        });
+        
+        // Find and highlight selected marker
+        const selectedMarker = this.markers.find(m => 
+            m.eventData && m.eventData.id === event.id
+        );
+        
+        if (selectedMarker) {
+            selectedMarker.getElement()?.classList.add('highlight');
+            setTimeout(() => {
+                selectedMarker.getElement()?.classList.remove('highlight');
+            }, 2000);
+        }
+    }
+
+    displayEventDetails(event) {
+        const detailsContainer = document.getElementById('eventDetails');
+        const category = this.categories.find(cat => cat.name === event.category);
+        
+        detailsContainer.innerHTML = `
+            <div class="event-content">
+                <h3 class="event-title">${event.title}</h3>
+                <div class="event-date">${this.formatDate(event.date)}</div>
+                <div class="event-category" style="background-color: ${category?.color || '#333'}; color: white;">
+                    ${event.category}
+                </div>
+                <p class="event-description">${event.description}</p>
+                
+                <div class="event-section">
+                    <div class="event-section-title">Учасники:</div>
+                    <ul class="event-list">
+                        ${event.participants.map(p => `<li>${p}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                <div class="event-section">
+                    <div class="event-section-title">Вплив:</div>
+                    <p>${event.impact}</p>
+                </div>
+                
+                <div class="event-section">
+                    <div class="event-section-title">Джерела:</div>
+                    <div class="event-sources">
+                        ${event.sources.map(source => `<a href="#" class="source-link" target="_blank">${source}</a>`).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('uk-UA', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    }
+
+    exportToCSV() {
+        const headers = ['ID', 'Назва', 'Дата', 'Категорія', 'Регіон', 'Країна', 'Опис', 'Учасники', 'Вплив'];
+        const csvContent = [
+            headers.join(','),
+            ...this.filteredEvents.map(event => [
+                event.id,
+                `"${event.title}"`,
+                event.date,
+                `"${event.category}"`,
+                `"${event.region}"`,
+                `"${event.country}"`,
+                `"${event.description}"`,
+                `"${event.participants.join('; ')}"`,
+                `"${event.impact}"`
+            ].join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'geopolitical_events.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    playTimelineAnimation() {
+        if (this.isPlaying) return;
+
+        this.isPlaying = true;
+        this.playbackEvents = [...this.filteredEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
+        this.currentPlaybackIndex = 0;
+        
+        // Update UI
+        this.updatePlaybackUI();
+        
+        // Start playback
+        this.continuePlayback();
+    }
+    
+    continuePlayback() {
+        if (!this.isPlaying || this.currentPlaybackIndex >= this.playbackEvents.length) {
+            this.pauseTimelineAnimation();
+            return;
+        }
+        
+        const currentEvent = this.playbackEvents[this.currentPlaybackIndex];
+        
+        // Update timeline playhead
+        this.updateTimelinePlayhead();
+        
+        // Update progress
+        this.updateProgress();
+        
+        // Select current event with smooth transition
+        this.selectEvent(currentEvent.id);
+        
+        // Mark timeline event as playing
+        const timelineEvent = document.querySelector(`[data-event-id="${currentEvent.id}"]`);
+        if (timelineEvent) {
+            timelineEvent.classList.add('playing');
+        }
+        
+        this.currentPlaybackIndex++;
+        
+        // Schedule next event based on speed
+        const baseDelay = 2000; // 2 seconds base
+        const delay = baseDelay / this.playbackSpeed;
+        
+        this.timelineAnimation = setTimeout(() => {
+            this.continuePlayback();
+        }, delay);
+    }
+    
+    updateTimelinePlayhead() {
+        const playhead = document.getElementById('timelinePlayhead');
+        if (!playhead || this.playbackEvents.length === 0) return;
+        
+        const progress = this.currentPlaybackIndex / this.playbackEvents.length;
+        const timelineWidth = document.getElementById('timeline').offsetWidth;
+        playhead.style.left = `${progress * timelineWidth}px`;
+        playhead.classList.add('active');
+    }
+    
+    updateProgress() {
+        const progressFill = document.getElementById('timelineProgressFill');
+        const progressHandle = document.getElementById('timelineProgressHandle');
+        
+        if (progressFill && this.playbackEvents.length > 0) {
+            const progress = (this.currentPlaybackIndex / this.playbackEvents.length) * 100;
+            progressFill.style.width = `${progress}%`;
+            progressHandle.style.left = `${progress}%`;
+        }
+    }
+    
+    updatePlaybackUI() {
+        const indicator = document.getElementById('playbackIndicator');
+        if (this.isPlaying) {
+            indicator.classList.add('active');
+            indicator.querySelector('span:last-child').textContent = `Playback ${this.playbackSpeed}x`;
+        } else {
+            indicator.classList.remove('active');
+        }
+    }
+    
+    seekToProgress(e) {
+        if (!this.playbackEvents.length) return;
+        
+        const rect = e.currentTarget.getBoundingClientRect();
+        const progress = (e.clientX - rect.left) / rect.width;
+        const targetIndex = Math.floor(progress * this.playbackEvents.length);
+        
+        this.currentPlaybackIndex = Math.max(0, Math.min(targetIndex, this.playbackEvents.length - 1));
+        this.updateProgress();
+        
+        if (this.currentPlaybackIndex < this.playbackEvents.length) {
+            this.selectEvent(this.playbackEvents[this.currentPlaybackIndex].id);
+        }
+    }
+
+    pauseTimelineAnimation() {
+        this.isPlaying = false;
+        
+        if (this.timelineAnimation) {
+            clearTimeout(this.timelineAnimation);
+            this.timelineAnimation = null;
+        }
+        
+        // Remove playing class from all events
+        document.querySelectorAll('.timeline-event').forEach(el => {
+            el.classList.remove('playing');
+        });
+        
+        this.updatePlaybackUI();
+    }
+
+    resetTimelineAnimation() {
+        this.pauseTimelineAnimation();
+        this.currentPlaybackIndex = 0;
+        
+        // Reset UI elements
+        document.querySelectorAll('.timeline-event').forEach(el => {
+            el.classList.remove('active', 'playing');
+        });
+        
+        document.getElementById('timelinePlayhead').classList.remove('active');
+        document.getElementById('timelineProgressFill').style.width = '0%';
+        document.getElementById('timelineProgressHandle').style.left = '0%';
+        
+        this.selectedEvent = null;
+        document.getElementById('eventDetails').innerHTML = `
+            <div class="no-selection">
+                <p>Оберіть подію на карті або в часовій шкалі для перегляду деталей</p>
+            </div>
+        `;
+        
+        // Reset camera view
+        this.cameraController.resetView();
+    }
+}
+
+// Enhanced Classes for Mobile and Smart Camera
+class TouchHandler {
+    constructor(app) {
+        this.app = app;
+        this.touchStart = null;
+        this.touchEnd = null;
+    }
+    
+    initialize() {
+        const mapElement = document.getElementById('map');
+        
+        mapElement.addEventListener('touchstart', (e) => {
+            this.touchStart = {
+                x: e.touches[0].clientX,
+                y: e.touches[0].clientY,
+                time: Date.now()
+            };
+        });
+        
+        mapElement.addEventListener('touchend', (e) => {
+            if (!this.touchStart) return;
+            
+            this.touchEnd = {
+                x: e.changedTouches[0].clientX,
+                y: e.changedTouches[0].clientY,
+                time: Date.now()
+            };
+            
+            this.handleSwipe();
+        });
+        
+        // Handle pinch zoom
+        let initialDistance = null;
+        mapElement.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                initialDistance = this.getDistance(e.touches[0], e.touches[1]);
+            }
+        });
+        
+        mapElement.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && initialDistance) {
+                const currentDistance = this.getDistance(e.touches[0], e.touches[1]);
+                const scaleFactor = currentDistance / initialDistance;
+                
+                if (scaleFactor > 1.2) {
+                    this.app.map.zoomIn();
+                    initialDistance = currentDistance;
+                } else if (scaleFactor < 0.8) {
+                    this.app.map.zoomOut();
+                    initialDistance = currentDistance;
+                }
+            }
+        });
+    }
+    
+    getDistance(touch1, touch2) {
+        return Math.sqrt(
+            Math.pow(touch2.clientX - touch1.clientX, 2) +
+            Math.pow(touch2.clientY - touch1.clientY, 2)
+        );
+    }
+    
+    handleSwipe() {
+        if (!this.touchStart || !this.touchEnd) return;
+        
+        const deltaX = this.touchEnd.x - this.touchStart.x;
+        const deltaY = this.touchEnd.y - this.touchStart.y;
+        const deltaTime = this.touchEnd.time - this.touchStart.time;
+        
+        // Check for swipe (minimum distance and maximum time)
+        if (Math.abs(deltaX) > 50 && deltaTime < 300) {
+            if (deltaX > 0) {
+                // Swipe right - previous event
+                this.app.navigateToEvent('previous');
+            } else {
+                // Swipe left - next event
+                this.app.navigateToEvent('next');
+            }
+        }
+    }
+}
+
+class SmartCameraController {
+    constructor(app) {
+        this.app = app;
+        this.isTransitioning = false;
+    }
+    
+    initialize() {
+        // Setup camera bounds based on events
+        this.calculateOptimalBounds();
+    }
+    
+    calculateOptimalBounds() {
+        if (this.app.filteredEvents.length === 0) return;
+        
+        const lats = this.app.filteredEvents.map(e => e.lat).filter(lat => lat !== 0);
+        const lngs = this.app.filteredEvents.map(e => e.lng).filter(lng => lng !== 0);
+        
+        if (lats.length === 0 || lngs.length === 0) return;
+        
+        this.bounds = {
+            north: Math.max(...lats),
+            south: Math.min(...lats),
+            east: Math.max(...lngs),
+            west: Math.min(...lngs)
+        };
+    }
+    
+    focusOnEvent(event, zoom = null) {
+        if (this.isTransitioning) return;
+        this.isTransitioning = true;
+        
+        const targetZoom = zoom || this.calculateOptimalZoom(event);
+        const center = [event.lat, event.lng];
+        
+        // Smooth fly to animation
+        this.app.map.flyTo(center, targetZoom, {
+            animate: true,
+            duration: 1.2,
+            easeLinearity: 0.1
+        });
+        
+        setTimeout(() => {
+            this.isTransitioning = false;
+        }, 1200);
+    }
+    
+    calculateOptimalZoom(event) {
+        // Calculate zoom based on event importance and region
+        const baseZoom = this.app.isMobile ? 4 : 6;
+        const importanceBonus = Math.floor(event.importance / 3);
+        
+        // Regional zoom adjustments
+        const regionZooms = {
+            'Європа': 5,
+            'Азія': 4,
+            'Близький Схід': 6,
+            'Глобально': 2
+        };
+        
+        const regionZoom = regionZooms[event.region] || baseZoom;
+        return Math.min(10, regionZoom + importanceBonus);
+    }
+    
+    fitAllEvents() {
+        if (!this.bounds || this.app.filteredEvents.length === 0) return;
+        
+        const paddingOptions = {
+            padding: this.app.isMobile ? [20, 20] : [50, 50],
+            animate: true,
+            duration: 1
+        };
+        
+        const boundingBox = [
+            [this.bounds.south, this.bounds.west],
+            [this.bounds.north, this.bounds.east]
+        ];
+        
+        this.app.map.fitBounds(boundingBox, paddingOptions);
+    }
+    
+    resetView() {
+        if (this.app.filteredEvents.length > 1) {
+            this.fitAllEvents();
+        } else {
+            this.app.map.flyTo([50, 10], 3, {
+                animate: true,
+                duration: 1
+            });
+        }
+    }
+}
+
+// Enhanced App Methods
+GeopoliticalApp.prototype.setupEventListeners = function() {
+    // Window resize handler
+    window.addEventListener('resize', () => {
+        this.isMobile = window.innerWidth <= 768;
+        if (this.map) {
+            this.map.invalidateSize();
+        }
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && this.sidebarVisible) {
+            this.toggleMobileMenu();
+        }
+        if (e.key === ' ' && e.target.tagName !== 'INPUT') {
+            e.preventDefault();
+            this.isPlaying ? this.pauseTimelineAnimation() : this.playTimelineAnimation();
+        }
+        if (e.key === 'ArrowLeft') {
+            this.navigateToEvent('previous');
+        }
+        if (e.key === 'ArrowRight') {
+            this.navigateToEvent('next');
+        }
+    });
+};
+
+GeopoliticalApp.prototype.navigateToEvent = function(direction) {
+    if (!this.selectedEvent) return;
+    
+    const currentIndex = this.filteredEvents.findIndex(e => e.id === this.selectedEvent.id);
+    let newIndex;
+    
+    if (direction === 'next') {
+        newIndex = (currentIndex + 1) % this.filteredEvents.length;
+    } else {
+        newIndex = currentIndex === 0 ? this.filteredEvents.length - 1 : currentIndex - 1;
+    }
+    
+    this.selectEvent(this.filteredEvents[newIndex].id);
+};
+
+GeopoliticalApp.prototype.toggleFullscreen = function() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+    } else {
+        document.exitFullscreen();
+    }
+};
+
+GeopoliticalApp.prototype.toggleLayers = function() {
+    // Toggle between different map themes
+    this.switchTheme(this.theme === 'dark' ? 'light' : 'dark');
+};
+
+GeopoliticalApp.prototype.toggleHeatmap = function() {
+    const button = document.getElementById('heatmapToggle');
+    button.classList.toggle('active');
+    
+    if (button.classList.contains('active')) {
+        // Add heatmap functionality here
+        this.showHeatmap();
+    } else {
+        this.hideHeatmap();
+    }
+};
+
+GeopoliticalApp.prototype.showHeatmap = function() {
+    // Create heatmap data points
+    const heatPoints = this.filteredEvents.map(event => [
+        event.lat, 
+        event.lng, 
+        event.importance * 0.1
+    ]);
+    
+    // This would require a heatmap library like Leaflet.heat
+    // For now, just show enhanced markers
+    this.markers.forEach(marker => {
+        marker.setStyle({
+            radius: marker.options.radius * 1.5,
+            fillOpacity: 0.9
+        });
+    });
+};
+
+GeopoliticalApp.prototype.hideHeatmap = function() {
+    this.markers.forEach(marker => {
+        marker.setStyle({
+            radius: marker.options.radius / 1.5,
+            fillOpacity: 0.8
+        });
+    });
+};
+
+GeopoliticalApp.prototype.toggleConnections = function() {
+    const button = document.getElementById('connectionsToggle');
+    button.classList.toggle('active');
+    
+    if (button.classList.contains('active')) {
+        this.addConnectionLines();
+    } else {
+        this.connectionLines.forEach(line => this.map.removeLayer(line));
+        this.connectionLines = [];
+    }
+};
+
+GeopoliticalApp.prototype.shareCurrentView = function() {
+    const center = this.map.getCenter();
+    const zoom = this.map.getZoom();
+    const selectedEventId = this.selectedEvent ? this.selectedEvent.id : '';
+    
+    const url = `${window.location.origin}${window.location.pathname}?lat=${center.lat}&lng=${center.lng}&zoom=${zoom}&event=${selectedEventId}`;
+    
+    if (navigator.share) {
+        navigator.share({
+            title: 'Геополітичні Події',
+            text: this.selectedEvent ? this.selectedEvent.title : 'Інтерактивна карта геополітичних подій',
+            url: url
+        });
+    } else {
+        navigator.clipboard.writeText(url);
+        // Show toast notification
+        this.showToast('Посилання скопійовано в буфер обміну!');
+    }
+};
+
+GeopoliticalApp.prototype.shareEvent = function(eventId) {
+    const event = this.events.find(e => e.id === eventId);
+    if (!event) return;
+    
+    const url = `${window.location.origin}${window.location.pathname}?event=${eventId}`;
+    
+    if (navigator.share) {
+        navigator.share({
+            title: event.title,
+            text: event.description,
+            url: url
+        });
+    } else {
+        navigator.clipboard.writeText(url);
+        this.showToast('Посилання на подію скопійовано!');
+    }
+};
+
+GeopoliticalApp.prototype.showToast = function(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--color-surface);
+        color: var(--color-text);
+        padding: 12px 24px;
+        border-radius: 25px;
+        border: 1px solid var(--color-border);
+        z-index: 10000;
+        font-size: 14px;
+        box-shadow: var(--shadow-lg);
+        animation: toastIn 0.3s ease-out;
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'toastOut 0.3s ease-in';
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 300);
+    }, 3000);
+};
+
+// Initialize app when DOM is loaded
+let app;
+document.addEventListener('DOMContentLoaded', () => {
+    app = new GeopoliticalApp();
+});
+
+// Add CSS animations for toast
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes toastIn {
+        from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+        to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    @keyframes toastOut {
+        from { opacity: 1; transform: translateX(-50%) translateY(0); }
+        to { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    }
+`;
+document.head.appendChild(style);
+
+// Global function for popup buttons
+window.app = app;

@@ -1,0 +1,11 @@
+feature,priority,implementation,estimated_time
+Touch-friendly интерфейс,Критичний,CSS Media Queries + Touch Events,1 тиждень
+Адаптивне меню навігації,Критичний,Hamburger Menu + Slide Navigation,3 дні
+Swipe-навігація по часовій шкалі,Високий,Swiper.js або Hammer.js,1 тиждень
+Зум та панорамування одним пальцем,Критичний,Leaflet mobile plugins,2 дні
+Компактні картки подій,Високий,Condensed UI components,1 тиждень
+Offline режим,Середній,Service Worker + Local Storage,2 тижні
+Push нотифікації,Низький,Web Push API,1 тиждень
+Мобільні фільтри,Високий,Mobile-first filter design,3 дні
+Голосовий пошук,Низький,Web Speech API,1 тиждень
+QR-код sharing,Низький,QR.js library,2 дні
