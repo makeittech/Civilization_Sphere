@@ -1597,6 +1597,20 @@ GeopoliticalApp.prototype.showToast = function(message) {
 let app;
 document.addEventListener('DOMContentLoaded', () => {
     app = new GeopoliticalApp();
+    window.app = app;
+    if (window.Dashboard && typeof window.Dashboard.mergeApprovedResourcesIntoMap === 'function') {
+        window.Dashboard.mergeApprovedResourcesIntoMap();
+        if (typeof window.Dashboard.populateCategorySelect === 'function') {
+            window.Dashboard.populateCategorySelect();
+        }
+    }
+    window.addEventListener('resource:status', (e) => {
+        try {
+            if (e.detail && e.detail.status === 'approved' && window.Dashboard && typeof window.Dashboard.mergeApprovedResourcesIntoMap === 'function') {
+                window.Dashboard.mergeApprovedResourcesIntoMap();
+            }
+        } catch (_) {}
+    });
 });
 
 // Add CSS animations for toast
