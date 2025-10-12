@@ -12,6 +12,8 @@ class GeopoliticalApp {
         this.charts = {};
         this.heatmapLayer = null;
         this.connectionLines = [];
+        this.importBuffer = [];
+        this.nextId = 100000; // for generating unique IDs for imported events
         
         // Enhanced properties for mobile and playback
         this.isPlaying = false;
@@ -772,6 +774,7 @@ class GeopoliticalApp {
         // Sort events by date
         const sortedEvents = [...this.events].sort((a, b) => new Date(a.date) - new Date(b.date));
         
+        if (sortedEvents.length === 0) return;
         const minYear = new Date(sortedEvents[0].date).getFullYear();
         const maxYear = new Date(sortedEvents[sortedEvents.length - 1].date).getFullYear();
         const yearRange = maxYear - minYear;
@@ -816,11 +819,34 @@ class GeopoliticalApp {
         }
     }
 
+    rebuildTimeline() {
+        this.initializeTimeline();
+    }
+
     initializeEventHandlers() {
         // Clear filters button
         document.getElementById('clearFilters').addEventListener('click', () => {
             this.clearFilters();
         });
+
+        // Import/Discovery controls
+        const scanBtn = document.getElementById('scanSourcesBtn');
+        const importBtn = document.getElementById('importBtn');
+        const clearBtn = document.getElementById('clearImportBtn');
+        const importFileInput = document.getElementById('importFile');
+
+        if (scanBtn) {
+            scanBtn.addEventListener('click', () => this.scanSources());
+        }
+        if (importBtn) {
+            importBtn.addEventListener('click', () => this.importBufferedEvents());
+        }
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearImportPreview());
+        }
+        if (importFileInput) {
+            importFileInput.addEventListener('change', (e) => this.handleImportFile(e));
+        }
 
         // Enhanced map controls
         document.getElementById('resetView').addEventListener('click', () => {
@@ -941,6 +967,34 @@ class GeopoliticalApp {
         });
     }
 
+    refreshCharts() {
+        // Recompute category counts
+        this.categories.forEach(category => {
+            category.count = this.events.filter(event => event.category === category.name).length;
+        });
+
+        if (this.charts.category) {
+            this.charts.category.data.datasets[0].data = this.categories.map(cat => cat.count);
+            this.charts.category.update();
+        }
+
+        if (this.charts.timeline) {
+            // Simple heuristic: recompute by decade buckets
+            const counts = new Map();
+            this.events.forEach(ev => {
+                const y = new Date(ev.date).getFullYear();
+                const bucketStart = Math.floor(y / 10) * 10;
+                const key = `${bucketStart}-${bucketStart + 10}`;
+                counts.set(key, (counts.get(key) || 0) + 1);
+            });
+            const labels = Array.from(counts.keys()).sort((a,b) => parseInt(a.split('-')[0]) - parseInt(b.split('-')[0]));
+            const data = labels.map(l => counts.get(l));
+            this.charts.timeline.data.labels = labels;
+            this.charts.timeline.data.datasets[0].data = data;
+            this.charts.timeline.update();
+        }
+    }
+
     applyFilters() {
         const selectedCategories = Array.from(
             document.querySelectorAll('#categoryFilters input[type="checkbox"]:checked')
@@ -986,6 +1040,9 @@ class GeopoliticalApp {
         // Update statistics
         document.getElementById('totalEvents').textContent = `Всього подій: ${this.events.length}`;
         document.getElementById('filteredEvents').textContent = `Відфільтровано: ${this.filteredEvents.length}`;
+
+        // Update charts after data changes
+        this.refreshCharts();
     }
 
     selectEvent(eventId) {
@@ -1107,6 +1164,322 @@ class GeopoliticalApp {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+
+    // ===================== IMPORT / DISCOVERY =====================
+    setImportStatus(text, progress = null) {
+        const status = document.getElementById('importStatusText');
+        const fill = document.getElementById('importProgressFill');
+        if (status) status.textContent = text;
+        if (fill && progress !== null) fill.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+    }
+
+    clearImportPreview() {
+        this.importBuffer = [];
+        const list = document.getElementById('importPreviewList');
+        const importBtn = document.getElementById('importBtn');
+        if (list) list.innerHTML = '';
+        if (importBtn) importBtn.disabled = true;
+        this.setImportStatus('Очищено', 0);
+    }
+
+    appendToImportPreview(events) {
+        const list = document.getElementById('importPreviewList');
+        if (!list) return;
+        const fragment = document.createDocumentFragment();
+        events.forEach(ev => {
+            const item = document.createElement('div');
+            item.className = 'import-preview-item';
+            const dateStr = this.formatDate(ev.date);
+            item.innerHTML = `
+                <div>
+                    <strong>${ev.title}</strong>
+                    <div class="meta">${dateStr} • ${ev.region || ''} • ${ev.country || ''}</div>
+                </div>
+                <div>${ev.category || ''}</div>
+            `;
+            fragment.appendChild(item);
+        });
+        list.appendChild(fragment);
+    }
+
+    handleImportFile(e) {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const content = reader.result;
+                let parsed = [];
+                if (file.name.endsWith('.json')) {
+                    const data = JSON.parse(content);
+                    parsed = Array.isArray(data) ? data : (data.events || []);
+                } else {
+                    parsed = this.parseCsv(content);
+                }
+                const normalized = this.normalizeAndValidateBatch(parsed);
+                this.importBuffer.push(...normalized);
+                this.appendToImportPreview(normalized);
+                document.getElementById('importBtn').disabled = this.importBuffer.length === 0;
+                this.setImportStatus(`Завантажено з файлу: ${normalized.length}`, 30);
+            } catch (err) {
+                console.error('Import file parse error', err);
+                this.showToast('Помилка читання файлу імпорту');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    parseCsv(text) {
+        const lines = text.split(/\r?\n/).filter(Boolean);
+        if (lines.length <= 1) return [];
+        const headers = lines[0].split(',').map(h => h.trim());
+        const rows = lines.slice(1).map(line => this.splitCsvLine(line));
+        return rows.map(cols => {
+            const obj = {};
+            headers.forEach((h, i) => obj[h] = cols[i]);
+            return obj;
+        });
+    }
+
+    splitCsvLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (ch === '"') {
+                inQuotes = !inQuotes;
+            } else if (ch === ',' && !inQuotes) {
+                result.push(current);
+                current = '';
+            } else {
+                current += ch;
+            }
+        }
+        result.push(current);
+        return result.map(s => s.replace(/^\"|\"$/g, ''));
+    }
+
+    normalizeAndValidateBatch(rawItems) {
+        const out = [];
+        for (const raw of rawItems) {
+            const normalized = this.normalizeEvent(raw);
+            if (normalized && this.validateEvent(normalized)) {
+                out.push(normalized);
+            }
+        }
+        return out;
+    }
+
+    normalizeEvent(raw) {
+        // Map incoming fields to internal schema
+        const toNumber = (v) => {
+            const num = typeof v === 'string' ? parseFloat(v) : v;
+            return isFinite(num) ? num : 0;
+        };
+        const ensureArray = (v) => Array.isArray(v) ? v : (typeof v === 'string' && v.startsWith('[') ? JSON.parse(v.replace(/'/g, '"')) : (v ? [String(v)] : []));
+
+        const event = {
+            id: raw.id || this.nextId++,
+            title: raw.title || raw.headline || 'Без назви',
+            channel: raw.channel || raw.source || '',
+            date: raw.date || raw.publishedAt || raw.pubDate || new Date().toISOString().slice(0,10),
+            category: raw.category || raw.topic || 'Політичні зміни',
+            region: raw.region || '',
+            country: raw.country || '',
+            lat: toNumber(raw.lat ?? raw.latitude),
+            lng: toNumber(raw.lng ?? raw.longitude),
+            description: raw.description || raw.summary || raw.content || '',
+            participants: ensureArray(raw.participants),
+            impact: raw.impact || '',
+            importance: Math.max(1, Math.min(10, parseInt(raw.importance || 5))),
+            sources: ensureArray(raw.sources || raw.link)
+        };
+        return event;
+    }
+
+    validateEvent(event) {
+        // Basic required fields
+        if (!event.title || !event.date) return false;
+        const time = Date.parse(event.date);
+        if (isNaN(time)) return false;
+        if (typeof event.lat !== 'number' || typeof event.lng !== 'number') return false;
+        if (event.lat < -90 || event.lat > 90 || event.lng < -180 || event.lng > 180) return false;
+        // Category whitelist: ensure it exists or default
+        const category = this.categories.find(c => c.name === event.category);
+        if (!category) {
+            // Fallback to a default category
+            event.category = 'Політичні зміни';
+        }
+        // Region fallback
+        if (!event.region) {
+            event.region = 'Глобально';
+        }
+        if (!event.country) {
+            event.country = 'Світ';
+        }
+        if (!event.importance || isNaN(event.importance)) {
+            event.importance = 5;
+        }
+        if (!event.participants) event.participants = [];
+        if (!event.sources) event.sources = [];
+        return true;
+    }
+
+    async scanSources() {
+        const rssTextarea = document.getElementById('rssUrls');
+        const newsApiKey = document.getElementById('newsApiKey')?.value?.trim();
+        const newsApiQuery = document.getElementById('newsApiQuery')?.value?.trim() || 'geopolitics';
+        const govJsonUrl = document.getElementById('govJsonUrl')?.value?.trim();
+        const corsProxy = document.getElementById('corsProxyUrl')?.value?.trim();
+
+        const rssUrls = (rssTextarea?.value || '')
+            .split(/\n|[,;]/)
+            .map(u => u.trim())
+            .filter(Boolean);
+
+        this.setImportStatus('Сканування джерел...', 5);
+        const found = [];
+
+        // RSS fetch
+        for (let i = 0; i < rssUrls.length; i++) {
+            const url = rssUrls[i];
+            try {
+                const feedEvents = await this.fetchRss(url, corsProxy);
+                found.push(...feedEvents);
+                this.setImportStatus(`RSS: ${i + 1}/${rssUrls.length}`, Math.min(80, 10 + (i + 1) * (60 / Math.max(1, rssUrls.length))));
+            } catch (e) {
+                console.warn('RSS fetch failed', url, e);
+            }
+        }
+
+        // News API (optional, note: may fail in browser due to CORS)
+        if (newsApiKey) {
+            try {
+                const news = await this.fetchNewsApi(newsApiKey, newsApiQuery, corsProxy);
+                found.push(...news);
+            } catch (e) {
+                console.warn('News API failed', e);
+            }
+        }
+
+        // Gov JSON (optional)
+        if (govJsonUrl) {
+            try {
+                const gov = await this.fetchGovJson(govJsonUrl, corsProxy);
+                found.push(...gov);
+            } catch (e) {
+                console.warn('Gov JSON fetch failed', e);
+            }
+        }
+
+        const normalized = this.normalizeAndValidateBatch(found);
+        this.importBuffer = normalized; // replace buffer with latest scan
+        this.clearImportPreview();
+        this.importBuffer = normalized;
+        this.appendToImportPreview(normalized);
+        const importBtn = document.getElementById('importBtn');
+        if (importBtn) importBtn.disabled = this.importBuffer.length === 0;
+        this.setImportStatus(`Знайдено: ${normalized.length}`, normalized.length ? 90 : 30);
+    }
+
+    async fetchWithCors(url, corsProxy, options = {}) {
+        const finalUrl = corsProxy ? `${corsProxy.replace(/\/$/, '')}/${encodeURIComponent(url)}` : url;
+        const res = await fetch(finalUrl, options);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res;
+    }
+
+    async fetchRss(url, corsProxy) {
+        const res = await this.fetchWithCors(url, corsProxy);
+        const text = await res.text();
+        const items = this.parseRss(text);
+        return items.map(item => ({
+            title: item.title,
+            description: item.description,
+            date: item.pubDate || item.published,
+            sources: [item.link],
+            // location/category inference is out of scope; leave defaults
+        }));
+    }
+
+    parseRss(xmlText) {
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(xmlText, 'text/xml');
+        const entries = [];
+        const itemNodes = [...xml.querySelectorAll('item')];
+        if (itemNodes.length) {
+            itemNodes.forEach(n => entries.push({
+                title: n.querySelector('title')?.textContent || '',
+                description: n.querySelector('description')?.textContent || '',
+                link: n.querySelector('link')?.textContent || '',
+                pubDate: n.querySelector('pubDate')?.textContent || ''
+            }));
+        } else {
+            // Atom
+            const atomEntries = [...xml.querySelectorAll('entry')];
+            atomEntries.forEach(n => entries.push({
+                title: n.querySelector('title')?.textContent || '',
+                description: n.querySelector('summary')?.textContent || n.querySelector('content')?.textContent || '',
+                link: n.querySelector('link')?.getAttribute('href') || '',
+                published: n.querySelector('published')?.textContent || n.querySelector('updated')?.textContent || ''
+            }));
+        }
+        return entries;
+    }
+
+    async fetchNewsApi(apiKey, query, corsProxy) {
+        const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&pageSize=20`;
+        const res = await this.fetchWithCors(url, corsProxy, { headers: { 'X-Api-Key': apiKey } }).catch(async () => {
+            // If proxy route with headers fails, try direct
+            const r = await fetch(url, { headers: { 'X-Api-Key': apiKey } });
+            if (!r.ok) throw new Error('NewsAPI failed');
+            return r;
+        });
+        const json = await res.json();
+        if (!json.articles) return [];
+        return json.articles.map(a => ({
+            title: a.title,
+            description: a.description || a.content || '',
+            date: a.publishedAt,
+            sources: [a.url],
+            country: a.source?.name || ''
+        }));
+    }
+
+    async fetchGovJson(url, corsProxy) {
+        const res = await this.fetchWithCors(url, corsProxy).catch(() => fetch(url));
+        const json = await res.json();
+        return Array.isArray(json) ? json : (json.events || []);
+    }
+
+    importBufferedEvents() {
+        if (!this.importBuffer.length) {
+            this.showToast('Немає подій для імпорту');
+            return;
+        }
+        const total = this.importBuffer.length;
+        let imported = 0;
+        const batchSize = 50; // batch import
+        const doBatch = () => {
+            const batch = this.importBuffer.splice(0, batchSize);
+            batch.forEach(ev => this.events.push(ev));
+            imported += batch.length;
+            this.filteredEvents = [...this.events];
+            this.updateDisplay();
+            this.rebuildTimeline();
+            this.cameraController.calculateOptimalBounds();
+            const progress = Math.round((imported / total) * 100);
+            this.setImportStatus(`Імпортовано ${imported}/${total}`, progress);
+            if (this.importBuffer.length) {
+                setTimeout(doBatch, 50);
+            } else {
+                document.getElementById('importBtn').disabled = true;
+                this.showToast('Імпорт завершено');
+            }
+        };
+        doBatch();
     }
 
     playTimelineAnimation() {
