@@ -27,6 +27,8 @@ class GeopoliticalApp {
         // Touch handling
         this.touchHandler = new TouchHandler(this);
         this.cameraController = new SmartCameraController(this);
+        this.zoomLabelEl = document.getElementById('zoomLabel');
+        this.zoomLabelHideTimer = null;
         
         this.initializeData();
         this.initializeApp();
@@ -526,13 +528,68 @@ class GeopoliticalApp {
             this.markers.forEach(marker => {
                 marker.setOpacity(0.7);
             });
+            this.updateZoomLabel();
         });
         
+        this.map.on('zoom', () => {
+            this.updateZoomLabel();
+        });
+
         this.map.on('zoomend', () => {
             this.markers.forEach(marker => {
                 marker.setOpacity(1);
             });
+            this.queueHideZoomLabel();
         });
+    }
+
+    updateZoomLabel() {
+        if (!this.zoomLabelEl) return;
+        const zoom = this.map ? this.map.getZoom() : null;
+        if (zoom == null) return;
+        const zoomText = `Zoom ${zoom.toFixed(1)}`;
+        if (this.zoomLabelEl.textContent !== zoomText) {
+            this.zoomLabelEl.textContent = zoomText;
+        }
+        this.positionZoomLabel();
+        this.zoomLabelEl.classList.add('visible');
+        this.zoomLabelEl.setAttribute('aria-hidden', 'false');
+        if (this.zoomLabelHideTimer) {
+            clearTimeout(this.zoomLabelHideTimer);
+            this.zoomLabelHideTimer = null;
+        }
+    }
+
+    queueHideZoomLabel() {
+        if (!this.zoomLabelEl) return;
+        if (this.zoomLabelHideTimer) clearTimeout(this.zoomLabelHideTimer);
+        this.zoomLabelHideTimer = setTimeout(() => {
+            this.zoomLabelEl.classList.remove('visible');
+            this.zoomLabelEl.setAttribute('aria-hidden', 'true');
+        }, 500);
+    }
+
+    positionZoomLabel() {
+        if (!this.zoomLabelEl) return;
+        const mapContainer = document.querySelector('.map-container');
+        const controls = document.querySelector('.map-controls');
+        if (!mapContainer) return;
+
+        const mapRect = mapContainer.getBoundingClientRect();
+        let topPx = 16; // fallback spacing
+
+        if (controls) {
+            const controlsRect = controls.getBoundingClientRect();
+            const controlsAreTop = controlsRect.top <= mapRect.top + 20; // threshold near top
+            if (controlsAreTop) {
+                topPx = Math.max(16, Math.round(controlsRect.bottom - mapRect.top + 8));
+            }
+        }
+
+        // Clamp within container height
+        const maxTop = Math.max(0, mapRect.height - 40); // avoid bottom cutoff
+        const clampedTop = Math.min(topPx, maxTop);
+        this.zoomLabelEl.style.top = `${clampedTop}px`;
     }
 
     addMarkersToMap() {
@@ -1799,6 +1856,7 @@ GeopoliticalApp.prototype.setupEventListeners = function() {
         if (this.map) {
             this.map.invalidateSize();
         }
+        this.positionZoomLabel();
     });
     
     // Keyboard shortcuts
