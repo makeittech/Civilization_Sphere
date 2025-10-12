@@ -1275,28 +1275,31 @@ class TouchHandler {
             this.handleSwipe();
         });
         
-        // Handle pinch zoom
-        let initialDistance = null;
-        mapElement.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 2) {
-                initialDistance = this.getDistance(e.touches[0], e.touches[1]);
-            }
-        });
-        
-        mapElement.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 2 && initialDistance) {
-                const currentDistance = this.getDistance(e.touches[0], e.touches[1]);
-                const scaleFactor = currentDistance / initialDistance;
-                
-                if (scaleFactor > 1.2) {
-                    this.app.map.zoomIn();
-                    initialDistance = currentDistance;
-                } else if (scaleFactor < 0.8) {
-                    this.app.map.zoomOut();
-                    initialDistance = currentDistance;
+        // Handle pinch zoom only as a fallback when Leaflet touchZoom is disabled
+        // This avoids conflicting with Leaflet's native multi-touch handling
+        if (!(this.app.map && this.app.map.options && this.app.map.options.touchZoom)) {
+            let initialDistance = null;
+            mapElement.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    initialDistance = this.getDistance(e.touches[0], e.touches[1]);
                 }
-            }
-        });
+            });
+            
+            mapElement.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2 && initialDistance) {
+                    const currentDistance = this.getDistance(e.touches[0], e.touches[1]);
+                    const scaleFactor = currentDistance / initialDistance;
+                    
+                    if (scaleFactor > 1.2) {
+                        this.app.map.zoomIn();
+                        initialDistance = currentDistance;
+                    } else if (scaleFactor < 0.8) {
+                        this.app.map.zoomOut();
+                        initialDistance = currentDistance;
+                    }
+                }
+            });
+        }
     }
     
     getDistance(touch1, touch2) {
