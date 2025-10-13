@@ -786,6 +786,7 @@ class GeopoliticalApp {
         
         this.filteredEvents = this.events.filter(filterFunction);
         this.updateDisplay();
+        this.rebuildTimeline();
     }
 
     initializeSearch() {
@@ -832,20 +833,30 @@ class GeopoliticalApp {
         this.selectEvent(eventId);
     }
 
+    getSortedFilteredEvents() {
+        return [...this.filteredEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
+    }
+
     initializeTimeline() {
         const timeline = document.getElementById('timeline');
         const scale = document.getElementById('timelineScale');
         
-        // Sort events by date
-        const sortedEvents = [...this.events].sort((a, b) => new Date(a.date) - new Date(b.date));
+        // Sort filtered events by date
+        const sortedEvents = this.getSortedFilteredEvents();
         
         if (sortedEvents.length === 0) return;
         const minYear = new Date(sortedEvents[0].date).getFullYear();
         const maxYear = new Date(sortedEvents[sortedEvents.length - 1].date).getFullYear();
-        const yearRange = maxYear - minYear;
+        const yearRange = Math.max(1, maxYear - minYear);
         
         timeline.innerHTML = '';
         scale.innerHTML = '';
+        
+        // Ensure playhead exists
+        const playhead = document.createElement('div');
+        playhead.id = 'timelinePlayhead';
+        playhead.className = 'timeline-playhead';
+        timeline.appendChild(playhead);
         
         // Add events to timeline
         sortedEvents.forEach(event => {
@@ -958,6 +969,7 @@ class GeopoliticalApp {
         // Speed control
         document.getElementById('playbackSpeed').addEventListener('change', (e) => {
             this.playbackSpeed = parseFloat(e.target.value);
+            this.updatePlaybackUI();
         });
         
         // Progress bar interaction
@@ -1080,6 +1092,7 @@ class GeopoliticalApp {
         });
 
         this.updateDisplay();
+        this.rebuildTimeline();
     }
 
     clearFilters() {
@@ -1648,7 +1661,7 @@ class GeopoliticalApp {
         if (this.isPlaying) return;
 
         this.isPlaying = true;
-        this.playbackEvents = [...this.filteredEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
+        this.playbackEvents = this.getSortedFilteredEvents();
         this.currentPlaybackIndex = 0;
         
         // Update UI
@@ -1694,10 +1707,11 @@ class GeopoliticalApp {
     
     updateTimelinePlayhead() {
         const playhead = document.getElementById('timelinePlayhead');
-        if (!playhead || this.playbackEvents.length === 0) return;
+        const timelineEl = document.getElementById('timeline');
+        if (!playhead || !timelineEl || this.playbackEvents.length === 0) return;
         
         const progress = this.currentPlaybackIndex / this.playbackEvents.length;
-        const timelineWidth = document.getElementById('timeline').offsetWidth;
+        const timelineWidth = timelineEl.offsetWidth || timelineEl.clientWidth || 0;
         playhead.style.left = `${progress * timelineWidth}px`;
         playhead.classList.add('active');
     }
@@ -1724,6 +1738,11 @@ class GeopoliticalApp {
     }
     
     seekToProgress(e) {
+        // Use current playback list if available, otherwise derive from filtered
+        if (!this.playbackEvents.length) {
+            this.playbackEvents = this.getSortedFilteredEvents();
+            this.currentPlaybackIndex = 0;
+        }
         if (!this.playbackEvents.length) return;
         
         const rect = e.currentTarget.getBoundingClientRect();
@@ -1732,6 +1751,7 @@ class GeopoliticalApp {
         
         this.currentPlaybackIndex = Math.max(0, Math.min(targetIndex, this.playbackEvents.length - 1));
         this.updateProgress();
+        this.updateTimelinePlayhead();
         
         if (this.currentPlaybackIndex < this.playbackEvents.length) {
             this.selectEvent(this.playbackEvents[this.currentPlaybackIndex].id);
@@ -1763,9 +1783,12 @@ class GeopoliticalApp {
             el.classList.remove('active', 'playing');
         });
         
-        document.getElementById('timelinePlayhead').classList.remove('active');
-        document.getElementById('timelineProgressFill').style.width = '0%';
-        document.getElementById('timelineProgressHandle').style.left = '0%';
+        const ph = document.getElementById('timelinePlayhead');
+        const pf = document.getElementById('timelineProgressFill');
+        const phHandle = document.getElementById('timelineProgressHandle');
+        if (ph) ph.classList.remove('active');
+        if (pf) pf.style.width = '0%';
+        if (phHandle) phHandle.style.left = '0%';
         
         this.selectedEvent = null;
         document.getElementById('eventDetails').innerHTML = `
@@ -2216,17 +2239,17 @@ GeopoliticalApp.prototype.setupEventListeners = function() {
 
 GeopoliticalApp.prototype.navigateToEvent = function(direction) {
     if (!this.selectedEvent) return;
-    
-    const currentIndex = this.filteredEvents.findIndex(e => e.id === this.selectedEvent.id);
+    const ordered = this.getSortedFilteredEvents();
+    if (!ordered.length) return;
+    const currentIndex = ordered.findIndex(e => e.id === this.selectedEvent.id);
+    if (currentIndex === -1) return;
     let newIndex;
-    
     if (direction === 'next') {
-        newIndex = (currentIndex + 1) % this.filteredEvents.length;
+        newIndex = (currentIndex + 1) % ordered.length;
     } else {
-        newIndex = currentIndex === 0 ? this.filteredEvents.length - 1 : currentIndex - 1;
+        newIndex = currentIndex === 0 ? ordered.length - 1 : currentIndex - 1;
     }
-    
-    this.selectEvent(this.filteredEvents[newIndex].id);
+    this.selectEvent(ordered[newIndex].id);
 };
 
 GeopoliticalApp.prototype.toggleFullscreen = function() {
