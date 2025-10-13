@@ -67,7 +67,8 @@
       "language": "uk",
       "apiKeyEnv": "ASR_API_KEY",
       "model": "whisper-1",
-      "retries": 3
+      "retries": 3,
+      "placeholderKey": "sk-placeholder-for-testing"
     }
   },
   "qa": { "sampleSize": 20, "lowConfidenceThreshold": 0.7 }

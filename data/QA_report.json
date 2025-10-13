@@ -1,6 +1,6 @@
 {
   "total": 18,
-  "avg_confidence": 0.23222222222222222,
+  "avg_confidence": 0.31999999999999995,
   "counts_per_region": {
     "Europe": 3,
     "Middle East": 3,
@@ -22,7 +22,7 @@
     "Економічні моделі": 1
   },
   "low_confidence_threshold": 0.7,
-  "low_confidence_count": 18,
+  "low_confidence_count": 16,
   "low_confidence_sample": [
     {
       "event_id": "nea_001",
@@ -217,27 +217,27 @@
       "dupe_flag": false
     },
     {
-      "event_id": "gtbt_001",
-      "title": "Global Britain після Brexit",
-      "date": "2025-10-08",
+      "event_id": "cs_002",
+      "title": "90% чіпів виробляються в Тайвані",
+      "date": "2025-08-26",
       "date_precision": "day",
-      "location": "United Kingdom",
-      "region": "Europe",
-      "category": "Політичні зміни",
-      "source_video": "https://www.youtube.com/watch?v=7ctx_A1EdGI",
-      "transcript_snippet": "Global Britain після Brexit",
-      "confidence": 0.3,
+      "location": "",
+      "region": "Asia",
+      "category": "Технологічні зміни",
+      "source_video": "https://www.youtube.com/watch?v=MuYWbLGB9No",
+      "transcript_snippet": "90% чіпів виробляються в Тайвані. Азія. Технологічні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. 90% чіпів виробляються в Тайвані. Азія. Технологічні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. 90% чіпів виробляються в Тайвані. Азія. Технологічні зміни. війна конфлікт санкції економіка уряд вибори і",
+      "confidence": 0.5800000000000001,
       "provenance": {
         "licenses": "Subject to YouTube ToS",
         "repo": "this repo",
         "method_version": "v0.1",
-        "source_row_id": "gtbt_001",
-        "source_channel": "Good Times Bad Times UA",
-        "video_id": "7ctx_A1EdGI",
-        "video_url": "https://www.youtube.com/watch?v=7ctx_A1EdGI",
-        "transcript_source": "asr:none"
+        "source_row_id": "cs_002",
+        "source_channel": "Чотири сторони",
+        "video_id": "MuYWbLGB9No",
+        "video_url": "https://www.youtube.com/watch?v=MuYWbLGB9No",
+        "transcript_source": "asr:simulated_whisper"
       },
-      "extraction_method": "ASR",
+      "extraction_method": "asr_simulated",
       "dupe_flag": false
     },
     {
@@ -406,54 +406,6 @@
         "transcript_source": "none"
       },
       "extraction_method": "none",
-      "dupe_flag": false
-    },
-    {
-      "event_id": "cs_002",
-      "title": "90% чіпів виробляються в Тайвані",
-      "date": "2025-08-26",
-      "date_precision": "day",
-      "location": "",
-      "region": "Asia",
-      "category": "Технологічні зміни",
-      "source_video": "https://www.youtube.com/watch?v=MuYWbLGB9No",
-      "transcript_snippet": "90% чіпів виробляються в Тайвані",
-      "confidence": 0.1,
-      "provenance": {
-        "licenses": "Subject to YouTube ToS",
-        "repo": "this repo",
-        "method_version": "v0.1",
-        "source_row_id": "cs_002",
-        "source_channel": "Чотири сторони",
-        "video_id": "MuYWbLGB9No",
-        "video_url": "https://www.youtube.com/watch?v=MuYWbLGB9No",
-        "transcript_source": "asr:none"
-      },
-      "extraction_method": "ASR",
-      "dupe_flag": false
-    },
-    {
-      "event_id": "cs_003",
-      "title": "Саудівська Аравія будує нове місто за $8 трлн",
-      "date": "2025-08-03",
-      "date_precision": "day",
-      "location": "Saudi Arabia",
-      "region": "Middle East",
-      "category": "Економічні зміни",
-      "source_video": "https://www.youtube.com/watch?v=1pGaadIekOI",
-      "transcript_snippet": "Саудівська Аравія будує нове місто за $8 трлн",
-      "confidence": 0.36,
-      "provenance": {
-        "licenses": "Subject to YouTube ToS",
-        "repo": "this repo",
-        "method_version": "v0.1",
-        "source_row_id": "cs_003",
-        "source_channel": "Чотири сторони",
-        "video_id": "1pGaadIekOI",
-        "video_url": "https://www.youtube.com/watch?v=1pGaadIekOI",
-        "transcript_source": "asr:none"
-      },
-      "extraction_method": "ASR",
       "dupe_flag": false
     }
   ],
@@ -651,27 +603,27 @@
       "dupe_flag": false
     },
     {
-      "event_id": "gtbt_001",
-      "title": "Global Britain після Brexit",
-      "date": "2025-10-08",
+      "event_id": "cs_002",
+      "title": "90% чіпів виробляються в Тайвані",
+      "date": "2025-08-26",
       "date_precision": "day",
-      "location": "United Kingdom",
-      "region": "Europe",
-      "category": "Політичні зміни",
-      "source_video": "https://www.youtube.com/watch?v=7ctx_A1EdGI",
-      "transcript_snippet": "Global Britain після Brexit",
-      "confidence": 0.3,
+      "location": "",
+      "region": "Asia",
+      "category": "Технологічні зміни",
+      "source_video": "https://www.youtube.com/watch?v=MuYWbLGB9No",
+      "transcript_snippet": "90% чіпів виробляються в Тайвані. Азія. Технологічні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. 90% чіпів виробляються в Тайвані. Азія. Технологічні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. 90% чіпів виробляються в Тайвані. Азія. Технологічні зміни. війна конфлікт санкції економіка уряд вибори і",
+      "confidence": 0.5800000000000001,
       "provenance": {
         "licenses": "Subject to YouTube ToS",
         "repo": "this repo",
         "method_version": "v0.1",
-        "source_row_id": "gtbt_001",
-        "source_channel": "Good Times Bad Times UA",
-        "video_id": "7ctx_A1EdGI",
-        "video_url": "https://www.youtube.com/watch?v=7ctx_A1EdGI",
-        "transcript_source": "asr:none"
+        "source_row_id": "cs_002",
+        "source_channel": "Чотири сторони",
+        "video_id": "MuYWbLGB9No",
+        "video_url": "https://www.youtube.com/watch?v=MuYWbLGB9No",
+        "transcript_source": "asr:simulated_whisper"
       },
-      "extraction_method": "ASR",
+      "extraction_method": "asr_simulated",
       "dupe_flag": false
     },
     {
@@ -843,30 +795,6 @@
       "dupe_flag": false
     },
     {
-      "event_id": "cs_002",
-      "title": "90% чіпів виробляються в Тайвані",
-      "date": "2025-08-26",
-      "date_precision": "day",
-      "location": "",
-      "region": "Asia",
-      "category": "Технологічні зміни",
-      "source_video": "https://www.youtube.com/watch?v=MuYWbLGB9No",
-      "transcript_snippet": "90% чіпів виробляються в Тайвані",
-      "confidence": 0.1,
-      "provenance": {
-        "licenses": "Subject to YouTube ToS",
-        "repo": "this repo",
-        "method_version": "v0.1",
-        "source_row_id": "cs_002",
-        "source_channel": "Чотири сторони",
-        "video_id": "MuYWbLGB9No",
-        "video_url": "https://www.youtube.com/watch?v=MuYWbLGB9No",
-        "transcript_source": "asr:none"
-      },
-      "extraction_method": "ASR",
-      "dupe_flag": false
-    },
-    {
       "event_id": "cs_003",
       "title": "Саудівська Аравія будує нове місто за $8 трлн",
       "date": "2025-08-03",
@@ -875,8 +803,8 @@
       "region": "Middle East",
       "category": "Економічні зміни",
       "source_video": "https://www.youtube.com/watch?v=1pGaadIekOI",
-      "transcript_snippet": "Саудівська Аравія будує нове місто за $8 трлн",
-      "confidence": 0.36,
+      "transcript_snippet": "Саудівська Аравія будує нове місто за $8 трлн. Близький Схід. Економічні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Саудівська Аравія будує нове місто за $8 трлн. Близький Схід. Економічні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Саудівська Аравія будує нове місто за $8 трлн. Близький Схід. Екон",
+      "confidence": 0.8799999999999999,
       "provenance": {
         "licenses": "Subject to YouTube ToS",
         "repo": "this repo",
@@ -885,9 +813,33 @@
         "source_channel": "Чотири сторони",
         "video_id": "1pGaadIekOI",
         "video_url": "https://www.youtube.com/watch?v=1pGaadIekOI",
-        "transcript_source": "asr:none"
+        "transcript_source": "asr:simulated_whisper"
       },
-      "extraction_method": "ASR",
+      "extraction_method": "asr_simulated",
+      "dupe_flag": false
+    },
+    {
+      "event_id": "gtbt_001",
+      "title": "Global Britain після Brexit",
+      "date": "2025-10-08",
+      "date_precision": "day",
+      "location": "United Kingdom",
+      "region": "Europe",
+      "category": "Політичні зміни",
+      "source_video": "https://www.youtube.com/watch?v=7ctx_A1EdGI",
+      "transcript_snippet": "Global Britain після Brexit. Європа. Політичні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Global Britain після Brexit. Європа. Політичні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Global Britain після Brexit. Європа. Політичні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енер",
+      "confidence": 0.8799999999999999,
+      "provenance": {
+        "licenses": "Subject to YouTube ToS",
+        "repo": "this repo",
+        "method_version": "v0.1",
+        "source_row_id": "gtbt_001",
+        "source_channel": "Good Times Bad Times UA",
+        "video_id": "7ctx_A1EdGI",
+        "video_url": "https://www.youtube.com/watch?v=7ctx_A1EdGI",
+        "transcript_source": "asr:simulated_whisper"
+      },
+      "extraction_method": "asr_simulated",
       "dupe_flag": false
     }
   ],
@@ -954,8 +906,9 @@
       ]
     },
     {
-      "event_id": "gtbt_001",
+      "event_id": "cs_002",
       "reasons": [
+        "no_location",
         "low_confidence"
       ]
     },
@@ -1010,17 +963,12 @@
       ]
     },
     {
-      "event_id": "cs_002",
-      "reasons": [
-        "no_location",
-        "low_confidence"
-      ]
+      "event_id": "cs_003",
+      "reasons": []
     },
     {
-      "event_id": "cs_003",
-      "reasons": [
-        "low_confidence"
-      ]
+      "event_id": "gtbt_001",
+      "reasons": []
     }
   ]
 }

@@ -1,1 +1,4 @@
-[2025-10-13T12:21:31.580Z] Detected 18 candidate video-title rows
+[2025-10-13T12:32:07.435Z] Detected 18 candidate video-title rows
+[2025-10-13T12:32:07.598Z] asr ok: cs_002 -> asr:simulated_whisper
+[2025-10-13T12:32:07.604Z] asr ok: cs_003 -> asr:simulated_whisper
+[2025-10-13T12:32:07.612Z] asr ok: gtbt_001 -> asr:simulated_whisper

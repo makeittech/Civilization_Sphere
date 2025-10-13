@@ -56,8 +56,31 @@ async function main() {
   const args = process.argv.slice(2);
   const setIdx = args.indexOf('--set');
   if (setIdx !== -1) {
-    const kv = {}; for (let i = setIdx + 1; i < args.length; i++) { const [k, v] = String(args[i]).split('='); if (k && v !== undefined) kv[k] = v; }
+    const kv = {};
+    for (let i = setIdx + 1; i < args.length; i++) {
+      const part = String(args[i]);
+      const eq = part.indexOf('=');
+      if (eq === -1) continue;
+      const k = part.slice(0, eq);
+      const v = part.slice(eq + 1);
+      if (k) kv[k] = v;
+    }
     if (!kv.row_id) { console.error('Provide row_id=...'); process.exit(1); }
+    // If only URL provided, attempt to extract video_id
+    function extractYouTubeIdFromUrl(url) {
+      try {
+        const u = new URL(url);
+        if (u.hostname.includes('youtube.com')) {
+          if (u.pathname === '/watch') return u.searchParams.get('v') || '';
+          if (u.pathname.startsWith('/shorts/')) return u.pathname.split('/').filter(Boolean)[1] || '';
+          const parts = u.pathname.split('/').filter(Boolean);
+          if (parts[0] === 'embed' && parts[1]) return parts[1];
+        }
+        if (u.hostname === 'youtu.be') return u.pathname.split('/').filter(Boolean)[0] || '';
+        return '';
+      } catch { return ''; }
+    }
+    if (kv.video_url && !kv.video_id) kv.video_id = extractYouTubeIdFromUrl(kv.video_url);
     let found = false;
     for (const r of rows) {
       if (r.row_id === kv.row_id) {
