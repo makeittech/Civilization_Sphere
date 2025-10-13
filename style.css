@@ -1683,6 +1683,7 @@ body.light-theme {
   border-top: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .timeline-header {
@@ -1788,6 +1789,32 @@ body.light-theme {
   position: relative;
   padding: var(--space-8) var(--space-16);
   overflow-x: auto;
+}
+
+/* Timeline Ready/Loading Overlay */
+.timeline-ready-overlay {
+  position: absolute;
+  inset: 0 0 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-12);
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--color-slate-900-rgb), 0.65),
+    rgba(var(--color-slate-900-rgb), 0.65)
+  );
+  backdrop-filter: blur(2px);
+  z-index: 5;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-normal) var(--ease-standard);
+}
+
+.timeline-ready-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .timeline-wrapper {
