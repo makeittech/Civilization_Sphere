@@ -893,7 +893,7 @@ class GeopoliticalApp {
         const importFileInput = document.getElementById('importFile');
 
         if (scanBtn) {
-            scanBtn.addEventListener('click', () => this.scanSources());
+            scanBtn.addEventListener('click', () => this.handleScanButton());
         }
         if (importBtn) {
             importBtn.addEventListener('click', () => this.importBufferedEvents());
@@ -1336,12 +1336,14 @@ class GeopoliticalApp {
             return isFinite(num) ? num : 0;
         };
         const ensureArray = (v) => Array.isArray(v) ? v : (typeof v === 'string' && v.startsWith('[') ? JSON.parse(v.replace(/'/g, '"')) : (v ? [String(v)] : []));
+        const dateRaw = raw.date || raw.publishedAt || raw.pubDate || raw.updated || '';
+        const normalizedDate = this.normalizeEventDate(dateRaw);
 
         const event = {
             id: raw.id || this.nextId++,
-            title: raw.title || raw.headline || 'Без назви',
+            title: (raw.title || raw.headline || 'Без назви').toString().trim(),
             channel: raw.channel || raw.source || '',
-            date: raw.date || raw.publishedAt || raw.pubDate || new Date().toISOString().slice(0,10),
+            date: normalizedDate || new Date().toISOString().slice(0,10),
             category: raw.category || raw.topic || 'Політичні зміни',
             region: raw.region || '',
             country: raw.country || '',
@@ -1380,11 +1382,52 @@ class GeopoliticalApp {
             event.importance = 5;
         }
         if (!event.participants) event.participants = [];
+        // Deduplicate participants and trim
+        event.participants = Array.from(new Set(event.participants.map(p => String(p).trim()).filter(Boolean)));
         if (!event.sources) event.sources = [];
+        // Ensure sources are strings and valid-ish URLs if present
+        event.sources = event.sources.map(s => String(s).trim()).filter(Boolean);
         return true;
     }
 
+    normalizeEventDate(input) {
+        if (!input) return '';
+        // Attempt to parse various formats and normalize to YYYY-MM-DD
+        const parsed = new Date(input);
+        if (isNaN(parsed.getTime())) return '';
+        const iso = parsed.toISOString();
+        return iso.slice(0, 10);
+    }
+
+    computeEventDedupKey(event) {
+        // Prefer stable link if available
+        const link = Array.isArray(event.sources) && event.sources.length ? event.sources[0] : '';
+        if (link && /^https?:\/\//i.test(link)) {
+            return `link:${link}`;
+        }
+        const title = (event.title || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        const date = event.date || '';
+        const lat = Number.isFinite(event.lat) ? event.lat.toFixed(3) : 'x';
+        const lng = Number.isFinite(event.lng) ? event.lng.toFixed(3) : 'x';
+        return `tdl:${title}|${date}|${lat}|${lng}`;
+    }
+
     async scanSources() {
+        // Backward-compatible manual scan using the new SourceScanner
+        const sources = this.prepareSourcesFromUI();
+        if (!this.scanner) this.scanner = new SourceScanner(this);
+        this.scanner.setSources(sources);
+        this.setImportStatus('Сканування джерел...', 5);
+        const results = await this.scanner.scanOnce({ updateUi: true });
+        // Start auto-refresh after a manual scan if there are sources
+        if (sources.length) {
+            this.scanner.startAutoRefresh();
+            this.updateScanButtonUi(true);
+        }
+        return results;
+    }
+
+    prepareSourcesFromUI() {
         const rssTextarea = document.getElementById('rssUrls');
         const newsApiKey = document.getElementById('newsApiKey')?.value?.trim();
         const newsApiQuery = document.getElementById('newsApiQuery')?.value?.trim() || 'geopolitics';
@@ -1396,49 +1439,63 @@ class GeopoliticalApp {
             .map(u => u.trim())
             .filter(Boolean);
 
-        this.setImportStatus('Сканування джерел...', 5);
-        const found = [];
-
-        // RSS fetch
-        for (let i = 0; i < rssUrls.length; i++) {
-            const url = rssUrls[i];
-            try {
-                const feedEvents = await this.fetchRss(url, corsProxy);
-                found.push(...feedEvents);
-                this.setImportStatus(`RSS: ${i + 1}/${rssUrls.length}`, Math.min(80, 10 + (i + 1) * (60 / Math.max(1, rssUrls.length))));
-            } catch (e) {
-                console.warn('RSS fetch failed', url, e);
-            }
-        }
-
-        // News API (optional, note: may fail in browser due to CORS)
-        if (newsApiKey) {
-            try {
-                const news = await this.fetchNewsApi(newsApiKey, newsApiQuery, corsProxy);
-                found.push(...news);
-            } catch (e) {
-                console.warn('News API failed', e);
-            }
-        }
-
-        // Gov JSON (optional)
+        const sources = [];
+        rssUrls.forEach((url, idx) => {
+            sources.push({
+                id: `rss:${idx}:${url}`,
+                type: 'rss',
+                url,
+                priority: 2,
+                intervalMs: 15 * 60 * 1000,
+                corsProxy
+            });
+        });
         if (govJsonUrl) {
-            try {
-                const gov = await this.fetchGovJson(govJsonUrl, corsProxy);
-                found.push(...gov);
-            } catch (e) {
-                console.warn('Gov JSON fetch failed', e);
-            }
+            sources.push({
+                id: `json:${govJsonUrl}`,
+                type: 'json',
+                url: govJsonUrl,
+                priority: 1,
+                intervalMs: 20 * 60 * 1000,
+                corsProxy
+            });
         }
+        if (newsApiKey) {
+            sources.push({
+                id: `newsapi:${newsApiQuery}`,
+                type: 'newsapi',
+                url: 'https://newsapi.org/v2/everything',
+                priority: 3,
+                intervalMs: 30 * 60 * 1000,
+                corsProxy,
+                params: { apiKey: newsApiKey, query: newsApiQuery }
+            });
+        }
+        return sources;
+    }
 
-        const normalized = this.normalizeAndValidateBatch(found);
-        this.importBuffer = normalized; // replace buffer with latest scan
-        this.clearImportPreview();
-        this.importBuffer = normalized;
-        this.appendToImportPreview(normalized);
-        const importBtn = document.getElementById('importBtn');
-        if (importBtn) importBtn.disabled = this.importBuffer.length === 0;
-        this.setImportStatus(`Знайдено: ${normalized.length}`, normalized.length ? 90 : 30);
+    handleScanButton() {
+        const isActive = this.scanner && this.scanner.isAutoRefreshing;
+        if (isActive) {
+            this.scanner.stopAutoRefresh();
+            this.updateScanButtonUi(false);
+            this.showToast('Автооновлення зупинено');
+            return;
+        }
+        // Trigger a manual scan, then auto-refresh will be enabled inside
+        this.scanSources();
+    }
+
+    updateScanButtonUi(isActive) {
+        const scanBtn = document.getElementById('scanSourcesBtn');
+        if (!scanBtn) return;
+        if (isActive) {
+            scanBtn.classList.add('active');
+            scanBtn.textContent = 'Зупинити автооновлення';
+        } else {
+            scanBtn.classList.remove('active');
+            scanBtn.textContent = 'Сканувати джерела';
+        }
     }
 
     async fetchWithCors(url, corsProxy, options = {}) {
@@ -1845,6 +1902,230 @@ class SmartCameraController {
                 duration: 1
             });
         }
+    }
+}
+
+// Source Scanner: multi-source ingestion with normalization, dedup, and auto-refresh
+class SourceScanner {
+    constructor(app) {
+        this.app = app;
+        this.sources = [];
+        this.isAutoRefreshing = false;
+        this.refreshTimer = null;
+        this.sourceStateById = new Map(); // id -> { lastRun, nextRun, errorCount }
+        this.isScanInFlight = false;
+    }
+
+    setSources(sources) {
+        const normalized = (sources || []).map(src => ({
+            id: src.id || `${src.type}:${src.url}`,
+            type: (src.type || 'json').toLowerCase(),
+            url: src.url,
+            priority: Number.isFinite(src.priority) ? src.priority : 5,
+            intervalMs: Number.isFinite(src.intervalMs) ? src.intervalMs : 30 * 60 * 1000,
+            corsProxy: src.corsProxy || '',
+            params: src.params || {}
+        })).filter(s => !!s.url);
+        this.sources = normalized;
+        // Initialize per-source state
+        normalized.forEach(s => {
+            if (!this.sourceStateById.has(s.id)) {
+                this.sourceStateById.set(s.id, { lastRun: 0, nextRun: Date.now(), errorCount: 0 });
+            }
+        });
+    }
+
+    async scanOnce({ updateUi = false } = {}) {
+        if (!this.sources.length) {
+            if (updateUi) this.app.setImportStatus('Немає джерел для сканування', 0);
+            return [];
+        }
+        if (this.isScanInFlight) {
+            return [];
+        }
+        this.isScanInFlight = true;
+        try {
+            const total = this.sources.length;
+            let completed = 0;
+            const allRawItems = [];
+
+            // Fetch all sources in parallel but track progress per-settlement
+            const results = await Promise.allSettled(this.sources.map(async (src) => {
+                const state = this.sourceStateById.get(src.id) || { errorCount: 0 };
+                try {
+                    const items = await this.fetchSource(src);
+                    allRawItems.push(...items.map(i => ({ item: i, _srcId: src.id })));
+                    state.errorCount = 0;
+                    state.lastRun = Date.now();
+                    state.nextRun = state.lastRun + src.intervalMs;
+                    this.sourceStateById.set(src.id, state);
+                } catch (err) {
+                    state.errorCount = (state.errorCount || 0) + 1;
+                    const backoff = Math.min(2 ** state.errorCount, 32);
+                    const base = Math.max(5 * 60 * 1000, src.intervalMs);
+                    state.lastRun = Date.now();
+                    state.nextRun = state.lastRun + backoff * base;
+                    this.sourceStateById.set(src.id, state);
+                    console.warn('Source scan failed', src.id, err);
+                } finally {
+                    completed += 1;
+                    if (updateUi) {
+                        const progress = Math.round((completed / total) * 70) + 10; // 10-80%
+                        this.app.setImportStatus(`Сканування: ${completed}/${total}`, progress);
+                    }
+                }
+            }));
+
+            // Normalize and validate
+            const normalized = this.app.normalizeAndValidateBatch(allRawItems.map(r => r.item));
+            // Deduplicate across sources with priority rules
+            const byKey = new Map();
+            const getPriority = (srcId) => this.sources.find(s => s.id === srcId)?.priority ?? 5;
+            for (const raw of allRawItems) {
+                const event = this.app.normalizeEvent(raw.item);
+                if (!event || !this.app.validateEvent(event)) continue;
+                const key = this.app.computeEventDedupKey(event);
+                const existing = byKey.get(key);
+                const srcPriority = getPriority(raw._srcId);
+                if (!existing || srcPriority < existing.priority) {
+                    byKey.set(key, { event, priority: srcPriority });
+                }
+            }
+
+            // Remove events already present in the app by dedup key
+            const existingKeys = new Set(this.app.events.map(ev => this.app.computeEventDedupKey(ev)));
+            const uniqueEvents = [];
+            for (const [key, { event }] of byKey.entries()) {
+                if (!existingKeys.has(key)) uniqueEvents.push(event);
+            }
+
+            // Update UI preview buffer
+            if (updateUi) {
+                this.app.clearImportPreview();
+                this.app.importBuffer = uniqueEvents;
+                this.app.appendToImportPreview(uniqueEvents);
+                const importBtn = document.getElementById('importBtn');
+                if (importBtn) importBtn.disabled = this.app.importBuffer.length === 0;
+                this.app.setImportStatus(`Знайдено: ${uniqueEvents.length}`, uniqueEvents.length ? 90 : 30);
+            }
+
+            return uniqueEvents;
+        } finally {
+            this.isScanInFlight = false;
+        }
+    }
+
+    startAutoRefresh() {
+        if (this.isAutoRefreshing) return;
+        this.isAutoRefreshing = true;
+        // Align next runs to now
+        const now = Date.now();
+        for (const [id, state] of this.sourceStateById.entries()) {
+            if (!state.nextRun || state.nextRun < now) {
+                state.nextRun = now + 1000;
+                this.sourceStateById.set(id, state);
+            }
+        }
+        // Poller tick
+        const tick = async () => {
+            if (!this.isAutoRefreshing) return;
+            const dueSources = this.sources.filter(s => {
+                const st = this.sourceStateById.get(s.id);
+                return st && st.nextRun && st.nextRun <= Date.now();
+            });
+            if (dueSources.length) {
+                // Temporarily narrow to due sources
+                const all = this.sources;
+                try {
+                    this.sources = dueSources;
+                    await this.scanOnce({ updateUi: true });
+                } finally {
+                    this.sources = all;
+                }
+            }
+            this.refreshTimer = setTimeout(tick, 15 * 1000);
+        };
+        this.refreshTimer = setTimeout(tick, 1500);
+    }
+
+    stopAutoRefresh() {
+        this.isAutoRefreshing = false;
+        if (this.refreshTimer) {
+            clearTimeout(this.refreshTimer);
+            this.refreshTimer = null;
+        }
+    }
+
+    async fetchSource(src) {
+        switch (src.type) {
+            case 'rss':
+                return await this.app.fetchRss(src.url, src.corsProxy);
+            case 'json':
+                return await this.fetchGenericJson(src);
+            case 'xml':
+                return await this.fetchGenericXml(src);
+            case 'newsapi':
+                return await this.fetchNewsApiWrapper(src);
+            default:
+                // Try JSON, then RSS, then XML
+                try { return await this.fetchGenericJson(src); } catch(_) {}
+                try { return await this.app.fetchRss(src.url, src.corsProxy); } catch(_) {}
+                return await this.fetchGenericXml(src);
+        }
+    }
+
+    async fetchGenericJson(src) {
+        const res = await this.app.fetchWithCors(src.url, src.corsProxy).catch(() => fetch(src.url));
+        const json = await res.json();
+        if (Array.isArray(json)) return json;
+        if (json && Array.isArray(json.events)) return json.events;
+        if (json && json.data && Array.isArray(json.data)) return json.data;
+        return [];
+    }
+
+    async fetchGenericXml(src) {
+        const res = await this.app.fetchWithCors(src.url, src.corsProxy).catch(() => fetch(src.url));
+        const text = await res.text();
+        return this.parseGenericXmlEvents(text, src.url);
+    }
+
+    async fetchNewsApiWrapper(src) {
+        const { apiKey, query } = src.params || {};
+        if (!apiKey) return [];
+        return await this.app.fetchNewsApi(apiKey, query || 'geopolitics', src.corsProxy);
+    }
+
+    parseGenericXmlEvents(xmlText, baseLink) {
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(xmlText, 'text/xml');
+        const out = [];
+        const eventNodes = [...xml.querySelectorAll('event')];
+        if (eventNodes.length) {
+            eventNodes.forEach(n => {
+                out.push({
+                    title: n.querySelector('title, name')?.textContent || '',
+                    description: n.querySelector('description, summary, details')?.textContent || '',
+                    date: n.querySelector('date, published, updated')?.textContent || '',
+                    category: n.querySelector('category, type, topic')?.textContent || '',
+                    region: n.querySelector('region')?.textContent || '',
+                    country: n.querySelector('country')?.textContent || '',
+                    lat: n.querySelector('lat, latitude')?.textContent,
+                    lng: n.querySelector('lng, longitude, lon')?.textContent,
+                    participants: (n.querySelector('participants')?.textContent || '').split(/[,;|]/),
+                    importance: n.querySelector('importance, score')?.textContent,
+                    sources: [n.querySelector('link, url, href')?.textContent || baseLink || '']
+                });
+            });
+            return out;
+        }
+        // Fallback to RSS/Atom-like nodes
+        const rssItems = this.app.parseRss(xmlText) || [];
+        return rssItems.map(i => ({
+            title: i.title,
+            description: i.description,
+            date: i.pubDate || i.published,
+            sources: [i.link]
+        }));
     }
 }
 
