@@ -882,6 +882,16 @@ class GeopoliticalApp {
             yearElement.textContent = year;
             scale.appendChild(yearElement);
         }
+
+        // Ensure timeline playhead exists and is appended to the timeline
+        let playhead = document.getElementById('timelinePlayhead');
+        if (!playhead) {
+            playhead = document.createElement('div');
+            playhead.id = 'timelinePlayhead';
+            playhead.className = 'timeline-playhead';
+        }
+        // Re-append to ensure it's within the freshly rebuilt timeline
+        timeline.appendChild(playhead);
     }
 
     rebuildTimeline() {
@@ -1732,6 +1742,7 @@ class GeopoliticalApp {
         
         this.currentPlaybackIndex = Math.max(0, Math.min(targetIndex, this.playbackEvents.length - 1));
         this.updateProgress();
+        this.updateTimelinePlayhead();
         
         if (this.currentPlaybackIndex < this.playbackEvents.length) {
             this.selectEvent(this.playbackEvents[this.currentPlaybackIndex].id);
@@ -1763,7 +1774,8 @@ class GeopoliticalApp {
             el.classList.remove('active', 'playing');
         });
         
-        document.getElementById('timelinePlayhead').classList.remove('active');
+        const playhead = document.getElementById('timelinePlayhead');
+        if (playhead) playhead.classList.remove('active');
         document.getElementById('timelineProgressFill').style.width = '0%';
         document.getElementById('timelineProgressHandle').style.left = '0%';
         
