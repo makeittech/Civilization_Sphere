@@ -176,39 +176,117 @@ async function fetchYouTubeCaptions(videoId, languages, timeoutMs) {
   return { text: '', source: 'none', lang: '' };
 }
 
-async function runAsrStub(videoUrl, lang, timeoutMs) {
-  // Placeholder for ASR provider integration
-  await sleep(50);
-  return { text: '', source: 'asr:none', lang };
+async function runAsr(videoUrlOrId, cfg) {
+  const provider = (cfg?.transcripts?.asr?.provider || 'none').toLowerCase();
+  const lang = cfg?.transcripts?.asr?.language || 'uk';
+  const timeoutMs = cfg?.timeouts?.asrMs || 300000;
+  const retries = Math.max(0, cfg?.transcripts?.asr?.retries || 3);
+
+  async function attemptOnce() {
+    if (provider === 'none') return { text: '', source: 'asr:none', lang };
+    if (provider === 'openai') {
+      // Requires ASR_API_KEY in env, and (optionally) ytdl-core to fetch audio
+      const apiKeyEnv = cfg?.transcripts?.asr?.apiKeyEnv || 'ASR_API_KEY';
+      const apiKey = process.env[apiKeyEnv] || '';
+      if (!apiKey) return { text: '', source: 'asr:none', lang };
+      // Try to import ytdl-core dynamically to get audio URL stream
+      let audioBuffer = null;
+      try {
+        const ytdl = await import('ytdl-core');
+        const videoUrl = String(videoUrlOrId || '');
+        if (/^https?:\/\//.test(videoUrl)) {
+          const info = await ytdl.getInfo(videoUrl);
+          const formats = info.formats || [];
+          const audio = formats.find(f => f.mimeType && f.mimeType.includes('audio')); 
+          if (!audio || !audio.url) return { text: '', source: 'asr:openai:noaudio', lang };
+          const controller = new AbortController();
+          const t = setTimeout(() => controller.abort(), Math.max(1000, timeoutMs));
+          const res = await fetch(audio.url, { signal: controller.signal });
+          const arr = await res.arrayBuffer();
+          clearTimeout(t);
+          audioBuffer = Buffer.from(new Uint8Array(arr));
+        }
+      } catch {
+        // ytdl-core not available or fetch failed
+        return { text: '', source: 'asr:openai:no_ytdl', lang };
+      }
+      if (!audioBuffer) return { text: '', source: 'asr:openai:noaudio', lang };
+      // Call OpenAI transcription
+      try {
+        const model = cfg?.transcripts?.asr?.model || 'whisper-1';
+        const form = new FormData();
+        form.append('model', model);
+        form.append('response_format', 'text');
+        form.append('language', lang);
+        form.append('file', new Blob([audioBuffer], { type: 'audio/mpeg' }), 'audio.mp3');
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), Math.max(1000, timeoutMs));
+        const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${apiKey}` },
+          body: form,
+          signal: controller.signal,
+        });
+        clearTimeout(t);
+        if (!res.ok) return { text: '', source: `asr:openai:http_${res.status}` , lang };
+        const text = await res.text();
+        return { text, source: 'asr:openai', lang };
+      } catch {
+        return { text: '', source: 'asr:openai:error', lang };
+      }
+    }
+    // Unsupported provider
+    return { text: '', source: 'asr:none', lang };
+  }
+
+  let last = { text: '', source: 'asr:none', lang };
+  for (let i = 0; i < retries; i++) {
+    last = await attemptOnce();
+    if (last.text && last.text.length > 30) break;
+    await sleep(250);
+  }
+  return last;
 }
 
 function simpleEventExtraction(transcriptText, taxonomy, rowTitle) {
   const text = (transcriptText || rowTitle || '').toLowerCase();
+  // Expand keywords with common synonyms
+  const expanded = {
+    ...taxonomy.eventKeywords,
+    'Війни та конфлікти': [...(taxonomy.eventKeywords?.['Війни та конфлікти'] || []), 'бойня','ескалація','сутичка','битва','strike','shelling','missile','drone'],
+    'Політичні зміни': [...(taxonomy.eventKeywords?.['Політичні зміни'] || []), 'імпічмент','коаліція','кабінет','виборчий','референдум'],
+    'Союзи та договори': [...(taxonomy.eventKeywords?.['Союзи та договори'] || []), 'переговори','дипломатія','угода про','пакт','меморандум'],
+    'Економічні зміни': [...(taxonomy.eventKeywords?.['Економічні зміни'] || []), 'дефляція','рецесія','контроль цін','субсидії','санкції'],
+  };
   let bestCategory = '';
-  let bestScore = 0;
-  for (const [cat, keys] of Object.entries(taxonomy.eventKeywords || {})) {
+  let taxonomyFit = 0;
+  for (const [cat, keys] of Object.entries(expanded || {})) {
     let score = 0;
     for (const k of keys) {
       const occurrences = (text.match(new RegExp(k.toLowerCase(), 'g')) || []).length;
-      score += occurrences;
+      score += occurrences > 0 ? 1 : 0;
     }
-    if (score > bestScore) { bestScore = score; bestCategory = cat; }
+    if (score > taxonomyFit) { taxonomyFit = score; bestCategory = cat; }
   }
-  // Region heuristic: try any known region tokens
   const regionTokens = (taxonomy.regions || []).map(r => r.toLowerCase());
   let region = 'Unspecified';
   for (const token of regionTokens) {
     if (text.includes(token)) { region = token; break; }
   }
-  // Date extraction heuristic: search for YYYY-MM-DD or YYYY-MM
   const isoDate = extractIsoDate(text) || new Date().toISOString().slice(0,10);
   const datePrecision = isoDate.length === 10 ? 'day' : (isoDate.length === 7 ? 'month' : 'unknown');
+
+  // Weighted confidence: transcript length + taxonomy + location
+  const transcriptMatch = Math.min(1, (transcriptText || '').length / 2000);
+  const locationNorm = normalizeLocationFromText(transcriptText || rowTitle) ? 1 : 0;
+  const confidence = Math.max(0.1, Math.min(0.99, 0.4 * transcriptMatch + 0.3 * (locationNorm) + 0.3 * Math.min(1, taxonomyFit / 5)));
+
   return {
     category: bestCategory || 'Geopolitics/News/Analysis',
     region: normalizeRegion(region),
     date: isoDate,
     date_precision: datePrecision,
-    confidence: Math.min(0.9, 0.4 + bestScore * 0.1),
+    confidence,
   };
 }
 
@@ -229,12 +307,33 @@ function normalizeRegion(region) {
 }
 
 function normalizeLocationFromText(text) {
-  // Minimal location normalization: extract capitalized words sequences as potential place names (very naive)
-  // In absence of NER, return empty. Extend with gazetteer if needed.
+  const gazetteer = [
+    { names: ['київ','kyiv','kiev'], norm: 'Kyiv, Ukraine', region: 'Europe' },
+    { names: ['львів','lviv'], norm: 'Lviv, Ukraine', region: 'Europe' },
+    { names: ['сша','usa','united states','америка'], norm: 'United States', region: 'North America' },
+    { names: ['китай','china','пекін','beijing'], norm: 'China', region: 'Asia' },
+    { names: ['іран','iran','тегеран','tehran'], norm: 'Iran', region: 'Middle East' },
+    { names: ['ізраїль','israel','єрусалим','jerusalem'], norm: 'Israel', region: 'Middle East' },
+    { names: ['росія','russia','москва','moscow'], norm: 'Russia', region: 'Europe' },
+    { names: ['таїланд','thailand','бангкок','bangkok'], norm: 'Thailand', region: 'Asia' },
+    { names: ['тайвань','taiwan','тайбей','taipei'], norm: 'Taiwan', region: 'Asia' },
+    { names: ['саудівська аравія','saudi arabia','ріяд','riyadh'], norm: 'Saudi Arabia', region: 'Middle East' },
+    { names: ['марокко','morocco','рабат','rabat'], norm: 'Morocco', region: 'Africa' },
+    { names: ['іспанія','spain','мадрид','madrid'], norm: 'Spain', region: 'Europe' },
+    { names: ['нідерланди','netherlands','амстердам','amsterdam'], norm: 'Netherlands', region: 'Europe' },
+    { names: ['велика британія','великобританія','uk','britain','united kingdom','london','лондон'], norm: 'United Kingdom', region: 'Europe' },
+    { names: ['казахстан','kazakhstan','астана','astana'], norm: 'Kazakhstan', region: 'Asia' }
+  ];
+  const lower = (text || '').toLowerCase();
+  for (const g of gazetteer) {
+    for (const n of g.names) {
+      if (lower.includes(n)) return g.norm;
+    }
+  }
   return '';
 }
 
-function buildEventRecord({ eventId, title, extraction, sourceVideo, transcriptSnippet, provenance, extractionMethod }) {
+function buildEventRecord({ eventId, title, extraction, sourceVideo, transcriptSnippet, provenance, extractionMethod, dupeFlag }) {
   return {
     event_id: eventId,
     title,
@@ -248,6 +347,7 @@ function buildEventRecord({ eventId, title, extraction, sourceVideo, transcriptS
     confidence: extraction.confidence,
     provenance,
     extraction_method: extractionMethod,
+    dupe_flag: Boolean(dupeFlag)
   };
 }
 
@@ -268,31 +368,77 @@ function similarityTitle(a, b) {
   return inter / union;
 }
 
-function deduplicate(newEvents, existingEvents, threshold) {
-  const existingTitles = existingEvents.map(e => e.title || '');
+function levenshtein(a, b) {
+  const s = (a || '');
+  const t = (b || '');
+  const m = s.length; const n = t.length;
+  const d = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) d[i][0] = i;
+  for (let j = 0; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = s[i - 1] === t[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(
+        d[i - 1][j] + 1,
+        d[i][j - 1] + 1,
+        d[i - 1][j - 1] + cost
+      );
+    }
+  }
+  return d[m][n];
+}
+
+function ratio(a, b) {
+  const dist = levenshtein(a, b);
+  const denom = Math.max(1, a.length + b.length);
+  return 1 - (2 * dist / denom);
+}
+
+function deduplicate(newEvents, existingEvents, thresholdRatio) {
   const unique = [];
+  function fieldsString(e) {
+    return [(e.title || ''), (e.date || ''), (e.location || '')].join(' ').toLowerCase();
+  }
+  const existingStrs = existingEvents.map(e => fieldsString(e));
   for (const ev of newEvents) {
-    const score = Math.max(0, ...existingTitles.map(t => similarityTitle(ev.title, t)));
-    if (score < threshold) unique.push(ev);
+    const s = fieldsString(ev);
+    const best = Math.max(0, ...existingStrs.map(x => ratio(s, x)));
+    if (best < (thresholdRatio || 0.85)) {
+      ev.dupe_flag = false;
+      unique.push(ev);
+    } else {
+      ev.dupe_flag = true;
+    }
   }
   return unique;
 }
 
-function generateQaReport(events, taxonomy, lowConfidenceThreshold, sampleSize) {
+function generateQaReport(events, lowThreshold) {
   const countsPerRegion = {};
   const countsPerCategory = {};
+  let confidenceSum = 0;
+  const reasons = [];
   for (const ev of events) {
     countsPerRegion[ev.region || 'Unspecified'] = (countsPerRegion[ev.region || 'Unspecified'] || 0) + 1;
     countsPerCategory[ev.category || 'Unspecified'] = (countsPerCategory[ev.category || 'Unspecified'] || 0) + 1;
+    confidenceSum += ev.confidence || 0;
+    const evReasons = [];
+    if (!ev.source_video) evReasons.push('no_video');
+    if (!ev.transcript_snippet) evReasons.push('no_transcript');
+    if (!ev.location) evReasons.push('no_location');
+    if (ev.region === 'Unspecified') evReasons.push('unspecified_region');
+    if ((ev.confidence || 0) < (lowThreshold || 0.7)) evReasons.push('low_confidence');
+    reasons.push({ event_id: ev.event_id, reasons: evReasons.slice(0, 3) });
   }
-  const lowConfidence = events.filter(e => (e.confidence || 0) < lowConfidenceThreshold);
-  const sample = events.slice(0, sampleSize);
-  return { total: events.length, counts_per_region: countsPerRegion, counts_per_category: countsPerCategory, low_confidence_count: lowConfidence.length, low_confidence_sample: lowConfidence.slice(0, Math.min(lowConfidence.length, sampleSize)), sample };
+  const avgConfidence = events.length > 0 ? confidenceSum / events.length : 0;
+  const lowConfidence = events.filter(e => (e.confidence || 0) < (lowThreshold || 0.7));
+  const sample = events.slice(0, 20);
+  return { total: events.length, avg_confidence: avgConfidence, counts_per_region: countsPerRegion, counts_per_category: countsPerCategory, low_confidence_threshold: lowThreshold || 0.7, low_confidence_count: lowConfidence.length, low_confidence_sample: lowConfidence.slice(0, Math.min(lowConfidence.length, 20)), sample, reasons };
 }
 
 function readState(statePath) {
-  if (!fs.existsSync(statePath)) return { processed_row_ids: [] };
-  try { return JSON.parse(fs.readFileSync(statePath, 'utf8')); } catch { return { processed_row_ids: [] }; }
+  if (!fs.existsSync(statePath)) return { processed_row_ids: [], unmapped_row_ids: [], captionless_row_ids: [] };
+  try { return JSON.parse(fs.readFileSync(statePath, 'utf8')); } catch { return { processed_row_ids: [], unmapped_row_ids: [], captionless_row_ids: [] }; }
 }
 function writeState(statePath, state) { writeJson(statePath, state); }
 
@@ -324,6 +470,9 @@ async function main() {
 
   const state = readState(statePath);
   const processed = new Set(state.processed_row_ids || []);
+  const unmappedPrev = new Set(state.unmapped_row_ids || []);
+  const reprocessUnmapped = Boolean(cfg?.state?.reprocessUnmapped);
+  const reprocessCaptionless = Boolean(cfg?.state?.reprocessCaptionless);
 
   // 2) Map rows to video URLs/IDs using mapping file
   const mapRowIdToVideo = loadMappingCsv(mappingCsvPath);
@@ -363,12 +512,10 @@ async function main() {
   const newEvents = [];
   const provenanceBase = { licenses: 'Subject to YouTube ToS', repo: 'this repo', method_version: 'v0.1' };
 
-  for (let i = 0; i < flagged.length; i += batchSize) {
-    const slice = flagged.slice(i, i + batchSize);
-    // concurrency naive loop
-    for (const row of slice) {
+  async function processRow(row) {
       const rowId = row[idCol];
-      if (processed.has(rowId)) continue;
+      const haveMapping = mapRowIdToVideo.has(rowId) && (mapRowIdToVideo.get(rowId).video_url || mapRowIdToVideo.get(rowId).video_id);
+      if (processed.has(rowId) && !(reprocessUnmapped && !haveMapping) && !(reprocessCaptionless && (state.captionless_row_ids || []).includes(rowId))) return;
       let videoUrl = '';
       let videoId = '';
 
@@ -394,12 +541,16 @@ async function main() {
         }
       }
 
-      // if still missing, leave empty; will require manual mapping
-      if (!videoUrl && cfg.mapping.createIfMissing) {
-        mappingToAppend.push({ row_id: rowId, video_url: '', video_id: '' });
-      } else if (!mapped && (videoUrl || videoId)) {
-        // add discovered mapping for future runs
-        mappingToAppend.push({ row_id: rowId, video_url: videoUrl || '', video_id: videoId || '' });
+      // Update mapping CSV: add missing row or fill in discovered mapping when existing row is blank
+      if (!videoUrl && !videoId) {
+        if (cfg.mapping.createIfMissing && !mapRowIdToVideo.has(rowId)) {
+          mappingToAppend.push({ row_id: rowId, video_url: '', video_id: '' });
+        }
+      } else {
+        const current = mapRowIdToVideo.get(rowId);
+        if (!current || (!current.video_url && !current.video_id)) {
+          mappingToAppend.push({ row_id: rowId, video_url: videoUrl || '', video_id: videoId || '' });
+        }
       }
 
       // 3) transcripts
@@ -411,9 +562,10 @@ async function main() {
           log(`warn: captions fetch failed for ${videoId}: ${e.message}`);
         }
       }
-      if ((!transcript.text || transcript.text.length < 30) && videoUrl && cfg.transcripts?.asr?.provider !== 'none') {
+      if ((!transcript.text || transcript.text.length < 30) && (videoUrl || videoId) && cfg.transcripts?.asr?.provider !== 'none') {
         try {
-          transcript = await runAsrStub(videoUrl, cfg.transcripts?.asr?.language || 'uk', timeoutAsrMs);
+          const asrRes = await runAsr(videoUrl || `https://www.youtube.com/watch?v=${videoId}`, cfg);
+          transcript = asrRes;
         } catch (e) {
           log(`warn: ASR failed for ${videoUrl}: ${e.message}`);
         }
@@ -437,32 +589,56 @@ async function main() {
 
       // 5) build record
       const eventId = `${rowId}`;
-      const snippet = (transcript.text || '').slice(0, 400);
+      const snippet = (transcript.text && transcript.text.length > 0 ? transcript.text : (row[titleCol] || '')).slice(0, 400);
       const provenance = { ...provenanceBase, source_row_id: rowId, source_channel: row[channelCol] || '', video_id: videoId, video_url: videoUrl, transcript_source: transcript.source };
-      const record = buildEventRecord({ eventId, title: row[titleCol] || '', extraction, sourceVideo: videoUrl || '', transcriptSnippet: snippet, provenance, extractionMethod: transcript.source || 'none' });
+      const record = buildEventRecord({ eventId, title: row[titleCol] || '', extraction, sourceVideo: videoUrl || '', transcriptSnippet: snippet, provenance, extractionMethod: (transcript.source || 'none').includes('asr') ? 'ASR' : (transcript.source || 'captions'), dupeFlag: false });
       newEvents.push(record);
 
       processed.add(rowId);
+
+      // Track unmapped/captionless
+      if (!videoUrl && !videoId) unmappedPrev.add(rowId);
+      if (!transcript.text) {
+        state.captionless_row_ids = Array.from(new Set([...(state.captionless_row_ids || []), rowId]));
+      }
+  }
+
+  async function runWithConcurrency(items, worker, maxC) {
+    const q = [...items];
+    const concurrency = Math.max(1, maxC || 3);
+    const running = [];
+    async function next() {
+      const item = q.shift();
+      if (!item) return;
+      await worker(item);
+      await next();
     }
+    for (let i = 0; i < concurrency; i++) running.push(next());
+    await Promise.all(running);
+  }
+
+  for (let i = 0; i < flagged.length; i += batchSize) {
+    const slice = flagged.slice(i, i + batchSize);
+    await runWithConcurrency(slice, processRow, cfg.maxConcurrency || 3);
   }
 
   // 6) dedup against existing events.json
-  const uniqueNew = deduplicate(newEvents, existing, cfg.dedup?.threshold ?? 0.82);
+  const uniqueNew = deduplicate(newEvents, existing, cfg.dedup?.ratioThreshold ?? 0.85);
 
   // 7) QA report
-  const qa = generateQaReport(uniqueNew, cfg.taxonomy || {}, cfg.qa?.lowConfidenceThreshold ?? 0.45, cfg.qa?.sampleSize ?? 20);
+  const qa = generateQaReport(uniqueNew, cfg.qa?.lowConfidenceThreshold ?? 0.7);
 
   // 8) Persist outputs
   // mapping
   if (mappingToAppend.length > 0) appendMappingCsv(mappingCsvPath, mappingToAppend);
 
   // events CSV header
-  const evHeader = ['event_id','title','date','date_precision','location','region','category','source_video','transcript_snippet','confidence','provenance','extraction_method'];
+  const evHeader = ['event_id','title','date','date_precision','location','region','category','source_video','transcript_snippet','confidence','provenance','extraction_method','dupe_flag'];
   let evCsv = '';
   if (!fs.existsSync(newEventsCsvPath)) evCsv += evHeader.join(',') + '\n';
   for (const ev of uniqueNew) {
     const provenanceJson = JSON.stringify(ev.provenance);
-    evCsv += toCsvRow([ev.event_id, ev.title, ev.date, ev.date_precision, ev.location, ev.region, ev.category, ev.source_video, ev.transcript_snippet, ev.confidence, provenanceJson, ev.extraction_method]) + '\n';
+    evCsv += toCsvRow([ev.event_id, ev.title, ev.date, ev.date_precision, ev.location, ev.region, ev.category, ev.source_video, ev.transcript_snippet, ev.confidence, provenanceJson, ev.extraction_method, ev.dupe_flag ? 'true' : 'false']) + '\n';
   }
   if (evCsv) writeFileSafe(newEventsCsvPath, evCsv);
 
@@ -472,7 +648,7 @@ async function main() {
   writeFileSafe(logFilePath, logLines.join('\n') + '\n');
 
   // 10) State
-  writeState(statePath, { processed_row_ids: Array.from(processed) });
+  writeState(statePath, { processed_row_ids: Array.from(processed), unmapped_row_ids: Array.from(unmappedPrev), captionless_row_ids: Array.from(new Set(state.captionless_row_ids || [])) });
 
   // Summary to stdout
   const out = {

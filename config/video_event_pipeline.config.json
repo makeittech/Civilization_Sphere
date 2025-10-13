@@ -14,7 +14,7 @@
   "mapping": {
     "path": "data/video_to_event_map.csv",
     "createIfMissing": true,
-    "minTitleSimilarity": 0.42
+    "minTitleSimilarity": 0.3
   },
   "outputs": {
     "dir": "data",
@@ -24,12 +24,11 @@
     "logFile": "pipeline_logs.txt"
   },
   "state": {
-    "path": "data/pipeline_state.json"
+    "path": "data/pipeline_state.json",
+    "reprocessUnmapped": true,
+    "reprocessCaptionless": true
   },
-  "dedup": {
-    "threshold": 0.82,
-    "manualReviewOnTie": true
-  },
+  "dedup": { "ratioThreshold": 0.85, "manualReviewOnTie": true },
   "taxonomy": {
     "regions": ["Європа", "Північна Америка", "Азія", "Близький Схід", "Африка", "Латинська Америка", "Океанія", "Глобально", "Ukraine", "Europe", "Asia", "Middle East", "Africa", "North America", "South America", "Oceania", "Global"],
     "categories": [
@@ -64,13 +63,12 @@
       "languages": ["uk", "en", "ru", "pl"]
     },
     "asr": {
-      "provider": "none",
+      "provider": "openai",
       "language": "uk",
-      "apiKeyEnv": "ASR_API_KEY"
+      "apiKeyEnv": "ASR_API_KEY",
+      "model": "whisper-1",
+      "retries": 3
     }
   },
-  "qa": {
-    "sampleSize": 20,
-    "lowConfidenceThreshold": 0.45
-  }
+  "qa": { "sampleSize": 20, "lowConfidenceThreshold": 0.7 }
 }
