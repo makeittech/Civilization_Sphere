@@ -17,6 +17,8 @@ class GeopoliticalApp {
         
         // Enhanced properties for mobile and playback
         this.isPlaying = false;
+        this.isReady = false;
+        this._startupTelemetry = { startedAt: performance.now?.() || Date.now(), marks: [] };
         this.playbackSpeed = 1;
         this.currentPlaybackIndex = 0;
         this.playbackEvents = [];
@@ -348,21 +350,41 @@ class GeopoliticalApp {
         
         try {
             this.setupTheme();
+            this._mark('init:map:start');
             await this.initializeMap();
+            this._mark('init:map:end');
             this.initializeFilters();
             this.initializeSearch();
+            // Build timeline structure but do not auto-play
             this.initializeTimeline();
             this.initializeEventHandlers();
             this.initializeCharts();
             this.setupMobileOptimizations();
             this.updateDisplay();
-            // Opportunistic bootstrap of local CSV with Ukrainian channels/events
-            this.tryBootstrapLocalResources();
+            // Show ready overlay until user explicitly presses Play
+            this.showTimelineReadyOverlay();
+            // Opportunistic bootstrap of local CSV with Ukrainian channels/events (deferred)
+            setTimeout(() => this.tryBootstrapLocalResourcesSafe(), 0);
         } catch (error) {
+            this._telemetryError('init:fatal', error);
             console.error('Error initializing app:', error);
         } finally {
             this.hideLoading();
         }
+    }
+
+    _mark(label) {
+        try {
+            const t = performance.now?.() || Date.now();
+            this._startupTelemetry.marks.push({ label, t });
+        } catch (_) {}
+    }
+
+    _telemetryError(stage, error) {
+        try {
+            const err = error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : { message: String(error) };
+            (this._startupTelemetry.errors ||= []).push({ stage, err, t: performance.now?.() || Date.now() });
+        } catch (_) {}
     }
     
     setupTheme() {
@@ -900,6 +922,7 @@ class GeopoliticalApp {
         }
         // Re-append to ensure it's within the freshly rebuilt timeline
         timeline.appendChild(playhead);
+        this.isReady = true;
     }
 
     rebuildTimeline() {
@@ -962,6 +985,7 @@ class GeopoliticalApp {
 
         // Enhanced timeline controls
         document.getElementById('timelinePlay').addEventListener('click', () => {
+            this.hideTimelineReadyOverlay();
             this.playTimelineAnimation();
         });
 
@@ -983,6 +1007,15 @@ class GeopoliticalApp {
         progressBar.addEventListener('click', (e) => {
             this.seekToProgress(e);
         });
+
+        // Ready overlay explicit play
+        const readyBtn = document.getElementById('timelineReadyPlayBtn');
+        if (readyBtn) {
+            readyBtn.addEventListener('click', () => {
+                this.hideTimelineReadyOverlay();
+                this.playTimelineAnimation();
+            });
+        }
     }
 
     initializeCharts() {
@@ -1664,6 +1697,11 @@ class GeopoliticalApp {
 
     playTimelineAnimation() {
         if (this.isPlaying) return;
+        // ensure timeline is prepared
+        if (!this.isReady) {
+            this.showTimelineReadyOverlay('Підготовка…');
+            return;
+        }
 
         this.isPlaying = true;
         this.playbackEvents = [...this.filteredEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1673,7 +1711,12 @@ class GeopoliticalApp {
         this.updatePlaybackUI();
         
         // Start playback
-        this.continuePlayback();
+        try {
+            this.continuePlayback();
+        } catch (err) {
+            this._telemetryError('play:start', err);
+            this.pauseTimelineAnimation();
+        }
     }
     
     continuePlayback() {
@@ -1706,7 +1749,12 @@ class GeopoliticalApp {
         const delay = baseDelay / this.playbackSpeed;
         
         this.timelineAnimation = setTimeout(() => {
-            this.continuePlayback();
+            try {
+                this.continuePlayback();
+            } catch (err) {
+                this._telemetryError('play:tick', err);
+                this.pauseTimelineAnimation();
+            }
         }, delay);
     }
     
@@ -1796,6 +1844,22 @@ class GeopoliticalApp {
         
         // Reset camera view
         this.cameraController.resetView();
+    }
+
+    showTimelineReadyOverlay(text = 'Підготовка відтворення…') {
+        const overlay = document.getElementById('timelineReadyOverlay');
+        const textEl = document.getElementById('timelineReadyText');
+        if (!overlay) return;
+        if (textEl) textEl.textContent = text;
+        overlay.classList.add('visible');
+        overlay.setAttribute('aria-hidden', 'false');
+    }
+
+    hideTimelineReadyOverlay() {
+        const overlay = document.getElementById('timelineReadyOverlay');
+        if (!overlay) return;
+        overlay.classList.remove('visible');
+        overlay.setAttribute('aria-hidden', 'true');
     }
 }
 
@@ -2415,6 +2479,15 @@ GeopoliticalApp.prototype.tryBootstrapLocalResources = function() {
             this.showToast(`Імпортовано локальних подій: ${toAdd.length}`);
         })
         .catch(() => {});
+};
+
+// Safe wrapper to avoid blocking startup; with error telemetry
+GeopoliticalApp.prototype.tryBootstrapLocalResourcesSafe = function() {
+    try {
+        this.tryBootstrapLocalResources();
+    } catch (err) {
+        this._telemetryError('bootstrap:local', err);
+    }
 };
 
 // Initialize app when DOM is loaded
