@@ -1704,6 +1704,7 @@ class GeopoliticalApp {
         }
 
         this.isPlaying = true;
+        this.hideTimelineReadyOverlay();
         this.playbackEvents = [...this.filteredEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
         this.currentPlaybackIndex = 0;
         
