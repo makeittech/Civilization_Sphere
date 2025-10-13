@@ -43,8 +43,51 @@
 
         <!-- Main Content -->
         <div class="main-content">
-            <!-- Left Sidebar - Filters -->
+            <!-- Left Sidebar - Filters & Import -->
             <aside class="sidebar left-sidebar" id="leftSidebar">
+                <!-- Import Section -->
+                <div class="sidebar-section import-section">
+                    <h3 class="sidebar-title">Імпорт даних</h3>
+                    <div class="filter-group">
+                        <h4 class="filter-title">RSS джерела</h4>
+                        <textarea id="rssUrls" class="form-control" rows="3" placeholder="Вставте URL RSS (по одному в рядок)"></textarea>
+                    </div>
+                    <div class="filter-group">
+                        <h4 class="filter-title">Новинні API (опц.)</h4>
+                        <input id="newsApiKey" class="form-control" type="text" placeholder="NewsAPI ключ (клієнтське використання може бути обмежене CORS)">
+                        <input id="newsApiQuery" class="form-control" type="text" placeholder="Пошуковий запит (напр., geopolitics, war)">
+                    </div>
+                    <div class="filter-group">
+                        <h4 class="filter-title">Урядові звіти (JSON, опц.)</h4>
+                        <input id="govJsonUrl" class="form-control" type="url" placeholder="URL на JSON звіт (open data)">
+                    </div>
+                    <div class="filter-group">
+                        <h4 class="filter-title">CORS Proxy (опц.)</h4>
+                        <input id="corsProxyUrl" class="form-control" type="url" placeholder="https://cors.isomorphic-git.org/ або ваш проксі">
+                    </div>
+                    <div class="filter-group">
+                        <h4 class="filter-title">Пакетний імпорт (CSV/JSON)</h4>
+                        <input id="importFile" class="form-control" type="file" accept=".csv,.json">
+                    </div>
+                    <div class="import-actions">
+                        <button id="scanSourcesBtn" class="btn btn--primary btn--full-width">Сканувати джерела</button>
+                        <button id="importBtn" class="btn btn--secondary btn--full-width" disabled>Імпортувати знайдені</button>
+                        <button id="clearImportBtn" class="btn btn--outline btn--full-width">Очистити попередній перегляд</button>
+                    </div>
+                    <div class="import-progress" id="importProgress" aria-live="polite">
+                        <div class="progress-track">
+                            <div class="progress-fill" id="importProgressFill" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-status">
+                            <span id="importStatusText">Очікування…</span>
+                        </div>
+                    </div>
+                    <div class="import-preview" id="importPreview">
+                        <div class="import-preview-header">Знайдені події</div>
+                        <div id="importPreviewList" class="import-preview-list"></div>
+                    </div>
+                </div>
+
                 <div class="sidebar-section">
                     <h3 class="sidebar-title">Фільтри</h3>
                     
@@ -138,6 +181,9 @@
                     <div class="loading-spinner"></div>
                     <span>Завантаження карти...</span>
                 </div>
+
+                <!-- Zoom Label (shown during pinch/zoom) -->
+                <div id="zoomLabel" class="zoom-label" aria-live="polite" aria-hidden="true"></div>
             </main>
 
             <!-- Right Sidebar - Event Details -->

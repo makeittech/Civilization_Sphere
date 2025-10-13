@@ -12,6 +12,8 @@ class GeopoliticalApp {
         this.charts = {};
         this.heatmapLayer = null;
         this.connectionLines = [];
+        this.importBuffer = [];
+        this.nextId = 100000; // for generating unique IDs for imported events
         
         // Enhanced properties for mobile and playback
         this.isPlaying = false;
@@ -25,6 +27,8 @@ class GeopoliticalApp {
         // Touch handling
         this.touchHandler = new TouchHandler(this);
         this.cameraController = new SmartCameraController(this);
+        this.zoomLabelEl = document.getElementById('zoomLabel');
+        this.zoomLabelHideTimer = null;
         
         this.initializeData();
         this.initializeApp();
@@ -524,13 +528,68 @@ class GeopoliticalApp {
             this.markers.forEach(marker => {
                 marker.setOpacity(0.7);
             });
+            this.updateZoomLabel();
         });
         
+        this.map.on('zoom', () => {
+            this.updateZoomLabel();
+        });
+
         this.map.on('zoomend', () => {
             this.markers.forEach(marker => {
                 marker.setOpacity(1);
             });
+            this.queueHideZoomLabel();
         });
+    }
+
+    updateZoomLabel() {
+        if (!this.zoomLabelEl) return;
+        const zoom = this.map ? this.map.getZoom() : null;
+        if (zoom == null) return;
+        const zoomText = `Zoom ${zoom.toFixed(1)}`;
+        if (this.zoomLabelEl.textContent !== zoomText) {
+            this.zoomLabelEl.textContent = zoomText;
+        }
+        this.positionZoomLabel();
+        this.zoomLabelEl.classList.add('visible');
+        this.zoomLabelEl.setAttribute('aria-hidden', 'false');
+        if (this.zoomLabelHideTimer) {
+            clearTimeout(this.zoomLabelHideTimer);
+            this.zoomLabelHideTimer = null;
+        }
+    }
+
+    queueHideZoomLabel() {
+        if (!this.zoomLabelEl) return;
+        if (this.zoomLabelHideTimer) clearTimeout(this.zoomLabelHideTimer);
+        this.zoomLabelHideTimer = setTimeout(() => {
+            this.zoomLabelEl.classList.remove('visible');
+            this.zoomLabelEl.setAttribute('aria-hidden', 'true');
+        }, 500);
+    }
+
+    positionZoomLabel() {
+        if (!this.zoomLabelEl) return;
+        const mapContainer = document.querySelector('.map-container');
+        const controls = document.querySelector('.map-controls');
+        if (!mapContainer) return;
+
+        const mapRect = mapContainer.getBoundingClientRect();
+        let topPx = 16; // fallback spacing
+
+        if (controls) {
+            const controlsRect = controls.getBoundingClientRect();
+            const controlsAreTop = controlsRect.top <= mapRect.top + 20; // threshold near top
+            if (controlsAreTop) {
+                topPx = Math.max(16, Math.round(controlsRect.bottom - mapRect.top + 8));
+            }
+        }
+
+        // Clamp within container height
+        const maxTop = Math.max(0, mapRect.height - 40); // avoid bottom cutoff
+        const clampedTop = Math.min(topPx, maxTop);
+        this.zoomLabelEl.style.top = `${clampedTop}px`;
     }
 
     addMarkersToMap() {
@@ -772,6 +831,7 @@ class GeopoliticalApp {
         // Sort events by date
         const sortedEvents = [...this.events].sort((a, b) => new Date(a.date) - new Date(b.date));
         
+        if (sortedEvents.length === 0) return;
         const minYear = new Date(sortedEvents[0].date).getFullYear();
         const maxYear = new Date(sortedEvents[sortedEvents.length - 1].date).getFullYear();
         const yearRange = maxYear - minYear;
@@ -816,11 +876,34 @@ class GeopoliticalApp {
         }
     }
 
+    rebuildTimeline() {
+        this.initializeTimeline();
+    }
+
     initializeEventHandlers() {
         // Clear filters button
         document.getElementById('clearFilters').addEventListener('click', () => {
             this.clearFilters();
         });
+
+        // Import/Discovery controls
+        const scanBtn = document.getElementById('scanSourcesBtn');
+        const importBtn = document.getElementById('importBtn');
+        const clearBtn = document.getElementById('clearImportBtn');
+        const importFileInput = document.getElementById('importFile');
+
+        if (scanBtn) {
+            scanBtn.addEventListener('click', () => this.handleScanButton());
+        }
+        if (importBtn) {
+            importBtn.addEventListener('click', () => this.importBufferedEvents());
+        }
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearImportPreview());
+        }
+        if (importFileInput) {
+            importFileInput.addEventListener('change', (e) => this.handleImportFile(e));
+        }
 
         // Enhanced map controls
         document.getElementById('resetView').addEventListener('click', () => {
@@ -941,6 +1024,34 @@ class GeopoliticalApp {
         });
     }
 
+    refreshCharts() {
+        // Recompute category counts
+        this.categories.forEach(category => {
+            category.count = this.events.filter(event => event.category === category.name).length;
+        });
+
+        if (this.charts.category) {
+            this.charts.category.data.datasets[0].data = this.categories.map(cat => cat.count);
+            this.charts.category.update();
+        }
+
+        if (this.charts.timeline) {
+            // Simple heuristic: recompute by decade buckets
+            const counts = new Map();
+            this.events.forEach(ev => {
+                const y = new Date(ev.date).getFullYear();
+                const bucketStart = Math.floor(y / 10) * 10;
+                const key = `${bucketStart}-${bucketStart + 10}`;
+                counts.set(key, (counts.get(key) || 0) + 1);
+            });
+            const labels = Array.from(counts.keys()).sort((a,b) => parseInt(a.split('-')[0]) - parseInt(b.split('-')[0]));
+            const data = labels.map(l => counts.get(l));
+            this.charts.timeline.data.labels = labels;
+            this.charts.timeline.data.datasets[0].data = data;
+            this.charts.timeline.update();
+        }
+    }
+
     applyFilters() {
         const selectedCategories = Array.from(
             document.querySelectorAll('#categoryFilters input[type="checkbox"]:checked')
@@ -986,6 +1097,9 @@ class GeopoliticalApp {
         // Update statistics
         document.getElementById('totalEvents').textContent = `Всього подій: ${this.events.length}`;
         document.getElementById('filteredEvents').textContent = `Відфільтровано: ${this.filteredEvents.length}`;
+
+        // Update charts after data changes
+        this.refreshCharts();
     }
 
     selectEvent(eventId) {
@@ -1107,6 +1221,379 @@ class GeopoliticalApp {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+
+    // ===================== IMPORT / DISCOVERY =====================
+    setImportStatus(text, progress = null) {
+        const status = document.getElementById('importStatusText');
+        const fill = document.getElementById('importProgressFill');
+        if (status) status.textContent = text;
+        if (fill && progress !== null) fill.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+    }
+
+    clearImportPreview() {
+        this.importBuffer = [];
+        const list = document.getElementById('importPreviewList');
+        const importBtn = document.getElementById('importBtn');
+        if (list) list.innerHTML = '';
+        if (importBtn) importBtn.disabled = true;
+        this.setImportStatus('Очищено', 0);
+    }
+
+    appendToImportPreview(events) {
+        const list = document.getElementById('importPreviewList');
+        if (!list) return;
+        const fragment = document.createDocumentFragment();
+        events.forEach(ev => {
+            const item = document.createElement('div');
+            item.className = 'import-preview-item';
+            const dateStr = this.formatDate(ev.date);
+            item.innerHTML = `
+                <div>
+                    <strong>${ev.title}</strong>
+                    <div class="meta">${dateStr} • ${ev.region || ''} • ${ev.country || ''}</div>
+                </div>
+                <div>${ev.category || ''}</div>
+            `;
+            fragment.appendChild(item);
+        });
+        list.appendChild(fragment);
+    }
+
+    handleImportFile(e) {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const content = reader.result;
+                let parsed = [];
+                if (file.name.endsWith('.json')) {
+                    const data = JSON.parse(content);
+                    parsed = Array.isArray(data) ? data : (data.events || []);
+                } else {
+                    parsed = this.parseCsv(content);
+                }
+                const normalized = this.normalizeAndValidateBatch(parsed);
+                this.importBuffer.push(...normalized);
+                this.appendToImportPreview(normalized);
+                document.getElementById('importBtn').disabled = this.importBuffer.length === 0;
+                this.setImportStatus(`Завантажено з файлу: ${normalized.length}`, 30);
+            } catch (err) {
+                console.error('Import file parse error', err);
+                this.showToast('Помилка читання файлу імпорту');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    parseCsv(text) {
+        const lines = text.split(/\r?\n/).filter(Boolean);
+        if (lines.length <= 1) return [];
+        const headers = lines[0].split(',').map(h => h.trim());
+        const rows = lines.slice(1).map(line => this.splitCsvLine(line));
+        return rows.map(cols => {
+            const obj = {};
+            headers.forEach((h, i) => obj[h] = cols[i]);
+            return obj;
+        });
+    }
+
+    splitCsvLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (ch === '"') {
+                inQuotes = !inQuotes;
+            } else if (ch === ',' && !inQuotes) {
+                result.push(current);
+                current = '';
+            } else {
+                current += ch;
+            }
+        }
+        result.push(current);
+        return result.map(s => s.replace(/^\"|\"$/g, ''));
+    }
+
+    normalizeAndValidateBatch(rawItems) {
+        const out = [];
+        for (const raw of rawItems) {
+            const normalized = this.normalizeEvent(raw);
+            if (normalized && this.validateEvent(normalized)) {
+                out.push(normalized);
+            }
+        }
+        return out;
+    }
+
+    normalizeEvent(raw) {
+        // Map incoming fields to internal schema
+        const toNumber = (v) => {
+            const num = typeof v === 'string' ? parseFloat(v) : v;
+            return isFinite(num) ? num : 0;
+        };
+        const ensureArray = (v) => Array.isArray(v) ? v : (typeof v === 'string' && v.startsWith('[') ? JSON.parse(v.replace(/'/g, '"')) : (v ? [String(v)] : []));
+        const dateRaw = raw.date || raw.publishedAt || raw.pubDate || raw.updated || '';
+        const normalizedDate = this.normalizeEventDate(dateRaw);
+
+        const event = {
+            id: raw.id || this.nextId++,
+            title: (raw.title || raw.headline || 'Без назви').toString().trim(),
+            channel: raw.channel || raw.source || '',
+            date: normalizedDate || new Date().toISOString().slice(0,10),
+            category: raw.category || raw.topic || 'Політичні зміни',
+            region: raw.region || '',
+            country: raw.country || '',
+            lat: toNumber(raw.lat ?? raw.latitude),
+            lng: toNumber(raw.lng ?? raw.longitude),
+            description: raw.description || raw.summary || raw.content || '',
+            participants: ensureArray(raw.participants),
+            impact: raw.impact || '',
+            importance: Math.max(1, Math.min(10, parseInt(raw.importance || 5))),
+            sources: ensureArray(raw.sources || raw.link)
+        };
+        return event;
+    }
+
+    validateEvent(event) {
+        // Basic required fields
+        if (!event.title || !event.date) return false;
+        const time = Date.parse(event.date);
+        if (isNaN(time)) return false;
+        if (typeof event.lat !== 'number' || typeof event.lng !== 'number') return false;
+        if (event.lat < -90 || event.lat > 90 || event.lng < -180 || event.lng > 180) return false;
+        // Category whitelist: ensure it exists or default
+        const category = this.categories.find(c => c.name === event.category);
+        if (!category) {
+            // Fallback to a default category
+            event.category = 'Політичні зміни';
+        }
+        // Region fallback
+        if (!event.region) {
+            event.region = 'Глобально';
+        }
+        if (!event.country) {
+            event.country = 'Світ';
+        }
+        if (!event.importance || isNaN(event.importance)) {
+            event.importance = 5;
+        }
+        if (!event.participants) event.participants = [];
+        // Deduplicate participants and trim
+        event.participants = Array.from(new Set(event.participants.map(p => String(p).trim()).filter(Boolean)));
+        if (!event.sources) event.sources = [];
+        // Ensure sources are strings and valid-ish URLs if present
+        event.sources = event.sources.map(s => String(s).trim()).filter(Boolean);
+        return true;
+    }
+
+    normalizeEventDate(input) {
+        if (!input) return '';
+        // Attempt to parse various formats and normalize to YYYY-MM-DD
+        const parsed = new Date(input);
+        if (isNaN(parsed.getTime())) return '';
+        const iso = parsed.toISOString();
+        return iso.slice(0, 10);
+    }
+
+    computeEventDedupKey(event) {
+        // Prefer stable link if available
+        const link = Array.isArray(event.sources) && event.sources.length ? event.sources[0] : '';
+        if (link && /^https?:\/\//i.test(link)) {
+            return `link:${link}`;
+        }
+        const title = (event.title || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        const date = event.date || '';
+        const lat = Number.isFinite(event.lat) ? event.lat.toFixed(3) : 'x';
+        const lng = Number.isFinite(event.lng) ? event.lng.toFixed(3) : 'x';
+        return `tdl:${title}|${date}|${lat}|${lng}`;
+    }
+
+    async scanSources() {
+        // Backward-compatible manual scan using the new SourceScanner
+        const sources = this.prepareSourcesFromUI();
+        if (!this.scanner) this.scanner = new SourceScanner(this);
+        this.scanner.setSources(sources);
+        this.setImportStatus('Сканування джерел...', 5);
+        const results = await this.scanner.scanOnce({ updateUi: true });
+        // Start auto-refresh after a manual scan if there are sources
+        if (sources.length) {
+            this.scanner.startAutoRefresh();
+            this.updateScanButtonUi(true);
+        }
+        return results;
+    }
+
+    prepareSourcesFromUI() {
+        const rssTextarea = document.getElementById('rssUrls');
+        const newsApiKey = document.getElementById('newsApiKey')?.value?.trim();
+        const newsApiQuery = document.getElementById('newsApiQuery')?.value?.trim() || 'geopolitics';
+        const govJsonUrl = document.getElementById('govJsonUrl')?.value?.trim();
+        const corsProxy = document.getElementById('corsProxyUrl')?.value?.trim();
+
+        const rssUrls = (rssTextarea?.value || '')
+            .split(/\n|[,;]/)
+            .map(u => u.trim())
+            .filter(Boolean);
+
+        const sources = [];
+        rssUrls.forEach((url, idx) => {
+            sources.push({
+                id: `rss:${idx}:${url}`,
+                type: 'rss',
+                url,
+                priority: 2,
+                intervalMs: 15 * 60 * 1000,
+                corsProxy
+            });
+        });
+        if (govJsonUrl) {
+            sources.push({
+                id: `json:${govJsonUrl}`,
+                type: 'json',
+                url: govJsonUrl,
+                priority: 1,
+                intervalMs: 20 * 60 * 1000,
+                corsProxy
+            });
+        }
+        if (newsApiKey) {
+            sources.push({
+                id: `newsapi:${newsApiQuery}`,
+                type: 'newsapi',
+                url: 'https://newsapi.org/v2/everything',
+                priority: 3,
+                intervalMs: 30 * 60 * 1000,
+                corsProxy,
+                params: { apiKey: newsApiKey, query: newsApiQuery }
+            });
+        }
+        return sources;
+    }
+
+    handleScanButton() {
+        const isActive = this.scanner && this.scanner.isAutoRefreshing;
+        if (isActive) {
+            this.scanner.stopAutoRefresh();
+            this.updateScanButtonUi(false);
+            this.showToast('Автооновлення зупинено');
+            return;
+        }
+        // Trigger a manual scan, then auto-refresh will be enabled inside
+        this.scanSources();
+    }
+
+    updateScanButtonUi(isActive) {
+        const scanBtn = document.getElementById('scanSourcesBtn');
+        if (!scanBtn) return;
+        if (isActive) {
+            scanBtn.classList.add('active');
+            scanBtn.textContent = 'Зупинити автооновлення';
+        } else {
+            scanBtn.classList.remove('active');
+            scanBtn.textContent = 'Сканувати джерела';
+        }
+    }
+
+    async fetchWithCors(url, corsProxy, options = {}) {
+        const finalUrl = corsProxy ? `${corsProxy.replace(/\/$/, '')}/${encodeURIComponent(url)}` : url;
+        const res = await fetch(finalUrl, options);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res;
+    }
+
+    async fetchRss(url, corsProxy) {
+        const res = await this.fetchWithCors(url, corsProxy);
+        const text = await res.text();
+        const items = this.parseRss(text);
+        return items.map(item => ({
+            title: item.title,
+            description: item.description,
+            date: item.pubDate || item.published,
+            sources: [item.link],
+            // location/category inference is out of scope; leave defaults
+        }));
+    }
+
+    parseRss(xmlText) {
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(xmlText, 'text/xml');
+        const entries = [];
+        const itemNodes = [...xml.querySelectorAll('item')];
+        if (itemNodes.length) {
+            itemNodes.forEach(n => entries.push({
+                title: n.querySelector('title')?.textContent || '',
+                description: n.querySelector('description')?.textContent || '',
+                link: n.querySelector('link')?.textContent || '',
+                pubDate: n.querySelector('pubDate')?.textContent || ''
+            }));
+        } else {
+            // Atom
+            const atomEntries = [...xml.querySelectorAll('entry')];
+            atomEntries.forEach(n => entries.push({
+                title: n.querySelector('title')?.textContent || '',
+                description: n.querySelector('summary')?.textContent || n.querySelector('content')?.textContent || '',
+                link: n.querySelector('link')?.getAttribute('href') || '',
+                published: n.querySelector('published')?.textContent || n.querySelector('updated')?.textContent || ''
+            }));
+        }
+        return entries;
+    }
+
+    async fetchNewsApi(apiKey, query, corsProxy) {
+        const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&pageSize=20`;
+        const res = await this.fetchWithCors(url, corsProxy, { headers: { 'X-Api-Key': apiKey } }).catch(async () => {
+            // If proxy route with headers fails, try direct
+            const r = await fetch(url, { headers: { 'X-Api-Key': apiKey } });
+            if (!r.ok) throw new Error('NewsAPI failed');
+            return r;
+        });
+        const json = await res.json();
+        if (!json.articles) return [];
+        return json.articles.map(a => ({
+            title: a.title,
+            description: a.description || a.content || '',
+            date: a.publishedAt,
+            sources: [a.url],
+            country: a.source?.name || ''
+        }));
+    }
+
+    async fetchGovJson(url, corsProxy) {
+        const res = await this.fetchWithCors(url, corsProxy).catch(() => fetch(url));
+        const json = await res.json();
+        return Array.isArray(json) ? json : (json.events || []);
+    }
+
+    importBufferedEvents() {
+        if (!this.importBuffer.length) {
+            this.showToast('Немає подій для імпорту');
+            return;
+        }
+        const total = this.importBuffer.length;
+        let imported = 0;
+        const batchSize = 50; // batch import
+        const doBatch = () => {
+            const batch = this.importBuffer.splice(0, batchSize);
+            batch.forEach(ev => this.events.push(ev));
+            imported += batch.length;
+            this.filteredEvents = [...this.events];
+            this.updateDisplay();
+            this.rebuildTimeline();
+            this.cameraController.calculateOptimalBounds();
+            const progress = Math.round((imported / total) * 100);
+            this.setImportStatus(`Імпортовано ${imported}/${total}`, progress);
+            if (this.importBuffer.length) {
+                setTimeout(doBatch, 50);
+            } else {
+                document.getElementById('importBtn').disabled = true;
+                this.showToast('Імпорт завершено');
+            }
+        };
+        doBatch();
     }
 
     playTimelineAnimation() {
@@ -1418,6 +1905,230 @@ class SmartCameraController {
     }
 }
 
+// Source Scanner: multi-source ingestion with normalization, dedup, and auto-refresh
+class SourceScanner {
+    constructor(app) {
+        this.app = app;
+        this.sources = [];
+        this.isAutoRefreshing = false;
+        this.refreshTimer = null;
+        this.sourceStateById = new Map(); // id -> { lastRun, nextRun, errorCount }
+        this.isScanInFlight = false;
+    }
+
+    setSources(sources) {
+        const normalized = (sources || []).map(src => ({
+            id: src.id || `${src.type}:${src.url}`,
+            type: (src.type || 'json').toLowerCase(),
+            url: src.url,
+            priority: Number.isFinite(src.priority) ? src.priority : 5,
+            intervalMs: Number.isFinite(src.intervalMs) ? src.intervalMs : 30 * 60 * 1000,
+            corsProxy: src.corsProxy || '',
+            params: src.params || {}
+        })).filter(s => !!s.url);
+        this.sources = normalized;
+        // Initialize per-source state
+        normalized.forEach(s => {
+            if (!this.sourceStateById.has(s.id)) {
+                this.sourceStateById.set(s.id, { lastRun: 0, nextRun: Date.now(), errorCount: 0 });
+            }
+        });
+    }
+
+    async scanOnce({ updateUi = false } = {}) {
+        if (!this.sources.length) {
+            if (updateUi) this.app.setImportStatus('Немає джерел для сканування', 0);
+            return [];
+        }
+        if (this.isScanInFlight) {
+            return [];
+        }
+        this.isScanInFlight = true;
+        try {
+            const total = this.sources.length;
+            let completed = 0;
+            const allRawItems = [];
+
+            // Fetch all sources in parallel but track progress per-settlement
+            const results = await Promise.allSettled(this.sources.map(async (src) => {
+                const state = this.sourceStateById.get(src.id) || { errorCount: 0 };
+                try {
+                    const items = await this.fetchSource(src);
+                    allRawItems.push(...items.map(i => ({ item: i, _srcId: src.id })));
+                    state.errorCount = 0;
+                    state.lastRun = Date.now();
+                    state.nextRun = state.lastRun + src.intervalMs;
+                    this.sourceStateById.set(src.id, state);
+                } catch (err) {
+                    state.errorCount = (state.errorCount || 0) + 1;
+                    const backoff = Math.min(2 ** state.errorCount, 32);
+                    const base = Math.max(5 * 60 * 1000, src.intervalMs);
+                    state.lastRun = Date.now();
+                    state.nextRun = state.lastRun + backoff * base;
+                    this.sourceStateById.set(src.id, state);
+                    console.warn('Source scan failed', src.id, err);
+                } finally {
+                    completed += 1;
+                    if (updateUi) {
+                        const progress = Math.round((completed / total) * 70) + 10; // 10-80%
+                        this.app.setImportStatus(`Сканування: ${completed}/${total}`, progress);
+                    }
+                }
+            }));
+
+            // Normalize and validate
+            const normalized = this.app.normalizeAndValidateBatch(allRawItems.map(r => r.item));
+            // Deduplicate across sources with priority rules
+            const byKey = new Map();
+            const getPriority = (srcId) => this.sources.find(s => s.id === srcId)?.priority ?? 5;
+            for (const raw of allRawItems) {
+                const event = this.app.normalizeEvent(raw.item);
+                if (!event || !this.app.validateEvent(event)) continue;
+                const key = this.app.computeEventDedupKey(event);
+                const existing = byKey.get(key);
+                const srcPriority = getPriority(raw._srcId);
+                if (!existing || srcPriority < existing.priority) {
+                    byKey.set(key, { event, priority: srcPriority });
+                }
+            }
+
+            // Remove events already present in the app by dedup key
+            const existingKeys = new Set(this.app.events.map(ev => this.app.computeEventDedupKey(ev)));
+            const uniqueEvents = [];
+            for (const [key, { event }] of byKey.entries()) {
+                if (!existingKeys.has(key)) uniqueEvents.push(event);
+            }
+
+            // Update UI preview buffer
+            if (updateUi) {
+                this.app.clearImportPreview();
+                this.app.importBuffer = uniqueEvents;
+                this.app.appendToImportPreview(uniqueEvents);
+                const importBtn = document.getElementById('importBtn');
+                if (importBtn) importBtn.disabled = this.app.importBuffer.length === 0;
+                this.app.setImportStatus(`Знайдено: ${uniqueEvents.length}`, uniqueEvents.length ? 90 : 30);
+            }
+
+            return uniqueEvents;
+        } finally {
+            this.isScanInFlight = false;
+        }
+    }
+
+    startAutoRefresh() {
+        if (this.isAutoRefreshing) return;
+        this.isAutoRefreshing = true;
+        // Align next runs to now
+        const now = Date.now();
+        for (const [id, state] of this.sourceStateById.entries()) {
+            if (!state.nextRun || state.nextRun < now) {
+                state.nextRun = now + 1000;
+                this.sourceStateById.set(id, state);
+            }
+        }
+        // Poller tick
+        const tick = async () => {
+            if (!this.isAutoRefreshing) return;
+            const dueSources = this.sources.filter(s => {
+                const st = this.sourceStateById.get(s.id);
+                return st && st.nextRun && st.nextRun <= Date.now();
+            });
+            if (dueSources.length) {
+                // Temporarily narrow to due sources
+                const all = this.sources;
+                try {
+                    this.sources = dueSources;
+                    await this.scanOnce({ updateUi: true });
+                } finally {
+                    this.sources = all;
+                }
+            }
+            this.refreshTimer = setTimeout(tick, 15 * 1000);
+        };
+        this.refreshTimer = setTimeout(tick, 1500);
+    }
+
+    stopAutoRefresh() {
+        this.isAutoRefreshing = false;
+        if (this.refreshTimer) {
+            clearTimeout(this.refreshTimer);
+            this.refreshTimer = null;
+        }
+    }
+
+    async fetchSource(src) {
+        switch (src.type) {
+            case 'rss':
+                return await this.app.fetchRss(src.url, src.corsProxy);
+            case 'json':
+                return await this.fetchGenericJson(src);
+            case 'xml':
+                return await this.fetchGenericXml(src);
+            case 'newsapi':
+                return await this.fetchNewsApiWrapper(src);
+            default:
+                // Try JSON, then RSS, then XML
+                try { return await this.fetchGenericJson(src); } catch(_) {}
+                try { return await this.app.fetchRss(src.url, src.corsProxy); } catch(_) {}
+                return await this.fetchGenericXml(src);
+        }
+    }
+
+    async fetchGenericJson(src) {
+        const res = await this.app.fetchWithCors(src.url, src.corsProxy).catch(() => fetch(src.url));
+        const json = await res.json();
+        if (Array.isArray(json)) return json;
+        if (json && Array.isArray(json.events)) return json.events;
+        if (json && json.data && Array.isArray(json.data)) return json.data;
+        return [];
+    }
+
+    async fetchGenericXml(src) {
+        const res = await this.app.fetchWithCors(src.url, src.corsProxy).catch(() => fetch(src.url));
+        const text = await res.text();
+        return this.parseGenericXmlEvents(text, src.url);
+    }
+
+    async fetchNewsApiWrapper(src) {
+        const { apiKey, query } = src.params || {};
+        if (!apiKey) return [];
+        return await this.app.fetchNewsApi(apiKey, query || 'geopolitics', src.corsProxy);
+    }
+
+    parseGenericXmlEvents(xmlText, baseLink) {
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(xmlText, 'text/xml');
+        const out = [];
+        const eventNodes = [...xml.querySelectorAll('event')];
+        if (eventNodes.length) {
+            eventNodes.forEach(n => {
+                out.push({
+                    title: n.querySelector('title, name')?.textContent || '',
+                    description: n.querySelector('description, summary, details')?.textContent || '',
+                    date: n.querySelector('date, published, updated')?.textContent || '',
+                    category: n.querySelector('category, type, topic')?.textContent || '',
+                    region: n.querySelector('region')?.textContent || '',
+                    country: n.querySelector('country')?.textContent || '',
+                    lat: n.querySelector('lat, latitude')?.textContent,
+                    lng: n.querySelector('lng, longitude, lon')?.textContent,
+                    participants: (n.querySelector('participants')?.textContent || '').split(/[,;|]/),
+                    importance: n.querySelector('importance, score')?.textContent,
+                    sources: [n.querySelector('link, url, href')?.textContent || baseLink || '']
+                });
+            });
+            return out;
+        }
+        // Fallback to RSS/Atom-like nodes
+        const rssItems = this.app.parseRss(xmlText) || [];
+        return rssItems.map(i => ({
+            title: i.title,
+            description: i.description,
+            date: i.pubDate || i.published,
+            sources: [i.link]
+        }));
+    }
+}
+
 // Enhanced App Methods
 GeopoliticalApp.prototype.setupEventListeners = function() {
     // Window resize handler
@@ -1426,6 +2137,7 @@ GeopoliticalApp.prototype.setupEventListeners = function() {
         if (this.map) {
             this.map.invalidateSize();
         }
+        this.positionZoomLabel();
     });
     
     // Keyboard shortcuts
