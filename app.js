@@ -317,7 +317,13 @@ class GeopoliticalApp {
             { name: "Політичні системи", color: "#c0392b", icon: "⚖️", count: 0 },
             { name: "Союзи та договори", color: "#f39c12", icon: "🤝", count: 0 },
             { name: "Тероризм", color: "#34495e", icon: "💥", count: 0 },
-            { name: "Глобальні кризи", color: "#e67e22", icon: "🌍", count: 0 }
+            { name: "Глобальні кризи", color: "#e67e22", icon: "🌍", count: 0 },
+            // Additional categories to align with imported resources
+            { name: "Культурні зміни", color: "#e84393", icon: "🎭", count: 0 },
+            { name: "Інфраструктурні проекти", color: "#7f8c8d", icon: "🏗️", count: 0 },
+            { name: "Військові аналізи", color: "#2c3e50", icon: "🛡️", count: 0 },
+            { name: "Соціально-економічні моделі", color: "#1abc9c", icon: "📊", count: 0 },
+            { name: "Економічні моделі", color: "#2ecc71", icon: "📈", count: 0 }
         ];
         
         this.channels = [
@@ -327,7 +333,7 @@ class GeopoliticalApp {
             { name: "Ціна Держави", color: "#27ae60" }
         ];
 
-        this.regions = ["Європа", "Азія", "Близький Схід", "Північна Америка", "Євразія", "Глобально"];
+        this.regions = ["Європа", "Азія", "Близький Схід", "Північна Америка", "Євразія", "Глобально", "Африка/Європа"];
         
         // Calculate category counts
         this.categories.forEach(category => {
@@ -350,6 +356,8 @@ class GeopoliticalApp {
             this.initializeCharts();
             this.setupMobileOptimizations();
             this.updateDisplay();
+            // Opportunistic bootstrap of local CSV with Ukrainian channels/events
+            this.tryBootstrapLocalResources();
         } catch (error) {
             console.error('Error initializing app:', error);
         } finally {
@@ -1196,19 +1204,23 @@ class GeopoliticalApp {
     }
 
     exportToCSV() {
-        const headers = ['ID', 'Назва', 'Дата', 'Категорія', 'Регіон', 'Країна', 'Опис', 'Учасники', 'Вплив'];
+        const headers = ['ID', 'Назва', 'Канал', 'Дата', 'Категорія', 'Регіон', 'Країна', 'lat', 'lng', 'Опис', 'Учасники', 'Вплив', 'Джерела'];
         const csvContent = [
             headers.join(','),
             ...this.filteredEvents.map(event => [
                 event.id,
                 `"${event.title}"`,
+                `"${event.channel || ''}"`,
                 event.date,
                 `"${event.category}"`,
                 `"${event.region}"`,
                 `"${event.country}"`,
+                event.lat,
+                event.lng,
                 `"${event.description}"`,
                 `"${event.participants.join('; ')}"`,
-                `"${event.impact}"`
+                `"${event.impact}"`,
+                `"${(event.sources || []).join('; ')}"`
             ].join(','))
         ].join('\n');
 
@@ -1274,7 +1286,14 @@ class GeopoliticalApp {
                 } else {
                     parsed = this.parseCsv(content);
                 }
-                const normalized = this.normalizeAndValidateBatch(parsed);
+        const normalized = this.normalizeAndValidateBatch(parsed);
+        // Preserve original string IDs for stronger deduplication if present
+        normalized.forEach((ev, idx) => {
+            const rawId = parsed[idx]?.id;
+            if (rawId && typeof rawId === 'string' && !Number.isInteger(Number(rawId))) {
+                ev._originalId = String(rawId);
+            }
+        });
                 this.importBuffer.push(...normalized);
                 this.appendToImportPreview(normalized);
                 document.getElementById('importBtn').disabled = this.importBuffer.length === 0;
@@ -1295,6 +1314,9 @@ class GeopoliticalApp {
         return rows.map(cols => {
             const obj = {};
             headers.forEach((h, i) => obj[h] = cols[i]);
+            // Normalize some common header variants inline for CSV convenience
+            if (obj.lat === undefined && obj.latitude !== undefined) obj.lat = obj.latitude;
+            if (obj.lng === undefined && (obj.longitude !== undefined || obj.lon !== undefined)) obj.lng = obj.longitude ?? obj.lon;
             return obj;
         });
     }
@@ -1335,12 +1357,20 @@ class GeopoliticalApp {
             const num = typeof v === 'string' ? parseFloat(v) : v;
             return isFinite(num) ? num : 0;
         };
+        const toNumericId = (v) => {
+            // Preserve numeric IDs; convert prefixed IDs to a stable hash-like number space via incrementing counter
+            if (v === undefined || v === null || v === '') return this.nextId++;
+            const asNum = Number(v);
+            if (Number.isInteger(asNum)) return asNum;
+            // Non-numeric id: keep in sources and still give numeric id for app usage
+            return this.nextId++;
+        };
         const ensureArray = (v) => Array.isArray(v) ? v : (typeof v === 'string' && v.startsWith('[') ? JSON.parse(v.replace(/'/g, '"')) : (v ? [String(v)] : []));
         const dateRaw = raw.date || raw.publishedAt || raw.pubDate || raw.updated || '';
         const normalizedDate = this.normalizeEventDate(dateRaw);
 
         const event = {
-            id: raw.id || this.nextId++,
+            id: toNumericId(raw.id),
             title: (raw.title || raw.headline || 'Без назви').toString().trim(),
             channel: raw.channel || raw.source || '',
             date: normalizedDate || new Date().toISOString().slice(0,10),
@@ -1387,6 +1417,13 @@ class GeopoliticalApp {
         if (!event.sources) event.sources = [];
         // Ensure sources are strings and valid-ish URLs if present
         event.sources = event.sources.map(s => String(s).trim()).filter(Boolean);
+        // Enforce consistent country casing and trimming
+        event.country = String(event.country).trim();
+        event.region = String(event.region).trim();
+        event.category = String(event.category).trim();
+        // Round coordinates to 6 decimals to avoid floating jitter
+        if (Number.isFinite(event.lat)) event.lat = Math.round(event.lat * 1e6) / 1e6;
+        if (Number.isFinite(event.lng)) event.lng = Math.round(event.lng * 1e6) / 1e6;
         return true;
     }
 
@@ -1405,11 +1442,13 @@ class GeopoliticalApp {
         if (link && /^https?:\/\//i.test(link)) {
             return `link:${link}`;
         }
+        // If original string id present in sources, use it to strengthen dedup
+        const originalId = (event._originalId && typeof event._originalId === 'string') ? event._originalId : '';
         const title = (event.title || '').toLowerCase().replace(/\s+/g, ' ').trim();
         const date = event.date || '';
         const lat = Number.isFinite(event.lat) ? event.lat.toFixed(3) : 'x';
         const lng = Number.isFinite(event.lng) ? event.lng.toFixed(3) : 'x';
-        return `tdl:${title}|${date}|${lat}|${lng}`;
+        return originalId ? `oid:${originalId}` : `tdl:${title}|${date}|${lat}|${lng}`;
     }
 
     async scanSources() {
@@ -1460,6 +1499,15 @@ class GeopoliticalApp {
                 corsProxy
             });
         }
+        // Always include bundled local CSV resource if available
+        sources.push({
+            id: 'csv:local:ukraine_channels_events.csv',
+            type: 'csv',
+            url: window.location.origin + window.location.pathname.replace(/[^/]*$/, '') + 'ukraine_channels_events.csv',
+            priority: 1,
+            intervalMs: 60 * 60 * 1000,
+            corsProxy
+        });
         if (newsApiKey) {
             sources.push({
                 id: `newsapi:${newsApiQuery}`,
@@ -2062,6 +2110,8 @@ class SourceScanner {
                 return await this.app.fetchRss(src.url, src.corsProxy);
             case 'json':
                 return await this.fetchGenericJson(src);
+            case 'csv':
+                return await this.fetchGenericCsv(src);
             case 'xml':
                 return await this.fetchGenericXml(src);
             case 'newsapi':
@@ -2081,6 +2131,12 @@ class SourceScanner {
         if (json && Array.isArray(json.events)) return json.events;
         if (json && json.data && Array.isArray(json.data)) return json.data;
         return [];
+    }
+
+    async fetchGenericCsv(src) {
+        const res = await this.app.fetchWithCors(src.url, src.corsProxy).catch(() => fetch(src.url));
+        const text = await res.text();
+        return this.app.parseCsv(text);
     }
 
     async fetchGenericXml(src) {
@@ -2303,6 +2359,42 @@ GeopoliticalApp.prototype.showToast = function(message) {
             document.body.removeChild(toast);
         }, 300);
     }, 3000);
+};
+
+GeopoliticalApp.prototype.tryBootstrapLocalResources = function() {
+    // Load bundled CSV of Ukrainian channels/events if present
+    fetch('ukraine_channels_events.csv')
+        .then(res => {
+            if (!res.ok) throw new Error('csv not found');
+            return res.text();
+        })
+        .then(text => {
+            const rawRows = this.parseCsv(text);
+            const normalized = this.normalizeAndValidateBatch(rawRows);
+            // Preserve original IDs for stronger deduplication
+            normalized.forEach((ev, idx) => {
+                const rid = rawRows[idx]?.id;
+                if (rid && typeof rid === 'string' && !Number.isInteger(Number(rid))) {
+                    ev._originalId = String(rid);
+                }
+            });
+            // Deduplicate against existing events
+            const existingKeys = new Set(this.events.map(ev => this.computeEventDedupKey(ev)));
+            const toAdd = normalized.filter(ev => !existingKeys.has(this.computeEventDedupKey(ev)));
+            if (!toAdd.length) return;
+            this.events.push(...toAdd);
+            this.filteredEvents = [...this.events];
+            // Recompute category counts
+            this.categories.forEach(category => {
+                category.count = this.events.filter(event => event.category === category.name).length;
+            });
+            // Refresh UI
+            this.updateDisplay();
+            this.rebuildTimeline();
+            if (this.cameraController) this.cameraController.calculateOptimalBounds();
+            this.showToast(`Імпортовано локальних подій: ${toAdd.length}`);
+        })
+        .catch(() => {});
 };
 
 // Initialize app when DOM is loaded
