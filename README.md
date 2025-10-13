@@ -127,6 +127,46 @@ npx serve .
 
 ## Налаштування
 
+### Відео → Події: пайплайн екстракції
+
+Для конвертації рядків з назвами відео у структуровані геополітичні події використовуйте скрипт `scripts/extract_video_events.js` з конфігурацією `config/video_event_pipeline.config.json`.
+
+Основні можливості:
+- Автоматичне мапінг відео (URL/ID) за назвою з fuzzy-пошуком проти `data/events.json` та файлу мапінгу `data/video_to_event_map.csv`
+- Отримання транскриптів: спочатку субтитри YouTube (timedtext), потім ASR-фолбек (OpenAI Whisper)
+- Нормалізація дат (ISO + precision), локацій (спрощений газетир), категорій та регіонів (таксономія)
+- Дедуплікація проти наявних подій
+- QA-звіт зі статистикою і причинами низької якості
+- Інкрементальні запуски через `data/pipeline_state.json`
+
+Запуск:
+
+```bash
+# (опційно) ключ для ASR
+export ASR_API_KEY=sk-...
+
+# запуск пайплайна
+node scripts/extract_video_events.js
+
+# ручне мапінг-доусунення для невідповідностей
+node scripts/manual_map_videos.js            # показати немаплені рядки
+node scripts/manual_map_videos.js --set row_id=nea_001 video_url=https://www.youtube.com/watch?v=XXXX
+```
+
+Конфіг `config/video_event_pipeline.config.json` (важливі поля):
+- `mapping.minTitleSimilarity` — поріг схожості назв для автопоєднання (за замовчуванням 0.3)
+- `transcripts.asr`: `provider`=`openai`, `apiKeyEnv`=`ASR_API_KEY`, `model`=`whisper-1`, `retries`=3
+- `state.reprocessUnmapped`/`reprocessCaptionless` — повторна обробка рядків без мапінгу/транскриптів
+- `dedup.ratioThreshold` — поріг дублікатів (85%)
+
+Вихідні артефакти:
+- `data/new_events.csv` — нові події з полями: `event_id,title,date,date_precision,location,region,category,source_video,transcript_snippet,confidence,provenance,extraction_method,dupe_flag`
+- `data/video_to_event_map.csv` — мапінг `row_id` → `video_url,video_id` (з можливістю ручного заповнення)
+- `data/QA_report.json` — статистика, середня впевненість, причини ризиків
+
+Нотатки з дата-治理:
+- Транскрипти з YouTube субтитрів та/або ASR використовуються з дотриманням умов сервісів. Поважайте ліцензії джерел і додавайте провенанс (`provenance`) для відтворюваності.
+
 ### Темна/світла тема
 ```javascript
 // Перемикання теми
