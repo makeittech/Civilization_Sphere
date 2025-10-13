@@ -746,17 +746,25 @@ class GeopoliticalApp {
             regionSelect.appendChild(option);
         });
 
-        // Set default date range
+        // Set default date range to cover entire dataset
         const dateFrom = document.getElementById('dateFrom');
         const dateTo = document.getElementById('dateTo');
-        dateFrom.value = '2024-01-01';
-        dateTo.value = '2025-12-31';
+        const validDates = this.events
+            .map(e => new Date(e.date))
+            .filter(d => !isNaN(d));
+        const minDate = validDates.length ? new Date(Math.min(...validDates)) : new Date('1930-01-01');
+        const maxDate = validDates.length ? new Date(Math.max(...validDates)) : new Date('2025-12-31');
+        dateFrom.value = minDate.toISOString().slice(0, 10);
+        dateTo.value = maxDate.toISOString().slice(0, 10);
 
         // Add event listeners
         categoryContainer.addEventListener('change', () => this.applyFilters());
         regionSelect.addEventListener('change', () => this.applyFilters());
         dateFrom.addEventListener('change', () => this.applyFilters());
         dateTo.addEventListener('change', () => this.applyFilters());
+
+        // Apply initial filters using the full dataset date range
+        this.applyFilters();
     }
     
     applyQuickFilter(filter) {
@@ -1602,7 +1610,7 @@ class GeopoliticalApp {
     }
 
     async fetchNewsApi(apiKey, query, corsProxy) {
-        const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&pageSize=20`;
+        const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&pageSize=100`;
         const res = await this.fetchWithCors(url, corsProxy, { headers: { 'X-Api-Key': apiKey } }).catch(async () => {
             // If proxy route with headers fails, try direct
             const r = await fetch(url, { headers: { 'X-Api-Key': apiKey } });
