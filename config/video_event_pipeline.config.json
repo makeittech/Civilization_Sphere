@@ -1,9 +1,9 @@
 {
-  "batchSize": 25,
+  "batchSize": 5,
   "maxConcurrency": 3,
   "timeouts": {
     "transcriptFetchMs": 15000,
-    "asrMs": 60000
+    "asrMs": 300000
   },
   "input": {
     "csvPath": "ukraine_channels_events.csv",
