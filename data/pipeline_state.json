@@ -17,7 +17,12 @@
     "cost_002",
     "cost_003",
     "cost_004",
-    "cost_005"
+    "cost_005",
+    "cs_006",
+    "cs_007",
+    "cs_009",
+    "gtbt_006",
+    "cs_008"
   ],
   "unmapped_row_ids": [
     "nea_001",
@@ -34,7 +39,8 @@
     "cost_002",
     "cost_003",
     "cost_004",
-    "cost_005"
+    "cost_005",
+    "cs_009"
   ],
   "captionless_row_ids": [
     "nea_001",
@@ -54,6 +60,7 @@
     "cost_004",
     "cost_005",
     "cs_003",
-    "gtbt_001"
+    "gtbt_001",
+    "cs_009"
   ]
 }

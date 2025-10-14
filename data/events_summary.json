@@ -1,13 +1,25 @@
 {
-  "total_events": 60,
-  "new_events_added": 0,
+  "total_events": 61,
+  "new_events_added": 1,
   "counts_per_channel": {
     "Неаполітичні": 15,
-    "Good Times Bad Times UA": 15,
+    "Good Times Bad Times UA": 16,
     "Чотири сторони": 15,
     "Ціна Держави": 15
   },
-  "last_updated": "2025-10-13T09:27:05.049Z",
-  "since_date": "2025-10-13T06:56:26.278Z",
-  "recent_days": 30
+  "sample_new_events": [
+    {
+      "id": "8b0gW3io_iQ",
+      "title": "The Syrian Game of Thrones Gains Momentum",
+      "date": "2025-10-14T07:18:40.459Z",
+      "region": "Unspecified",
+      "category": "Geopolitics/News/Analysis",
+      "channel_name": "Good Times Bad Times UA",
+      "source_url": "https://www.youtube.com/watch?v=8b0gW3io_iQ",
+      "description": "🟥 React to global changes with XTB: https://link-pso.xtb.com/pso/6iHsa 🟥 Investing is risky. Invest responsibly.  📌 Support GTBT on Patreon! https://www.patreon.com/GTBT➡️ Paypal: https://www.paypal.com/paypalme/GoodTimesBadTimes📈 For business enquiries, use this link to book a sponsorship with us: https://app.thoughtleaders.io/#/reserve/good-times-bad-timesProduction: Hubert WalasAnalysis: Tomasz RydelekEditing: Hubert WalasEditing Director: Łukasz SzypulskiMaps animations: Łukasz SzypulskiMotion Design: Breno SalesVideo Editing: Łukasz SzypulskiSound Engineer: Dominik Kojder Music: Michael Vignola - MisleadVoiceover: Hubert WalasBusiness inquiries:office@gt-bt.com🗺️ Maps: https://aescripts.com/geolayers/?aff=90⚪ GTBT Polish - https://www.youtube.com/@GoodTimesBadTimesPL🟤 GTBT на русском: -   https://www.youtube.com/@GoodTimesBadTimesRU🟣 GTBT France -    https://www.youtube.com/@GoodTimesBadTimesFR⚫️ GTBT Deutschland -     https://www.youtube.com/@GoodTimesBadTimesDE🟡 GTBT Україна -    https://www.youtube.com/@GoodTimesBadTimesUA🟢 GTBT Brasil-    https://www.youtube.com/@GoodTimesBadTimesBR🔴 GTBT Español -     https://www.youtube.com/@GoodTimesBadTimesES 🐦Twitter - https://twitter.com/hubertwalas_📘 Facebook - https://www.facebook.com/Good-Times-Bad-Times-102549314709760/Sources - on request: office@gt-bt.com#Syria #MiddleEast #Geopolitics",
+      "channel_id": "",
+      "source": "YouTube",
+      "tags": []
+    }
+  ]
 }

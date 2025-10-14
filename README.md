@@ -43,6 +43,8 @@
 - [Good Times Bad Times UA](https://youtube.com/@goodtimesbadtimesua?si=bddTO0komAGxet3d) - геополітичні тренди та економічні зміни
 - [Чотири сторони](https://youtube.com/@chotyrystorony?si=UlEQtJ_UKc0B40I4) - технологічні та інфраструктурні проекти
 - [Ціна Держави](https://youtube.com/@costua?si=svjpawx7Nlr4TQnm) - економічні моделі та соціально-політичні системи
+- [The Документаліст](https://youtube.com/@The_Documentalist) - історичні кейси та геополітичні контексти
+- [The Документаліст](https://youtube.com/@The_Documentalist) - історичні та геополітичні контексти
 
 ### Категорії подій
 - Війни та конфлікти
@@ -53,6 +55,9 @@
 - Союзи та договори
 - Тероризм
 - Глобальні кризи
+
+### Останні додавання подій
+- 2025-10-14: Додано подію ["The Syrian Game of Thrones Gains Momentum"](https://www.youtube.com/watch?v=8b0gW3io_iQ) (канал: Good Times Bad Times UA).
 
 ## Технічний стек
 

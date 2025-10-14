@@ -1,28 +1,29 @@
 {
-  "total": 18,
-  "avg_confidence": 0.31999999999999995,
+  "total": 23,
+  "avg_confidence": 0.368695652173913,
   "counts_per_region": {
-    "Europe": 3,
-    "Middle East": 3,
+    "Europe": 5,
+    "Middle East": 5,
     "North America": 4,
     "Global": 1,
-    "Asia": 6,
+    "Asia": 7,
     "Африка/Європа": 1
   },
   "counts_per_category": {
-    "Війни та конфлікти": 2,
+    "Війни та конфлікти": 3,
     "Політичні зміни": 4,
     "Технологічні зміни": 2,
-    "Економічні зміни": 4,
+    "Економічні зміни": 5,
     "Культурні зміни": 1,
     "Інфраструктурні проекти": 1,
-    "Військові аналізи": 1,
+    "Військові аналізи": 3,
     "Соціально-економічні моделі": 1,
     "Політичні системи": 1,
-    "Економічні моделі": 1
+    "Економічні моделі": 1,
+    "Глобальні кризи": 1
   },
   "low_confidence_threshold": 0.7,
-  "low_confidence_count": 16,
+  "low_confidence_count": 20,
   "low_confidence_sample": [
     {
       "event_id": "nea_001",
@@ -407,6 +408,102 @@
       },
       "extraction_method": "none",
       "dupe_flag": false
+    },
+    {
+      "event_id": "cs_007",
+      "title": "ЄС зміцнює оборону та шукає спільну армію",
+      "date": "2025-09-30",
+      "date_precision": "day",
+      "location": "",
+      "region": "Europe",
+      "category": "Військові аналізи",
+      "source_video": "https://www.youtube.com/watch?v=5Ad1mRPFlXA",
+      "transcript_snippet": "ЄС зміцнює оборону та шукає спільну армію. Європа. Військові аналізи. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. ЄС зміцнює оборону та шукає спільну армію. Європа. Військові аналізи. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. ЄС зміцнює оборону та шукає спільну армію. Європа. Військові аналізи. війна конфлікт с",
+      "confidence": 0.5800000000000001,
+      "provenance": {
+        "licenses": "Subject to YouTube ToS",
+        "repo": "this repo",
+        "method_version": "v0.1",
+        "source_row_id": "cs_007",
+        "source_channel": "Чотири сторони",
+        "video_id": "5Ad1mRPFlXA",
+        "video_url": "https://www.youtube.com/watch?v=5Ad1mRPFlXA",
+        "transcript_source": "asr:simulated_whisper"
+      },
+      "extraction_method": "asr_simulated",
+      "dupe_flag": false
+    },
+    {
+      "event_id": "cs_009",
+      "title": "Ірак після відбудови: чому система буксує",
+      "date": "2025-08-22",
+      "date_precision": "day",
+      "location": "",
+      "region": "Middle East",
+      "category": "Глобальні кризи",
+      "source_video": "",
+      "transcript_snippet": "Ірак після відбудови: чому система буксує",
+      "confidence": 0.1,
+      "provenance": {
+        "licenses": "Subject to YouTube ToS",
+        "repo": "this repo",
+        "method_version": "v0.1",
+        "source_row_id": "cs_009",
+        "source_channel": "Чотири сторони",
+        "video_id": "",
+        "video_url": "",
+        "transcript_source": "none"
+      },
+      "extraction_method": "none",
+      "dupe_flag": false
+    },
+    {
+      "event_id": "gtbt_006",
+      "title": "Сирія: ескалація та геополітичні ризики",
+      "date": "2025-10-10",
+      "date_precision": "day",
+      "location": "",
+      "region": "Middle East",
+      "category": "Війни та конфлікти",
+      "source_video": "https://www.youtube.com/watch?v=8b0gW3io_iQ",
+      "transcript_snippet": "Сирія: ескалація та геополітичні ризики. Близький Схід. Війни та конфлікти. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Сирія: ескалація та геополітичні ризики. Близький Схід. Війни та конфлікти. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Сирія: ескалація та геополітичні ризики. Близький Схід. Війни та конфлікти",
+      "confidence": 0.5800000000000001,
+      "provenance": {
+        "licenses": "Subject to YouTube ToS",
+        "repo": "this repo",
+        "method_version": "v0.1",
+        "source_row_id": "gtbt_006",
+        "source_channel": "Good Times Bad Times UA",
+        "video_id": "8b0gW3io_iQ",
+        "video_url": "https://www.youtube.com/watch?v=8b0gW3io_iQ",
+        "transcript_source": "asr:simulated_whisper"
+      },
+      "extraction_method": "asr_simulated",
+      "dupe_flag": false
+    },
+    {
+      "event_id": "cs_008",
+      "title": "Південна Корея нарощує оборонну промисловість",
+      "date": "2025-09-05",
+      "date_precision": "day",
+      "location": "",
+      "region": "Asia",
+      "category": "Військові аналізи",
+      "source_video": "https://www.youtube.com/watch?v=HoDOTq9gnCI",
+      "transcript_snippet": "Південна Корея нарощує оборонну промисловість. Азія. Військові аналізи. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Південна Корея нарощує оборонну промисловість. Азія. Військові аналізи. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Південна Корея нарощує оборонну промисловість. Азія. Військові аналізи. війна конф",
+      "confidence": 0.5800000000000001,
+      "provenance": {
+        "licenses": "Subject to YouTube ToS",
+        "repo": "this repo",
+        "method_version": "v0.1",
+        "source_row_id": "cs_008",
+        "source_channel": "Чотири сторони",
+        "video_id": "HoDOTq9gnCI",
+        "video_url": "https://www.youtube.com/watch?v=HoDOTq9gnCI",
+        "transcript_source": "asr:simulated_whisper"
+      },
+      "extraction_method": "asr_simulated",
+      "dupe_flag": false
     }
   ],
   "sample": [
@@ -504,6 +601,30 @@
         "transcript_source": "none"
       },
       "extraction_method": "none",
+      "dupe_flag": false
+    },
+    {
+      "event_id": "gtbt_001",
+      "title": "Global Britain після Brexit",
+      "date": "2025-10-08",
+      "date_precision": "day",
+      "location": "United Kingdom",
+      "region": "Europe",
+      "category": "Політичні зміни",
+      "source_video": "https://www.youtube.com/watch?v=7ctx_A1EdGI",
+      "transcript_snippet": "Global Britain після Brexit. Європа. Політичні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Global Britain після Brexit. Європа. Політичні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Global Britain після Brexit. Європа. Політичні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енер",
+      "confidence": 0.8799999999999999,
+      "provenance": {
+        "licenses": "Subject to YouTube ToS",
+        "repo": "this repo",
+        "method_version": "v0.1",
+        "source_row_id": "gtbt_001",
+        "source_channel": "Good Times Bad Times UA",
+        "video_id": "7ctx_A1EdGI",
+        "video_url": "https://www.youtube.com/watch?v=7ctx_A1EdGI",
+        "transcript_source": "asr:simulated_whisper"
+      },
+      "extraction_method": "asr_simulated",
       "dupe_flag": false
     },
     {
@@ -723,6 +844,30 @@
       "dupe_flag": false
     },
     {
+      "event_id": "cs_003",
+      "title": "Саудівська Аравія будує нове місто за $8 трлн",
+      "date": "2025-08-03",
+      "date_precision": "day",
+      "location": "Saudi Arabia",
+      "region": "Middle East",
+      "category": "Економічні зміни",
+      "source_video": "https://www.youtube.com/watch?v=1pGaadIekOI",
+      "transcript_snippet": "Саудівська Аравія будує нове місто за $8 трлн. Близький Схід. Економічні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Саудівська Аравія будує нове місто за $8 трлн. Близький Схід. Економічні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Саудівська Аравія будує нове місто за $8 трлн. Близький Схід. Екон",
+      "confidence": 0.8799999999999999,
+      "provenance": {
+        "licenses": "Subject to YouTube ToS",
+        "repo": "this repo",
+        "method_version": "v0.1",
+        "source_row_id": "cs_003",
+        "source_channel": "Чотири сторони",
+        "video_id": "1pGaadIekOI",
+        "video_url": "https://www.youtube.com/watch?v=1pGaadIekOI",
+        "transcript_source": "asr:simulated_whisper"
+      },
+      "extraction_method": "asr_simulated",
+      "dupe_flag": false
+    },
+    {
       "event_id": "cost_003",
       "title": "Юта - найкращий штат США",
       "date": "2025-09-28",
@@ -795,48 +940,48 @@
       "dupe_flag": false
     },
     {
-      "event_id": "cs_003",
-      "title": "Саудівська Аравія будує нове місто за $8 трлн",
-      "date": "2025-08-03",
+      "event_id": "cs_006",
+      "title": "Львів — індустріальні парки та економічний ріст",
+      "date": "2025-08-28",
       "date_precision": "day",
-      "location": "Saudi Arabia",
-      "region": "Middle East",
+      "location": "Lviv, Ukraine",
+      "region": "Europe",
       "category": "Економічні зміни",
-      "source_video": "https://www.youtube.com/watch?v=1pGaadIekOI",
-      "transcript_snippet": "Саудівська Аравія будує нове місто за $8 трлн. Близький Схід. Економічні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Саудівська Аравія будує нове місто за $8 трлн. Близький Схід. Економічні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Саудівська Аравія будує нове місто за $8 трлн. Близький Схід. Екон",
+      "source_video": "https://www.youtube.com/watch?v=oL5KD0gByt0",
+      "transcript_snippet": "Львів — індустріальні парки та економічний ріст. Європа. Економічні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Львів — індустріальні парки та економічний ріст. Європа. Економічні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Львів — індустріальні парки та економічний ріст. Європа. Економічні зміни. в",
       "confidence": 0.8799999999999999,
       "provenance": {
         "licenses": "Subject to YouTube ToS",
         "repo": "this repo",
         "method_version": "v0.1",
-        "source_row_id": "cs_003",
+        "source_row_id": "cs_006",
         "source_channel": "Чотири сторони",
-        "video_id": "1pGaadIekOI",
-        "video_url": "https://www.youtube.com/watch?v=1pGaadIekOI",
+        "video_id": "oL5KD0gByt0",
+        "video_url": "https://www.youtube.com/watch?v=oL5KD0gByt0",
         "transcript_source": "asr:simulated_whisper"
       },
       "extraction_method": "asr_simulated",
       "dupe_flag": false
     },
     {
-      "event_id": "gtbt_001",
-      "title": "Global Britain після Brexit",
-      "date": "2025-10-08",
+      "event_id": "cs_007",
+      "title": "ЄС зміцнює оборону та шукає спільну армію",
+      "date": "2025-09-30",
       "date_precision": "day",
-      "location": "United Kingdom",
+      "location": "",
       "region": "Europe",
-      "category": "Політичні зміни",
-      "source_video": "https://www.youtube.com/watch?v=7ctx_A1EdGI",
-      "transcript_snippet": "Global Britain після Brexit. Європа. Політичні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Global Britain після Brexit. Європа. Політичні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. Global Britain після Brexit. Європа. Політичні зміни. війна конфлікт санкції економіка уряд вибори інфраструктура енер",
-      "confidence": 0.8799999999999999,
+      "category": "Військові аналізи",
+      "source_video": "https://www.youtube.com/watch?v=5Ad1mRPFlXA",
+      "transcript_snippet": "ЄС зміцнює оборону та шукає спільну армію. Європа. Військові аналізи. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. ЄС зміцнює оборону та шукає спільну армію. Європа. Військові аналізи. війна конфлікт санкції економіка уряд вибори інфраструктура енергія ядерна технології. ЄС зміцнює оборону та шукає спільну армію. Європа. Військові аналізи. війна конфлікт с",
+      "confidence": 0.5800000000000001,
       "provenance": {
         "licenses": "Subject to YouTube ToS",
         "repo": "this repo",
         "method_version": "v0.1",
-        "source_row_id": "gtbt_001",
-        "source_channel": "Good Times Bad Times UA",
-        "video_id": "7ctx_A1EdGI",
-        "video_url": "https://www.youtube.com/watch?v=7ctx_A1EdGI",
+        "source_row_id": "cs_007",
+        "source_channel": "Чотири сторони",
+        "video_id": "5Ad1mRPFlXA",
+        "video_url": "https://www.youtube.com/watch?v=5Ad1mRPFlXA",
         "transcript_source": "asr:simulated_whisper"
       },
       "extraction_method": "asr_simulated",
@@ -874,6 +1019,10 @@
         "no_location",
         "low_confidence"
       ]
+    },
+    {
+      "event_id": "gtbt_001",
+      "reasons": []
     },
     {
       "event_id": "gtbt_003",
@@ -942,6 +1091,10 @@
       ]
     },
     {
+      "event_id": "cs_003",
+      "reasons": []
+    },
+    {
       "event_id": "cost_003",
       "reasons": [
         "no_video",
@@ -963,12 +1116,37 @@
       ]
     },
     {
-      "event_id": "cs_003",
+      "event_id": "cs_006",
       "reasons": []
     },
     {
-      "event_id": "gtbt_001",
-      "reasons": []
+      "event_id": "cs_007",
+      "reasons": [
+        "no_location",
+        "low_confidence"
+      ]
+    },
+    {
+      "event_id": "cs_009",
+      "reasons": [
+        "no_video",
+        "no_location",
+        "low_confidence"
+      ]
+    },
+    {
+      "event_id": "gtbt_006",
+      "reasons": [
+        "no_location",
+        "low_confidence"
+      ]
+    },
+    {
+      "event_id": "cs_008",
+      "reasons": [
+        "no_location",
+        "low_confidence"
+      ]
     }
   ]
 }

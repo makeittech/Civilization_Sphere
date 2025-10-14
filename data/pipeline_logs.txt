@@ -1,4 +1,8 @@
-[2025-10-13T12:32:07.435Z] Detected 18 candidate video-title rows
-[2025-10-13T12:32:07.598Z] asr ok: cs_002 -> asr:simulated_whisper
-[2025-10-13T12:32:07.604Z] asr ok: cs_003 -> asr:simulated_whisper
-[2025-10-13T12:32:07.612Z] asr ok: gtbt_001 -> asr:simulated_whisper
+[2025-10-14T07:24:44.037Z] Detected 23 candidate video-title rows
+[2025-10-14T07:24:44.385Z] asr ok: gtbt_001 -> asr:simulated_whisper
+[2025-10-14T07:24:44.500Z] asr ok: cs_002 -> asr:simulated_whisper
+[2025-10-14T07:24:44.604Z] asr ok: cs_003 -> asr:simulated_whisper
+[2025-10-14T07:24:44.698Z] asr ok: cs_006 -> asr:simulated_whisper
+[2025-10-14T07:24:44.764Z] asr ok: cs_007 -> asr:simulated_whisper
+[2025-10-14T07:24:44.867Z] asr ok: gtbt_006 -> asr:simulated_whisper
+[2025-10-14T07:24:44.870Z] asr ok: cs_008 -> asr:simulated_whisper
