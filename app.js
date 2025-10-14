@@ -477,6 +477,20 @@ class GeopoliticalApp {
         }
     }
 
+    toggleRightSidebar(forceState) {
+        const sidebar = document.getElementById('rightSidebar');
+        const toggleBtn = document.getElementById('rightSidebarToggle');
+        if (!sidebar) return;
+        const shouldOpen = typeof forceState === 'boolean' ? forceState : !sidebar.classList.contains('open');
+        if (shouldOpen) {
+            sidebar.classList.add('open');
+            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+        } else {
+            sidebar.classList.remove('open');
+            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+        }
+    }
+
     showLoading() {
         const overlay = document.getElementById('loadingOverlay');
         if (overlay) overlay.style.display = 'flex';
@@ -993,6 +1007,12 @@ class GeopoliticalApp {
             this.exportToCSV();
         });
 
+        // Right sidebar toggle on larger screens too
+        const rightToggle = document.getElementById('rightSidebarToggle');
+        if (rightToggle) {
+            rightToggle.addEventListener('click', () => this.toggleRightSidebar());
+        }
+
         // Enhanced timeline controls
         document.getElementById('timelinePlay').addEventListener('click', () => {
             this.hideTimelineReadyOverlay();
@@ -1382,6 +1402,9 @@ class GeopoliticalApp {
         if (this.isMobile && this.sidebarVisible) {
             this.toggleMobileMenu();
         }
+
+        // Ensure right sidebar is visible on small screens when an event is selected
+        this.toggleRightSidebar(true);
     }
     
     highlightMarker(event) {
