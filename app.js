@@ -14,6 +14,13 @@ class GeopoliticalApp {
         this.connectionLines = [];
         this.importBuffer = [];
         this.nextId = 100000; // for generating unique IDs for imported events
+        this.importSettings = {
+            format: 'auto',
+            dateFormat: 'auto',
+            dedupMode: 'auto',
+            importMode: 'append',
+            fieldMapping: {}
+        };
         
         // Enhanced properties for mobile and playback
         this.isPlaying = false;
@@ -954,6 +961,9 @@ class GeopoliticalApp {
             importFileInput.addEventListener('change', (e) => this.handleImportFile(e));
         }
 
+        // Import UI controls and behaviors
+        this.setupImportUi();
+
         // Enhanced map controls
         document.getElementById('resetView').addEventListener('click', () => {
             this.cameraController.resetView();
@@ -1016,6 +1026,189 @@ class GeopoliticalApp {
                 this.playTimelineAnimation();
             });
         }
+    }
+
+    setupImportUi() {
+        const importFormat = document.getElementById('importFormat');
+        const dateFormat = document.getElementById('dateFormat');
+        const dedupMode = document.getElementById('dedupMode');
+        const importFileInput = document.getElementById('importFile');
+        const importModeRadios = Array.from(document.querySelectorAll('input[name="importMode"]'));
+
+        if (importFormat) {
+            importFormat.addEventListener('change', (e) => {
+                this.importSettings.format = e.target.value || 'auto';
+                if (importFileInput) {
+                    const fmt = this.importSettings.format;
+                    importFileInput.setAttribute('accept', fmt === 'csv' ? '.csv' : (fmt === 'json' ? '.json' : '.csv,.json'));
+                }
+            });
+        }
+
+        if (dateFormat) {
+            dateFormat.addEventListener('change', (e) => {
+                this.importSettings.dateFormat = e.target.value || 'auto';
+            });
+        }
+
+        if (dedupMode) {
+            dedupMode.addEventListener('change', (e) => {
+                this.importSettings.dedupMode = e.target.value || 'auto';
+            });
+        }
+
+        if (importModeRadios && importModeRadios.length) {
+            importModeRadios.forEach(r => r.addEventListener('change', (e) => {
+                if (e.target.checked) this.importSettings.importMode = e.target.value;
+            }));
+        }
+
+        // Initialize mapping listeners (will be populated after CSV is selected)
+        const mappingIds = ['map-title','map-date','map-lat','map-lng','map-description','map-category','map-region','map-country','map-importance','map-sources'];
+        mappingIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', () => {
+                    const key = id.replace('map-','');
+                    this.importSettings.fieldMapping[key] = el.value || '';
+                });
+            }
+        });
+    }
+
+    setupFieldMappingForCsv(csvText) {
+        const headers = this.extractCsvHeaders(csvText);
+        if (!headers || !headers.length) return;
+        this.refreshFieldMappingOptions(headers);
+        // Preselect guesses
+        const guess = this.guessMappingFromHeaders(headers);
+        this.importSettings.fieldMapping = { ...guess };
+        Object.entries(guess).forEach(([key, header]) => {
+            const el = document.getElementById(`map-${key}`);
+            if (el && header) el.value = header;
+        });
+    }
+
+    extractCsvHeaders(text) {
+        const firstLine = (text.split(/\r?\n/).find(Boolean) || '').trim();
+        if (!firstLine) return [];
+        const headers = this.splitCsvLine(firstLine).map(h => (h || '').trim());
+        return headers;
+    }
+
+    refreshFieldMappingOptions(headers) {
+        const mappingIds = ['map-title','map-date','map-lat','map-lng','map-description','map-category','map-region','map-country','map-importance','map-sources'];
+        mappingIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.innerHTML = '';
+            const frag = document.createDocumentFragment();
+            const empty = document.createElement('option');
+            empty.value = '';
+            empty.textContent = '—';
+            frag.appendChild(empty);
+            headers.forEach(h => {
+                const opt = document.createElement('option');
+                opt.value = h;
+                opt.textContent = h;
+                frag.appendChild(opt);
+            });
+            el.appendChild(frag);
+        });
+    }
+
+    guessMappingFromHeaders(headers) {
+        const lc = headers.map(h => h.toLowerCase());
+        const pick = (...candidates) => {
+            for (const c of candidates) {
+                const idx = lc.indexOf(c);
+                if (idx !== -1) return headers[idx];
+            }
+            return '';
+        };
+        return {
+            title: pick('title','name','headline'),
+            date: pick('date','published','publishedat','pubdate','updated','time'),
+            lat: pick('lat','latitude','y'),
+            lng: pick('lng','longitude','lon','x'),
+            description: pick('description','summary','content','desc'),
+            category: pick('category','type','topic'),
+            region: pick('region','area'),
+            country: pick('country','nation','state'),
+            importance: pick('importance','priority','score','rank'),
+            sources: pick('sources','link','url')
+        };
+    }
+
+    applyFieldMappingToObject(obj, mapping) {
+        if (!mapping) return obj;
+        const out = { ...obj };
+        const entries = Object.entries(mapping).filter(([, src]) => src);
+        const targetToDefault = {
+            title: '', date: '', lat: '', lng: '', description: '', category: '', region: '', country: '', importance: '', sources: ''
+        };
+        const mapped = { ...targetToDefault };
+        for (const [target, src] of entries) {
+            mapped[target] = obj[src];
+        }
+        // Preserve unknown fields as-is but prefer mapped values for known targets
+        return { ...obj, ...mapped };
+    }
+
+    parseDateByFormat(input, format) {
+        try {
+            if (!input) return '';
+            const s = String(input).trim();
+            const pad = (n) => n.toString().padStart(2, '0');
+            if (format === 'YYYY-MM-DD') {
+                const m = s.match(/^(\d{4})[-\/.](\d{2})[-\/.](\d{2})$/);
+                if (!m) return '';
+                return `${m[1]}-${m[2]}-${m[3]}`;
+            }
+            if (format === 'DD/MM/YYYY') {
+                const m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);
+                if (!m) return '';
+                const dd = pad(parseInt(m[1]));
+                const mm = pad(parseInt(m[2]));
+                const yyyy = m[3];
+                return `${yyyy}-${mm}-${dd}`;
+            }
+            if (format === 'MM/DD/YYYY') {
+                const m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);
+                if (!m) return '';
+                const mm = pad(parseInt(m[1]));
+                const dd = pad(parseInt(m[2]));
+                const yyyy = m[3];
+                return `${yyyy}-${mm}-${dd}`;
+            }
+            if (format === 'YYYY-MM-DDTHH:mm:ssZ') {
+                const d = new Date(s);
+                if (isNaN(d.getTime())) return '';
+                return d.toISOString().slice(0,10);
+            }
+        } catch (_) {}
+        return '';
+    }
+
+    computeEventDedupKeyByMode(mode, event) {
+        const m = (mode || 'auto').toLowerCase();
+        if (m === 'off') {
+            return `no:${event.id}:${Math.random().toString(36).slice(2)}`;
+        }
+        if (m === 'title_date_coords') {
+            const title = (event.title || '').toLowerCase().replace(/\s+/g, ' ').trim();
+            const date = event.date || '';
+            const lat = Number.isFinite(event.lat) ? event.lat.toFixed(3) : 'x';
+            const lng = Number.isFinite(event.lng) ? event.lng.toFixed(3) : 'x';
+            return `tdl:${title}|${date}|${lat}|${lng}`;
+        }
+        // auto
+        return this.computeEventDedupKey(event);
+    }
+
+    showValidation(message) {
+        const el = document.getElementById('importValidation');
+        if (el) el.textContent = message || '';
     }
 
     initializeCharts() {
@@ -1331,26 +1524,64 @@ class GeopoliticalApp {
             try {
                 const content = reader.result;
                 let parsed = [];
-                if (file.name.endsWith('.json')) {
+                const fmtPref = (this.importSettings.format || 'auto').toLowerCase();
+                const isJson = fmtPref === 'json' || file.name.toLowerCase().endsWith('.json');
+                if (isJson) {
                     const data = JSON.parse(content);
                     parsed = Array.isArray(data) ? data : (data.events || []);
                 } else {
+                    // CSV
+                    this.setupFieldMappingForCsv(content);
                     parsed = this.parseCsv(content);
+                    // Apply field mapping and date format if provided
+                    const mapping = this.importSettings.fieldMapping || {};
+                    const dateFmt = this.importSettings.dateFormat || 'auto';
+                    parsed = parsed.map(obj => {
+                        const mapped = this.applyFieldMappingToObject(obj, mapping);
+                        if (dateFmt && dateFmt !== 'auto' && mapped.date) {
+                            const d = this.parseDateByFormat(mapped.date, dateFmt);
+                            if (d) mapped.date = d;
+                        }
+                        return mapped;
+                    });
                 }
-        const normalized = this.normalizeAndValidateBatch(parsed);
-        // Preserve original string IDs for stronger deduplication if present
-        normalized.forEach((ev, idx) => {
-            const rawId = parsed[idx]?.id;
-            if (rawId && typeof rawId === 'string' && !Number.isInteger(Number(rawId))) {
-                ev._originalId = String(rawId);
-            }
-        });
-                this.importBuffer.push(...normalized);
-                this.appendToImportPreview(normalized);
+
+                // Normalize and validate
+                const normalized = this.normalizeAndValidateBatch(parsed);
+                // Preserve original string IDs for stronger deduplication if present
+                normalized.forEach((ev, idx) => {
+                    const rawId = parsed[idx]?.id;
+                    if (rawId && typeof rawId === 'string' && !Number.isInteger(Number(rawId))) {
+                        ev._originalId = String(rawId);
+                    }
+                });
+
+                // Deduplicate within the imported set
+                const seen = new Set();
+                const dedupMode = this.importSettings.dedupMode || 'auto';
+                const unique = [];
+                for (const ev of normalized) {
+                    const key = this.computeEventDedupKeyByMode(dedupMode, ev);
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        unique.push(ev);
+                    }
+                }
+
+                // Remove items already present in the app (by chosen dedup mode)
+                const existingKeys = new Set(this.events.map(ev => this.computeEventDedupKeyByMode(dedupMode, ev)));
+                const toBuffer = unique.filter(ev => !existingKeys.has(this.computeEventDedupKeyByMode(dedupMode, ev)));
+
+                const invalidCount = Math.max(0, parsed.length - normalized.length);
+                this.showValidation(invalidCount ? `Валідно: ${normalized.length}. Пропущено: ${invalidCount}.` : '');
+
+                this.importBuffer.push(...toBuffer);
+                this.appendToImportPreview(toBuffer);
                 document.getElementById('importBtn').disabled = this.importBuffer.length === 0;
-                this.setImportStatus(`Завантажено з файлу: ${normalized.length}`, 30);
+                this.setImportStatus(`Завантажено з файлу: ${toBuffer.length}`, 30);
             } catch (err) {
                 console.error('Import file parse error', err);
+                this.showValidation('Помилка читання або парсингу файлу');
                 this.showToast('Помилка читання файлу імпорту');
             }
         };
@@ -1480,7 +1711,13 @@ class GeopoliticalApp {
 
     normalizeEventDate(input) {
         if (!input) return '';
-        // Attempt to parse various formats and normalize to YYYY-MM-DD
+        // Respect explicit date format if chosen
+        const fmt = this.importSettings?.dateFormat || 'auto';
+        if (fmt && fmt !== 'auto') {
+            const d = this.parseDateByFormat(String(input), fmt);
+            if (d) return d;
+        }
+        // Fallback: Attempt to parse various formats and normalize to YYYY-MM-DD
         const parsed = new Date(input);
         if (isNaN(parsed.getTime())) return '';
         const iso = parsed.toISOString();
@@ -1677,6 +1914,10 @@ class GeopoliticalApp {
         const batchSize = 50; // batch import
         const doBatch = () => {
             const batch = this.importBuffer.splice(0, batchSize);
+            // Apply replace or append on the first batch
+            if (imported === 0 && (this.importSettings.importMode || 'append') === 'replace') {
+                this.events = [];
+            }
             batch.forEach(ev => this.events.push(ev));
             imported += batch.length;
             this.filteredEvents = [...this.events];

@@ -24,7 +24,8 @@ assert(fs.existsSync(appJs), 'app.js should exist');
 assert(fs.existsSync(styleCss), 'style.css should exist');
 
 assert(fileContains(indexHtml, ['timelineReadyOverlay', 'timelineReadyPlayBtn']), 'index.html should include ready overlay elements');
-assert(fileContains(styleCss, ['timeline-ready-overlay', 'visible']), 'style.css should include overlay styles');
-assert(fileContains(appJs, ['showTimelineReadyOverlay', 'hideTimelineReadyOverlay', 'isReady']), 'app.js should include ready overlay and readiness logic');
+assert(fileContains(indexHtml, ['tabDataImport', 'panelDataImport', 'importFile', 'scanSourcesBtn', 'importBtn']), 'index.html should include Data Import tab and controls');
+assert(fileContains(styleCss, ['timeline-ready-overlay', 'visible', '.tabs', '.tab', '.tabpanel']), 'style.css should include tab styles');
+assert(fileContains(appJs, ['showTimelineReadyOverlay', 'hideTimelineReadyOverlay', 'isReady', 'setupImportUi', 'handleImportFile', 'importBufferedEvents']), 'app.js should include import UI logic');
 
 console.log('OK: smoke test passed');
