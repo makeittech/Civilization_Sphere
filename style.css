@@ -990,6 +990,37 @@ body.light-theme {
   line-height: 1;
 }
 
+/* Unify iconography (Lucide) */
+.lucide,
+.btn .lucide,
+.btn-icon {
+  display: inline-block;
+  vertical-align: middle;
+  stroke: currentColor;
+}
+
+/* Default icon size inside buttons */
+.btn .lucide,
+.btn .btn-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Small buttons */
+.btn--sm .lucide,
+.btn--sm .btn-icon,
+.timeline-btn .lucide {
+  width: 16px;
+  height: 16px;
+}
+
+/* Map control buttons */
+.map-btn .lucide,
+.map-btn .btn-icon {
+  width: 18px;
+  height: 18px;
+}
+
 @media (max-width: 768px) {
   .btn {
     min-height: var(--touch-target-size);
@@ -1131,7 +1162,7 @@ body.light-theme {
   width: 100%;
   padding: var(--space-8) var(--space-16);
   font-size: var(--font-size-base);
-  background-color: var(--color-background);
+  background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
   color: var(--color-text);
@@ -1526,6 +1557,13 @@ body.light-theme {
   backdrop-filter: blur(10px);
 }
 
+/* Ensure uniform button sizes in control groups */
+.control-group .btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+}
+
 /* Mobile Touch Controls */
 .mobile-touch-controls {
   position: absolute;
@@ -1853,6 +1891,9 @@ body.light-theme {
   height: 32px;
   padding: 0;
   font-size: var(--font-size-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .timeline-content {
@@ -1871,11 +1912,7 @@ body.light-theme {
   align-items: center;
   justify-content: center;
   gap: var(--space-12);
-  background: linear-gradient(
-    to bottom,
-    rgba(var(--color-slate-900-rgb), 0.65),
-    rgba(var(--color-slate-900-rgb), 0.65)
-  );
+  background: rgba(var(--color-slate-900-rgb), 0.5);
   backdrop-filter: blur(2px);
   z-index: 5;
   opacity: 0;
