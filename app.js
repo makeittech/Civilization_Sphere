@@ -403,6 +403,10 @@ class GeopoliticalApp {
             btn.addEventListener('click', () => {
                 const theme = btn.dataset.theme;
                 this.switchTheme(theme);
+                if (window.lucide?.createIcons) {
+                    // Re-render icons in case of dynamic DOM changes
+                    window.lucide.createIcons();
+                }
             });
         });
     }
@@ -834,24 +838,27 @@ class GeopoliticalApp {
 
             if (query.length < 2) {
                 searchSuggestions.style.display = 'none';
+                searchInput.setAttribute('aria-expanded', 'false');
                 return;
             }
 
             const matches = this.events.filter(event => 
-                event.title.toLowerCase().includes(query) ||
-                event.description.toLowerCase().includes(query) ||
-                event.country.toLowerCase().includes(query)
-            ).slice(0, 5);
+                (event.title && event.title.toLowerCase().includes(query)) ||
+                (event.description && event.description.toLowerCase().includes(query)) ||
+                (event.country && event.country.toLowerCase().includes(query))
+            ).slice(0, 8);
 
             if (matches.length > 0) {
-                searchSuggestions.innerHTML = matches.map(event => 
-                    `<div class="search-suggestion" onclick="app.selectEventAndSearch(${event.id}, '${event.title}')">
+                searchSuggestions.innerHTML = matches.map((event, idx) => 
+                    `<div class="search-suggestion" role="option" id="suggestion-${idx}" onclick="app.selectEventAndSearch(${event.id}, '${event.title.replace(/'/g, "&#39;")}')">
                         ${event.title} (${this.formatDate(event.date)})
                     </div>`
                 ).join('');
                 searchSuggestions.style.display = 'block';
+                searchInput.setAttribute('aria-expanded', 'true');
             } else {
                 searchSuggestions.style.display = 'none';
+                searchInput.setAttribute('aria-expanded', 'false');
             }
         });
 
@@ -859,13 +866,17 @@ class GeopoliticalApp {
         document.addEventListener('click', (e) => {
             if (!searchInput.contains(e.target) && !searchSuggestions.contains(e.target)) {
                 searchSuggestions.style.display = 'none';
+                searchInput.setAttribute('aria-expanded', 'false');
             }
         });
     }
 
     selectEventAndSearch(eventId, title) {
-        document.getElementById('searchInput').value = title;
-        document.getElementById('searchSuggestions').style.display = 'none';
+        const input = document.getElementById('searchInput');
+        const suggestions = document.getElementById('searchSuggestions');
+        input.value = title;
+        suggestions.style.display = 'none';
+        input.setAttribute('aria-expanded', 'false');
         this.selectEvent(eventId);
     }
 

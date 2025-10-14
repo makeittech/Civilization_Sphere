@@ -10,8 +10,12 @@
 <body>
     <!-- Theme Toggle -->
     <div class="theme-toggle" id="themeToggle">
-        <button class="theme-btn" data-theme="light">☀️</button>
-        <button class="theme-btn active" data-theme="dark">🌙</button>
+        <button class="theme-btn" data-theme="light" title="Світла тема" aria-label="Світла тема">
+            <i data-lucide="sun" class="btn-icon" aria-hidden="true"></i>
+        </button>
+        <button class="theme-btn active" data-theme="dark" title="Темна тема" aria-label="Темна тема">
+            <i data-lucide="moon" class="btn-icon" aria-hidden="true"></i>
+        </button>
     </div>
 
     <!-- Mobile Menu Toggle -->
@@ -26,9 +30,10 @@
         <header class="header">
             <div class="header-content">
                 <h1 class="app-title">Геополітичні Події</h1>
-                <div class="search-container">
-                    <input type="text" id="searchInput" class="search-input" placeholder="Пошук подій...">
-                    <div id="searchSuggestions" class="search-suggestions"></div>
+                <div class="search-container" role="search">
+                    <label for="searchInput" class="sr-only">Пошук подій</label>
+                    <input type="text" id="searchInput" class="search-input" placeholder="Пошук подій..." aria-autocomplete="list" aria-controls="searchSuggestions" aria-expanded="false">
+                    <div id="searchSuggestions" class="search-suggestions" role="listbox" aria-label="Підказки пошуку"></div>
                 </div>
                 <div class="header-stats">
                     <span id="totalEvents" class="stat-badge">Всього подій: 0</span>
@@ -226,30 +231,30 @@
                 <div id="map" class="map"></div>
                 <div class="map-controls">
                     <div class="control-group">
-                        <button id="resetView" class="btn btn--outline map-btn" title="Скинути вид">
-                            <span class="btn-icon">🏠</span>
+                        <button id="resetView" class="btn btn--outline map-btn" title="Скинути вид" aria-label="Скинути вид">
+                            <i data-lucide="home" class="btn-icon" aria-hidden="true"></i>
                         </button>
-                        <button id="fullscreen" class="btn btn--outline map-btn" title="Повний екран">
-                            <span class="btn-icon">⛶</span>
+                        <button id="fullscreen" class="btn btn--outline map-btn" title="Повний екран" aria-label="Повний екран">
+                            <i data-lucide="maximize" class="btn-icon" aria-hidden="true"></i>
                         </button>
-                        <button id="layersToggle" class="btn btn--outline map-btn" title="Шари">
-                            <span class="btn-icon">🗂</span>
-                        </button>
-                    </div>
-                    <div class="control-group">
-                        <button id="heatmapToggle" class="btn btn--outline map-btn" title="Теплова карта">
-                            <span class="btn-icon">🔥</span>
-                        </button>
-                        <button id="connectionsToggle" class="btn btn--outline map-btn" title="Зв'язки">
-                            <span class="btn-icon">🔗</span>
-                        </button>
-                        <button id="shareMap" class="btn btn--outline map-btn" title="Поділитися">
-                            <span class="btn-icon">📤</span>
+                        <button id="layersToggle" class="btn btn--outline map-btn" title="Тема карти" aria-label="Тема карти">
+                            <i data-lucide="sun-moon" class="btn-icon" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div class="control-group">
-                        <button id="exportData" class="btn btn--outline map-btn" title="Експорт">
-                            <span class="btn-icon">💾</span>
+                        <button id="heatmapToggle" class="btn btn--outline map-btn" title="Теплова карта" aria-label="Теплова карта">
+                            <i data-lucide="flame" class="btn-icon" aria-hidden="true"></i>
+                        </button>
+                        <button id="connectionsToggle" class="btn btn--outline map-btn" title="Зв'язки" aria-label="Зв'язки">
+                            <i data-lucide="git-branch" class="btn-icon" aria-hidden="true"></i>
+                        </button>
+                        <button id="shareMap" class="btn btn--outline map-btn" title="Поділитися" aria-label="Поділитися">
+                            <i data-lucide="share-2" class="btn-icon" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <div class="control-group">
+                        <button id="exportData" class="btn btn--outline map-btn" title="Експорт" aria-label="Експорт">
+                            <i data-lucide="download" class="btn-icon" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -290,14 +295,14 @@
                 <h3 class="timeline-title">Часова шкала</h3>
                 <div class="timeline-controls">
                     <div class="playback-controls">
-                        <button id="timelinePlay" class="btn btn--sm timeline-btn" title="Відтворити">
-                            <span class="play-icon">▶</span>
+                        <button id="timelinePlay" class="btn btn--sm timeline-btn" title="Відтворити" aria-label="Відтворити">
+                            <i data-lucide="play" aria-hidden="true"></i>
                         </button>
-                        <button id="timelinePause" class="btn btn--sm timeline-btn" title="Пауза">
-                            <span class="pause-icon">⏸</span>
+                        <button id="timelinePause" class="btn btn--sm timeline-btn" title="Пауза" aria-label="Пауза">
+                            <i data-lucide="pause" aria-hidden="true"></i>
                         </button>
-                        <button id="timelineReset" class="btn btn--sm timeline-btn" title="Скинути">
-                            <span class="reset-icon">⏹</span>
+                        <button id="timelineReset" class="btn btn--sm timeline-btn" title="Скинути" aria-label="Скинути">
+                            <i data-lucide="square" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div class="speed-controls">
@@ -318,12 +323,13 @@
                 </div>
             </div>
             <!-- Timeline Ready/Loading Overlay -->
-            <div class="timeline-ready-overlay" id="timelineReadyOverlay" aria-live="polite" aria-hidden="true">
+                <div class="timeline-ready-overlay" id="timelineReadyOverlay" aria-live="polite" aria-hidden="true">
                 <div class="loading-spinner"></div>
                 <span id="timelineReadyText">Підготовка відтворення…</span>
-                <button id="timelineReadyPlayBtn" class="btn btn--primary btn--sm" type="button" aria-label="Почати відтворення">
-                    ▶ Відтворити
-                </button>
+                    <button id="timelineReadyPlayBtn" class="btn btn--primary btn--sm" type="button" aria-label="Почати відтворення">
+                        <i data-lucide="play" aria-hidden="true"></i>
+                        <span class="sr-only">Відтворити</span>
+                    </button>
             </div>
             <div class="timeline-content">
                 <div id="timeline" class="timeline"></div>
@@ -341,6 +347,14 @@
     <!-- Scripts -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@0.451.0/dist/umd/lucide.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        if (window.lucide) {
+          lucide.createIcons();
+        }
+      });
+    </script>
     <script src="app.js"></script>
 </body>
 </html>
