@@ -1145,6 +1145,29 @@ body.light-theme {
   gap: var(--space-24);
 }
 
+/* Compact header adjustments for mobile */
+@media (max-width: 768px) {
+  .header {
+    --header-height: 56px;
+  }
+  .header-content {
+    gap: var(--space-12);
+  }
+  .app-title {
+    font-size: var(--font-size-xl);
+  }
+  .header-stats {
+    display: none;
+  }
+  .search-container {
+    flex: 1;
+    max-width: none;
+  }
+  .header-action {
+    margin-left: auto;
+  }
+}
+
 .app-title {
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
@@ -1277,6 +1300,28 @@ body.light-theme {
 
 .right-sidebar {
   border-left: 1px solid var(--color-border);
+}
+
+/* Collapsible right sidebar */
+.right-sidebar {
+  transition: transform var(--duration-normal) var(--ease-standard);
+}
+
+@media (max-width: 1024px) {
+  .right-sidebar {
+    position: fixed;
+    right: 0;
+    top: 0;
+    height: 100vh;
+    transform: translateX(100%);
+    width: var(--mobile-sidebar-width);
+    z-index: 999;
+    box-shadow: var(--shadow-lg);
+    background: var(--color-surface);
+  }
+  .right-sidebar.open {
+    transform: translateX(0);
+  }
 }
 
 .sidebar-section {
