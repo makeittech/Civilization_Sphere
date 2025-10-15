@@ -1526,31 +1526,6 @@
     "place": "Global"
   },
   {
-    "id": "PANDEMIC_RUSSIAN_FLU_1977",
-    "title": "1977 Russian flu",
-    "date": "1977-05-01T00:00:00.000Z",
-    "region": "Global",
-    "category": "Global Crises",
-    "channel_name": "Historical Pandemics",
-    "source_url": "https://en.wikipedia.org/wiki/1977_Russian_flu",
-    "description": "Reemergence of H1N1 influenza largely affecting younger populations.",
-    "channel_id": "",
-    "source": "Historical",
-    "tags": [
-      "pandemic",
-      "epidemic",
-      "disease",
-      "influenza",
-      "H1N1"
-    ],
-    "url": "https://en.wikipedia.org/wiki/1977_Russian_flu",
-    "channels": [
-      "Historical Pandemics"
-    ],
-    "importance": 7,
-    "place": "Global"
-  },
-  {
     "id": "PANDEMIC_SARS_2002",
     "title": "SARS outbreak (2002–2004)",
     "date": "2002-11-01T00:00:00.000Z",

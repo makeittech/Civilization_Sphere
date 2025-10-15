@@ -1,12 +1,12 @@
 {
-  "total_events": 84,
-  "new_events_added": 23,
+  "total_events": 83,
+  "new_events_added": 22,
   "counts_per_channel": {
     "Неаполітичні": 15,
     "Good Times Bad Times UA": 16,
     "Чотири сторони": 15,
     "Ціна Держави": 15,
-    "Historical Pandemics": 23
+    "Historical Pandemics": 22
   },
   "sample_new_events": [
     {
