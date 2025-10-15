@@ -1307,6 +1307,22 @@ body.light-theme {
   transition: transform var(--duration-normal) var(--ease-standard);
 }
 
+/* Desktop: collapse the right sidebar by shrinking width */
+@media (min-width: 1025px) {
+  .right-sidebar {
+    /* On desktop, animate width instead of transform */
+    transition: width var(--duration-normal) var(--ease-standard);
+    width: var(--sidebar-width);
+  }
+
+  .right-sidebar.collapsed {
+    width: 0;
+    padding: 0; /* override .sidebar padding so it fully collapses */
+    border-left: 0;
+    overflow: hidden; /* hide inner content during collapse */
+  }
+}
+
 @media (max-width: 1024px) {
   .right-sidebar {
     position: fixed;
