@@ -915,56 +915,115 @@ class GeopoliticalApp {
     initializeTimeline() {
         const timeline = document.getElementById('timeline');
         const scale = document.getElementById('timelineScale');
-        
+
         // Sort events by date
         const sortedEvents = [...this.events]
             .filter(e => !isNaN(new Date(e.date)))
             .sort((a, b) => new Date(a.date) - new Date(b.date));
-        
+
         if (sortedEvents.length === 0) return;
-        const minYear = new Date(sortedEvents[0].date).getFullYear();
-        const maxYear = new Date(sortedEvents[sortedEvents.length - 1].date).getFullYear();
-        const yearRange = maxYear - minYear;
-        
+        const minDate = new Date(sortedEvents[0].date);
+        const maxDate = new Date(sortedEvents[sortedEvents.length - 1].date);
+        const totalTimeRange = maxDate - minDate;
+
         timeline.innerHTML = '';
         scale.innerHTML = '';
-        
-        // Add events to timeline with importance-weighted sizing
+
+        // Create a map to track events per year for better positioning
+        const eventsByYear = new Map();
+
+        // Add events to timeline with improved positioning
         sortedEvents.forEach(event => {
-            const eventYear = new Date(event.date).getFullYear();
-            const position = ((eventYear - minYear) / yearRange) * 100;
-            
+            const eventDate = new Date(event.date);
+            const eventYear = eventDate.getFullYear();
+            const yearProgress = (eventDate - new Date(eventYear, 0, 1)) / (new Date(eventYear + 1, 0, 1) - new Date(eventYear, 0, 1));
+
+            // Base position on year
+            const basePosition = ((eventDate - minDate) / totalTimeRange) * 100;
+
+            // Adjust for multiple events in same year
+            if (!eventsByYear.has(eventYear)) {
+                eventsByYear.set(eventYear, []);
+            }
+            const yearEvents = eventsByYear.get(eventYear);
+
+            // Calculate position within year to avoid overlap
+            const yearWidth = 100 / (sortedEvents.length || 1); // Distribute across timeline
+            const eventIndexInYear = yearEvents.length;
+            const adjustedPosition = basePosition + (eventIndexInYear * 0.5); // Small offset for each event in same year
+
+            yearEvents.push(event);
+
             const category = this.categories.find(cat => cat.name === event.category);
             const color = category ? category.color : '#333';
-            
+
             const eventElement = document.createElement('div');
             eventElement.className = 'timeline-event';
-            eventElement.style.left = `${position}%`;
+            eventElement.style.left = `${Math.min(adjustedPosition, 98)}%`; // Ensure doesn't go beyond 98%
             eventElement.style.backgroundColor = color;
+            eventElement.style.position = 'absolute';
             eventElement.dataset.eventId = event.id;
-            const size = Math.max(8, Math.min(18, (Number(event.importance) || 5) * 1.2));
+
+            // Improved sizing based on importance with better minimum size
+            const importance = Number(event.importance) || 5;
+            const size = Math.max(12, Math.min(24, importance * 2.4)); // Larger base size for better visibility
             eventElement.style.width = `${size}px`;
             eventElement.style.height = `${size}px`;
-            
+
+            // Add z-index for overlapping events
+            eventElement.style.zIndex = Math.floor(importance);
+
             const tooltip = document.createElement('div');
             tooltip.className = 'timeline-tooltip';
-            tooltip.textContent = `${event.title} (${eventYear}) • ${event.region}`;
+            tooltip.textContent = `${event.title} (${eventDate.getFullYear()}) • ${event.region || 'Unknown'}`;
             eventElement.appendChild(tooltip);
-            
-            eventElement.addEventListener('click', () => {
-                this.selectEvent(event.id);
+
+            eventElement.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+
+                // Add visual feedback for click
+                eventElement.classList.add('clicked');
+                setTimeout(() => {
+                    eventElement.classList.remove('clicked');
+                }, 150);
+
+                try {
+                    this.selectEvent(event.id);
+                } catch (error) {
+                    console.error('Error selecting event:', error);
+                }
             });
-            
+
+            // Add keyboard support for accessibility
+            eventElement.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.selectEvent(event.id);
+                }
+            });
+
+            // Make focusable for keyboard navigation
+            eventElement.setAttribute('tabindex', '0');
+            eventElement.setAttribute('role', 'button');
+            eventElement.setAttribute('aria-label', `Select event: ${event.title}`);
+
             timeline.appendChild(eventElement);
         });
-        
-        // Add year markers
-        for (let year = minYear; year <= maxYear; year += 10) {
-            const position = ((year - minYear) / yearRange) * 100;
+
+        // Add year markers with better spacing
+        const minYear = minDate.getFullYear();
+        const maxYear = maxDate.getFullYear();
+
+        for (let year = minYear; year <= maxYear; year += Math.max(1, Math.floor((maxYear - minYear) / 20))) {
+            const yearStart = new Date(year, 0, 1);
+            const position = Math.max(0, Math.min(100, ((yearStart - minDate) / totalTimeRange) * 100));
+
             const yearElement = document.createElement('div');
             yearElement.className = 'timeline-year';
             yearElement.style.left = `${position}%`;
             yearElement.textContent = year;
+            yearElement.style.position = 'absolute';
             scale.appendChild(yearElement);
         }
 
@@ -1410,30 +1469,56 @@ class GeopoliticalApp {
 
     selectEvent(eventId) {
         const event = this.events.find(e => e.id === eventId);
-        if (!event) return;
+        if (!event) {
+            console.warn(`Event with ID ${eventId} not found`);
+            return;
+        }
 
         this.selectedEvent = event;
 
-        // Update timeline active state
+        // Update timeline active state with better error handling
         document.querySelectorAll('.timeline-event').forEach(el => {
             el.classList.remove('active');
         });
+
         const timelineEvent = document.querySelector(`[data-event-id="${eventId}"]`);
         if (timelineEvent) {
             timelineEvent.classList.add('active');
+            // Ensure the active event is visible (scroll into view if needed)
+            timelineEvent.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        } else {
+            console.warn(`Timeline event element for ID ${eventId} not found`);
         }
 
-        // Smart camera transition to event
-        this.cameraController.focusOnEvent(event);
-        
-        // Highlight marker
-        this.highlightMarker(event);
+        // Smart camera transition to event (with error handling)
+        try {
+            if (this.cameraController && this.cameraController.focusOnEvent) {
+                this.cameraController.focusOnEvent(event);
+            }
+        } catch (error) {
+            console.warn('Error focusing camera on event:', error);
+        }
 
-        // Update details panel
-        this.displayEventDetails(event);
-        
+        // Highlight marker (with error handling)
+        try {
+            if (this.highlightMarker) {
+                this.highlightMarker(event);
+            }
+        } catch (error) {
+            console.warn('Error highlighting marker:', error);
+        }
+
+        // Update details panel (with error handling)
+        try {
+            if (this.displayEventDetails) {
+                this.displayEventDetails(event);
+            }
+        } catch (error) {
+            console.warn('Error displaying event details:', error);
+        }
+
         // Close mobile menu if open
-        if (this.isMobile && this.sidebarVisible) {
+        if (this.isMobile && this.sidebarVisible && this.toggleMobileMenu) {
             this.toggleMobileMenu();
         }
 
@@ -2107,10 +2192,25 @@ class GeopoliticalApp {
     updateTimelinePlayhead() {
         const playhead = document.getElementById('timelinePlayhead');
         if (!playhead || this.playbackEvents.length === 0) return;
-        
-        const progress = this.currentPlaybackIndex / this.playbackEvents.length;
-        const timelineWidth = document.getElementById('timeline').offsetWidth;
-        playhead.style.left = `${progress * timelineWidth}px`;
+
+        // Find the position of the current event on the timeline
+        const currentEvent = this.playbackEvents[this.currentPlaybackIndex];
+        if (!currentEvent) return;
+
+        const timelineEvent = document.querySelector(`[data-event-id="${currentEvent.id}"]`);
+        if (timelineEvent) {
+            // Position playhead at the actual event location
+            const eventRect = timelineEvent.getBoundingClientRect();
+            const timelineRect = document.getElementById('timeline').getBoundingClientRect();
+            const relativeLeft = eventRect.left - timelineRect.left + (eventRect.width / 2);
+            playhead.style.left = `${relativeLeft}px`;
+        } else {
+            // Fallback to progress-based positioning if event element not found
+            const progress = this.currentPlaybackIndex / this.playbackEvents.length;
+            const timelineWidth = document.getElementById('timeline').offsetWidth;
+            playhead.style.left = `${progress * timelineWidth}px`;
+        }
+
         playhead.classList.add('active');
     }
     
@@ -2137,15 +2237,45 @@ class GeopoliticalApp {
     
     seekToProgress(e) {
         if (!this.playbackEvents.length) return;
-        
+
         const rect = e.currentTarget.getBoundingClientRect();
-        const progress = (e.clientX - rect.left) / rect.width;
-        const targetIndex = Math.floor(progress * this.playbackEvents.length);
-        
-        this.currentPlaybackIndex = Math.max(0, Math.min(targetIndex, this.playbackEvents.length - 1));
+        const clickX = e.clientX - rect.left;
+        const progress = Math.max(0, Math.min(1, clickX / rect.width));
+
+        // Find the closest event to the clicked position
+        const timelineRect = document.getElementById('timeline').getBoundingClientRect();
+        const timelineWidth = timelineRect.width;
+        const clickPosition = clickX;
+
+        // Find the event closest to the clicked position
+        let closestEvent = null;
+        let closestDistance = Infinity;
+
+        this.playbackEvents.forEach((event, index) => {
+            const eventElement = document.querySelector(`[data-event-id="${event.id}"]`);
+            if (eventElement) {
+                const eventRect = eventElement.getBoundingClientRect();
+                const eventCenter = eventRect.left - timelineRect.left + (eventRect.width / 2);
+                const distance = Math.abs(eventCenter - clickPosition);
+
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestEvent = { event, index };
+                }
+            }
+        });
+
+        if (closestEvent) {
+            this.currentPlaybackIndex = closestEvent.index;
+        } else {
+            // Fallback to progress-based calculation
+            const targetIndex = Math.floor(progress * this.playbackEvents.length);
+            this.currentPlaybackIndex = Math.max(0, Math.min(targetIndex, this.playbackEvents.length - 1));
+        }
+
         this.updateProgress();
         this.updateTimelinePlayhead();
-        
+
         if (this.currentPlaybackIndex < this.playbackEvents.length) {
             this.selectEvent(this.playbackEvents[this.currentPlaybackIndex].id);
         }
