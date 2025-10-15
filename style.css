@@ -2140,20 +2140,18 @@ body.light-theme {
   pointer-events: auto;
 }
 
-.timeline-wrapper {
-  position: relative;
-  height: 60px;
-}
+/* Removed - timeline itself handles positioning */
 
 .timeline-playhead {
   position: absolute;
   top: 0;
-  bottom: 0;
+  height: 100%;
   width: 2px;
   background: var(--color-primary);
   z-index: 20;
   opacity: 0;
-  transition: all var(--duration-fast) var(--ease-standard);
+  transition: left var(--duration-fast) var(--ease-standard),
+              opacity var(--duration-fast) var(--ease-standard);
   box-shadow: 0 0 10px rgba(var(--color-primary-rgb), 0.5);
   pointer-events: none;
 }
@@ -2187,19 +2185,21 @@ body.light-theme {
 }
 
 .timeline {
+  min-height: 60px;
   height: 60px;
   position: relative;
   background: linear-gradient(to right, var(--color-border) 0%, var(--color-border) 100%);
   background-size: 1px 2px;
   background-position: 0 50%;
   background-repeat: repeat-x;
-  transition: height var(--duration-normal) var(--ease-standard);
+  transition: height var(--duration-normal) var(--ease-standard),
+              min-height var(--duration-normal) var(--ease-standard);
 }
 
 .timeline-event {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
+  left: 0;
   width: 12px;
   height: 12px;
   border-radius: var(--radius-full);
@@ -2207,6 +2207,8 @@ body.light-theme {
   transition: all var(--duration-fast) var(--ease-standard);
   border: 2px solid var(--color-surface);
   z-index: 1;
+  /* Default transform - will be set by JS */
+  transform: translate(-50%, -50%);
   /* Minimum touch target for accessibility */
   min-width: 12px;
   min-height: 12px;
@@ -2240,12 +2242,12 @@ body.light-theme {
 }
 
 .timeline-event:hover {
-  transform: translateY(-50%) scale(1.5);
+  transform: translate(-50%, -50%) scale(1.5);
   z-index: 10;
 }
 
 .timeline-event.active {
-  transform: translateY(-50%) scale(1.8);
+  transform: translate(-50%, -50%) scale(1.8);
   box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.3);
   z-index: 15;
 }
@@ -2674,7 +2676,7 @@ textarea:focus-visible {
   }
   
   .timeline-event:hover {
-    transform: translateY(-50%);
+    transform: translate(-50%, -50%);
   }
   
   .timeline-event:hover .timeline-tooltip {

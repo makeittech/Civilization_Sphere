@@ -991,7 +991,9 @@ class GeopoliticalApp {
         const baseHeight = 60;
         const rowHeight = 20;
         const calculatedHeight = Math.min(baseHeight + (maxRows - 1) * rowHeight, 120);
+        // Set height on the timeline element
         timeline.style.height = `${calculatedHeight}px`;
+        timeline.style.minHeight = `${calculatedHeight}px`;
 
         // Add events to timeline with collision-aware positioning
         eventPositions.forEach(({ event, position, size, row }) => {
@@ -1012,7 +1014,10 @@ class GeopoliticalApp {
             // Apply vertical offset based on row
             // Center events when there are multiple rows
             const verticalOffset = row * rowHeight - ((maxRows - 1) * rowHeight) / 2;
-            eventElement.style.top = `calc(50% + ${verticalOffset}px)`;
+            // Use CSS variable or direct positioning without conflicting with transform
+            // We need to override the default 50% transform with an absolute position
+            eventElement.style.top = `${50 + (verticalOffset / calculatedHeight * 100)}%`;
+            eventElement.style.transform = 'translate(-50%, -50%)';
 
             const tooltip = document.createElement('div');
             tooltip.className = 'timeline-tooltip';
