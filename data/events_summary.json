@@ -1,25 +1,135 @@
 {
-  "total_events": 61,
-  "new_events_added": 1,
+  "total_events": 84,
+  "new_events_added": 23,
   "counts_per_channel": {
     "Неаполітичні": 15,
     "Good Times Bad Times UA": 16,
     "Чотири сторони": 15,
-    "Ціна Держави": 15
+    "Ціна Держави": 15,
+    "Historical Pandemics": 23
   },
   "sample_new_events": [
     {
-      "id": "8b0gW3io_iQ",
-      "title": "The Syrian Game of Thrones Gains Momentum",
-      "date": "2025-10-14T07:18:40.459Z",
-      "region": "Unspecified",
-      "category": "Geopolitics/News/Analysis",
-      "channel_name": "Good Times Bad Times UA",
-      "source_url": "https://www.youtube.com/watch?v=8b0gW3io_iQ",
-      "description": "🟥 React to global changes with XTB: https://link-pso.xtb.com/pso/6iHsa 🟥 Investing is risky. Invest responsibly.  📌 Support GTBT on Patreon! https://www.patreon.com/GTBT➡️ Paypal: https://www.paypal.com/paypalme/GoodTimesBadTimes📈 For business enquiries, use this link to book a sponsorship with us: https://app.thoughtleaders.io/#/reserve/good-times-bad-timesProduction: Hubert WalasAnalysis: Tomasz RydelekEditing: Hubert WalasEditing Director: Łukasz SzypulskiMaps animations: Łukasz SzypulskiMotion Design: Breno SalesVideo Editing: Łukasz SzypulskiSound Engineer: Dominik Kojder Music: Michael Vignola - MisleadVoiceover: Hubert WalasBusiness inquiries:office@gt-bt.com🗺️ Maps: https://aescripts.com/geolayers/?aff=90⚪ GTBT Polish - https://www.youtube.com/@GoodTimesBadTimesPL🟤 GTBT на русском: -   https://www.youtube.com/@GoodTimesBadTimesRU🟣 GTBT France -    https://www.youtube.com/@GoodTimesBadTimesFR⚫️ GTBT Deutschland -     https://www.youtube.com/@GoodTimesBadTimesDE🟡 GTBT Україна -    https://www.youtube.com/@GoodTimesBadTimesUA🟢 GTBT Brasil-    https://www.youtube.com/@GoodTimesBadTimesBR🔴 GTBT Español -     https://www.youtube.com/@GoodTimesBadTimesES 🐦Twitter - https://twitter.com/hubertwalas_📘 Facebook - https://www.facebook.com/Good-Times-Bad-Times-102549314709760/Sources - on request: office@gt-bt.com#Syria #MiddleEast #Geopolitics",
+      "id": "PANDEMIC_JUSTINIAN_541",
+      "title": "Plague of Justinian begins",
+      "date": "0541-01-01T00:00:00.000Z",
+      "region": "Europe",
+      "category": "Global Crises",
+      "channel_name": "Historical Pandemics",
+      "source_url": "https://en.wikipedia.org/wiki/Plague_of_Justinian",
+      "description": "First recorded plague pandemic affecting the Byzantine Empire and Mediterranean.",
       "channel_id": "",
-      "source": "YouTube",
-      "tags": []
+      "source": "Historical",
+      "tags": [
+        "pandemic",
+        "epidemic",
+        "disease",
+        "plague",
+        "yersinia pestis"
+      ],
+      "url": "https://en.wikipedia.org/wiki/Plague_of_Justinian",
+      "channels": [
+        "Historical Pandemics"
+      ],
+      "importance": 9,
+      "place": "Byzantine Empire (Constantinople)"
+    },
+    {
+      "id": "PANDEMIC_BLACK_DEATH_1347",
+      "title": "Black Death spreads in Europe",
+      "date": "1347-10-01T00:00:00.000Z",
+      "region": "Europe",
+      "category": "Global Crises",
+      "channel_name": "Historical Pandemics",
+      "source_url": "https://en.wikipedia.org/wiki/Black_Death",
+      "description": "Bubonic plague pandemic killing tens of millions across Eurasia and North Africa.",
+      "channel_id": "",
+      "source": "Historical",
+      "tags": [
+        "pandemic",
+        "epidemic",
+        "disease",
+        "plague",
+        "yersinia pestis"
+      ],
+      "url": "https://en.wikipedia.org/wiki/Black_Death",
+      "channels": [
+        "Historical Pandemics"
+      ],
+      "importance": 10,
+      "place": "Europe and North Africa"
+    },
+    {
+      "id": "PANDEMIC_THIRD_PLAGUE_1894",
+      "title": "Third Plague Pandemic begins",
+      "date": "1894-06-01T00:00:00.000Z",
+      "region": "Asia",
+      "category": "Global Crises",
+      "channel_name": "Historical Pandemics",
+      "source_url": "https://en.wikipedia.org/wiki/Third_plague_pandemic",
+      "description": "Global bubonic plague pandemic originating in Yunnan and Hong Kong.",
+      "channel_id": "",
+      "source": "Historical",
+      "tags": [
+        "pandemic",
+        "epidemic",
+        "disease",
+        "plague"
+      ],
+      "url": "https://en.wikipedia.org/wiki/Third_plague_pandemic",
+      "channels": [
+        "Historical Pandemics"
+      ],
+      "importance": 8,
+      "place": "Hong Kong, Yunnan"
+    },
+    {
+      "id": "PANDEMIC_GREAT_PLAGUE_LONDON_1665",
+      "title": "Great Plague of London",
+      "date": "1665-06-01T00:00:00.000Z",
+      "region": "Europe",
+      "category": "Global Crises",
+      "channel_name": "Historical Pandemics",
+      "source_url": "https://en.wikipedia.org/wiki/Great_Plague_of_London",
+      "description": "Major outbreak of bubonic plague in London killing a quarter of the population.",
+      "channel_id": "",
+      "source": "Historical",
+      "tags": [
+        "pandemic",
+        "epidemic",
+        "disease",
+        "plague"
+      ],
+      "url": "https://en.wikipedia.org/wiki/Great_Plague_of_London",
+      "channels": [
+        "Historical Pandemics"
+      ],
+      "importance": 8,
+      "place": "London, England"
+    },
+    {
+      "id": "PANDEMIC_MARSEILLE_1720",
+      "title": "Great Plague of Marseille",
+      "date": "1720-05-25T00:00:00.000Z",
+      "region": "Europe",
+      "category": "Global Crises",
+      "channel_name": "Historical Pandemics",
+      "source_url": "https://en.wikipedia.org/wiki/Great_Plague_of_Marseille",
+      "description": "One of the last significant European outbreaks of bubonic plague.",
+      "channel_id": "",
+      "source": "Historical",
+      "tags": [
+        "pandemic",
+        "epidemic",
+        "disease",
+        "plague"
+      ],
+      "url": "https://en.wikipedia.org/wiki/Great_Plague_of_Marseille",
+      "channels": [
+        "Historical Pandemics"
+      ],
+      "importance": 7,
+      "place": "Marseille, France"
     }
   ]
 }
