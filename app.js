@@ -1042,7 +1042,22 @@ class GeopoliticalApp {
         });
 
         // Add year markers with collision avoidance
-        const step = yearRange >= 10 ? 10 : yearRange >= 5 ? 5 : 1;
+        // Use larger steps to reduce clutter and improve visual appeal
+        let step;
+        if (yearRange >= 100) {
+            step = 50; // For very large ranges (100+ years), show every 50 years
+        } else if (yearRange >= 50) {
+            step = 20; // For 50-99 year ranges, show every 20 years
+        } else if (yearRange >= 20) {
+            step = 10; // For 20-49 year ranges, show every 10 years
+        } else if (yearRange >= 10) {
+            step = 5;  // For 10-19 year ranges, show every 5 years
+        } else if (yearRange >= 5) {
+            step = 2;  // For 5-9 year ranges, show every 2 years
+        } else {
+            step = 1;  // For very small ranges, show every year
+        }
+        
         const yearMarkers = [];
         
         for (let year = minYear; year <= maxYear; year += step) {
@@ -1059,7 +1074,7 @@ class GeopoliticalApp {
         }
         
         // Add year markers to scale with collision detection
-        const YEAR_LABEL_MIN_SPACING = 8; // Minimum percentage spacing between year labels
+        const YEAR_LABEL_MIN_SPACING = 12; // Increased minimum spacing to reduce clutter
         const addedYears = [];
         
         yearMarkers.forEach(({ year, position }) => {
