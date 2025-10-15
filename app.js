@@ -929,87 +929,17 @@ class GeopoliticalApp {
         timeline.innerHTML = '';
         scale.innerHTML = '';
 
-        // Create a map to track events per year for better positioning
-        const eventsByYear = new Map();
+        // Store timeline data for virtualization
+        this.timelineData = {
+            sortedEvents,
+            clusteredEvents: this.clusterEvents(sortedEvents, minDate, maxDate),
+            minDate,
+            maxDate,
+            totalTimeRange
+        };
 
-        // Add events to timeline with improved positioning
-        sortedEvents.forEach(event => {
-            const eventDate = new Date(event.date);
-            const eventYear = eventDate.getFullYear();
-            const yearProgress = (eventDate - new Date(eventYear, 0, 1)) / (new Date(eventYear + 1, 0, 1) - new Date(eventYear, 0, 1));
-
-            // Base position on year
-            const basePosition = ((eventDate - minDate) / totalTimeRange) * 100;
-
-            // Adjust for multiple events in same year
-            if (!eventsByYear.has(eventYear)) {
-                eventsByYear.set(eventYear, []);
-            }
-            const yearEvents = eventsByYear.get(eventYear);
-
-            // Calculate position within year to avoid overlap
-            const yearWidth = 100 / (sortedEvents.length || 1); // Distribute across timeline
-            const eventIndexInYear = yearEvents.length;
-            const adjustedPosition = basePosition + (eventIndexInYear * 0.5); // Small offset for each event in same year
-
-            yearEvents.push(event);
-
-            const category = this.categories.find(cat => cat.name === event.category);
-            const color = category ? category.color : '#333';
-
-            const eventElement = document.createElement('div');
-            eventElement.className = 'timeline-event';
-            eventElement.style.left = `${Math.min(adjustedPosition, 98)}%`; // Ensure doesn't go beyond 98%
-            eventElement.style.backgroundColor = color;
-            eventElement.style.position = 'absolute';
-            eventElement.dataset.eventId = event.id;
-
-            // Improved sizing based on importance with better minimum size
-            const importance = Number(event.importance) || 5;
-            const size = Math.max(12, Math.min(24, importance * 2.4)); // Larger base size for better visibility
-            eventElement.style.width = `${size}px`;
-            eventElement.style.height = `${size}px`;
-
-            // Add z-index for overlapping events
-            eventElement.style.zIndex = Math.floor(importance);
-
-            const tooltip = document.createElement('div');
-            tooltip.className = 'timeline-tooltip';
-            tooltip.textContent = `${event.title} (${eventDate.getFullYear()}) • ${event.region || 'Unknown'}`;
-            eventElement.appendChild(tooltip);
-
-            eventElement.addEventListener('click', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-
-                // Add visual feedback for click
-                eventElement.classList.add('clicked');
-                setTimeout(() => {
-                    eventElement.classList.remove('clicked');
-                }, 150);
-
-                try {
-                    this.selectEvent(event.id);
-                } catch (error) {
-                    console.error('Error selecting event:', error);
-                }
-            });
-
-            // Add keyboard support for accessibility
-            eventElement.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    this.selectEvent(event.id);
-                }
-            });
-
-            // Make focusable for keyboard navigation
-            eventElement.setAttribute('tabindex', '0');
-            eventElement.setAttribute('role', 'button');
-            eventElement.setAttribute('aria-label', `Select event: ${event.title}`);
-
-            timeline.appendChild(eventElement);
-        });
+        // Set up virtualization
+        this.setupTimelineVirtualization(timeline);
 
         // Add year markers with better spacing
         const minYear = minDate.getFullYear();
@@ -1036,11 +966,452 @@ class GeopoliticalApp {
         }
         // Re-append to ensure it's within the freshly rebuilt timeline
         timeline.appendChild(playhead);
+
+        // Initial render of visible events
+        this.updateVisibleEvents();
+
+        // Set up resize observer for performance
+        this.resizeObserver = new ResizeObserver(() => {
+            // Debounce resize events
+            clearTimeout(this.resizeTimeout);
+            this.resizeTimeout = setTimeout(() => {
+                this.updateVisibleEvents();
+            }, 100);
+        });
+
+        if (timeline) {
+            this.resizeObserver.observe(timeline);
+        }
+
         this.isReady = true;
     }
 
+    setupTimelineVirtualization(timeline) {
+        // Set up scroll event listener for virtualization
+        const timelineContent = document.querySelector('.timeline-content');
+        if (timelineContent) {
+            this.virtualizationObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        this.updateVisibleEvents();
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            // Observe timeline content for visibility changes
+            this.virtualizationObserver.observe(timelineContent);
+
+            // Also listen for scroll events on the timeline content
+            timelineContent.addEventListener('scroll', () => {
+                this.updateVisibleEvents();
+            });
+        }
+
+        // Store visible events tracking
+        this.visibleEvents = new Set();
+        this.lastViewportStart = 0;
+        this.lastViewportEnd = 100;
+
+        // Performance monitoring
+        this.performanceMetrics = {
+            renderCount: 0,
+            lastRenderTime: 0,
+            averageRenderTime: 0
+        };
+    }
+
+    // Performance monitoring utility
+    measurePerformance(operation, fn) {
+        const start = performance.now();
+        const result = fn();
+        const end = performance.now();
+
+        const duration = end - start;
+        this.performanceMetrics.lastRenderTime = duration;
+
+        // Update rolling average
+        this.performanceMetrics.renderCount++;
+        this.performanceMetrics.averageRenderTime =
+            (this.performanceMetrics.averageRenderTime * (this.performanceMetrics.renderCount - 1) + duration) / this.performanceMetrics.renderCount;
+
+        if (this.performanceMetrics.renderCount % 10 === 0) {
+            console.log(`Performance: ${operation} took ${duration.toFixed(2)}ms (avg: ${this.performanceMetrics.averageRenderTime.toFixed(2)}ms)`);
+        }
+
+        return result;
+    }
+
+    updateVisibleEvents() {
+        if (!this.timelineData) return;
+
+        this.measurePerformance('updateVisibleEvents', () => {
+            const timeline = document.getElementById('timeline');
+            const timelineContent = document.querySelector('.timeline-content');
+
+            if (!timeline || !timelineContent) return;
+
+            const timelineRect = timeline.getBoundingClientRect();
+            const contentRect = timelineContent.getBoundingClientRect();
+
+            // Calculate visible range as percentage of timeline
+            const visibleStart = Math.max(0, (contentRect.left - timelineRect.left) / timelineRect.width * 100);
+            const visibleEnd = Math.min(100, (contentRect.right - timelineRect.left) / timelineRect.width * 100);
+
+            // Add padding to visible range for smoother experience
+            const padding = 10; // Show events 10% before and after visible area
+            const extendedStart = Math.max(0, visibleStart - padding);
+            const extendedEnd = Math.min(100, visibleEnd + padding);
+
+            // Only update if viewport has significantly changed (throttle updates)
+            if (Math.abs(this.lastViewportStart - extendedStart) < 1 &&
+                Math.abs(this.lastViewportEnd - extendedEnd) < 1) {
+                return;
+            }
+
+            this.lastViewportStart = extendedStart;
+            this.lastViewportEnd = extendedEnd;
+
+            // Find events/clusters in the visible range
+            const visibleClusters = this.timelineData.clusteredEvents.filter(cluster => {
+                if (cluster.length === 1) {
+                    // Single event
+                    const eventDate = new Date(cluster[0].date);
+                    const position = ((eventDate - this.timelineData.minDate) / this.timelineData.totalTimeRange) * 100;
+                    return position >= extendedStart && position <= extendedEnd;
+                } else {
+                    // Cluster
+                    const firstEvent = cluster[0];
+                    const lastEvent = cluster[cluster.length - 1];
+                    const startPosition = ((new Date(firstEvent.date) - this.timelineData.minDate) / this.timelineData.totalTimeRange) * 100;
+                    const endPosition = ((new Date(lastEvent.date) - this.timelineData.minDate) / this.timelineData.totalTimeRange) * 100;
+                    return (startPosition <= extendedEnd && endPosition >= extendedStart);
+                }
+            });
+
+            // Remove events that are no longer visible
+            const currentVisible = new Set();
+            visibleClusters.forEach(cluster => {
+                const clusterId = cluster.length === 1 ? cluster[0].id : `cluster_${cluster[0].id}_${cluster[cluster.length - 1].id}`;
+                currentVisible.add(clusterId);
+
+                if (!this.visibleEvents.has(clusterId)) {
+                    // Render new visible cluster
+                    this.renderEventCluster(timeline, cluster, this.timelineData.minDate, this.timelineData.totalTimeRange);
+                }
+            });
+
+            // Remove clusters that are no longer visible
+            this.visibleEvents.forEach(clusterId => {
+                if (!currentVisible.has(clusterId)) {
+                    const element = document.querySelector(`[data-event-id="${clusterId}"], [data-cluster-id="${clusterId}"]`);
+                    if (element) {
+                        element.remove();
+                    }
+                }
+            });
+
+            this.visibleEvents = currentVisible;
+        });
+    }
+
+    clusterEvents(sortedEvents, minDate, maxDate) {
+        const clusters = [];
+        const clusterThreshold = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+        let currentCluster = [];
+
+        sortedEvents.forEach(event => {
+            const eventDate = new Date(event.date);
+
+            if (currentCluster.length === 0) {
+                currentCluster.push(event);
+            } else {
+                const lastEventDate = new Date(currentCluster[currentCluster.length - 1].date);
+                const timeDiff = eventDate - lastEventDate;
+
+                if (timeDiff <= clusterThreshold) {
+                    // Add to current cluster if within threshold
+                    currentCluster.push(event);
+                } else {
+                    // Finalize current cluster and start new one
+                    if (currentCluster.length > 0) {
+                        clusters.push([...currentCluster]);
+                    }
+                    currentCluster = [event];
+                }
+            }
+        });
+
+        // Add the last cluster
+        if (currentCluster.length > 0) {
+            clusters.push(currentCluster);
+        }
+
+        return clusters;
+    }
+
+    renderEventCluster(timeline, cluster, minDate, totalTimeRange) {
+        if (cluster.length === 0) return;
+
+        // For single events, render normally
+        if (cluster.length === 1) {
+            this.renderSingleEvent(timeline, cluster[0], minDate, totalTimeRange);
+            return;
+        }
+
+        // For clustered events, render as a group
+        const firstEvent = cluster[0];
+        const lastEvent = cluster[cluster.length - 1];
+        const clusterDate = new Date(firstEvent.date);
+
+        // Calculate cluster position (center of the cluster)
+        const startPosition = ((new Date(firstEvent.date) - minDate) / totalTimeRange) * 100;
+        const endPosition = ((new Date(lastEvent.date) - minDate) / totalTimeRange) * 100;
+        const clusterPosition = (startPosition + endPosition) / 2;
+
+        // Determine cluster color (use the most common category or mix colors)
+        const categoryCount = {};
+        cluster.forEach(event => {
+            const category = event.category || 'unknown';
+            categoryCount[category] = (categoryCount[category] || 0) + 1;
+        });
+
+        const dominantCategory = Object.keys(categoryCount).reduce((a, b) =>
+            categoryCount[a] > categoryCount[b] ? a : b, Object.keys(categoryCount)[0]);
+
+        const category = this.categories.find(cat => cat.name === dominantCategory);
+        const color = category ? category.color : '#666';
+
+        // Create cluster element
+        const clusterElement = document.createElement('div');
+        clusterElement.className = 'timeline-cluster';
+        clusterElement.style.left = `${Math.min(clusterPosition, 98)}%`;
+        clusterElement.style.position = 'absolute';
+        clusterElement.dataset.clusterId = `cluster_${firstEvent.id}_${lastEvent.id}`;
+
+        // Size based on number of events and average importance
+        const avgImportance = cluster.reduce((sum, event) => sum + (Number(event.importance) || 5), 0) / cluster.length;
+        const size = Math.max(16, Math.min(32, avgImportance * 2.4 + cluster.length * 2));
+        clusterElement.style.width = `${size}px`;
+        clusterElement.style.height = `${size}px`;
+
+        // Style as cluster (maybe with a different shape or pattern)
+        clusterElement.style.backgroundColor = color;
+        clusterElement.style.borderRadius = '50%';
+        clusterElement.style.border = '2px solid var(--color-surface)';
+        clusterElement.style.boxShadow = '0 0 0 2px ' + color;
+        clusterElement.style.zIndex = Math.floor(avgImportance);
+
+        // Create tooltip with cluster information
+        const tooltip = document.createElement('div');
+        tooltip.className = 'timeline-tooltip cluster-tooltip';
+        tooltip.innerHTML = `
+            <strong>${cluster.length} Events</strong><br>
+            ${clusterDate.getFullYear()} • ${firstEvent.region || 'Multiple regions'}<br>
+            <small>Click to expand</small>
+        `;
+        clusterElement.appendChild(tooltip);
+
+        // Handle cluster click - could expand to show individual events or select representative event
+        clusterElement.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // For now, select the first event in the cluster
+            this.selectEvent(firstEvent.id);
+        });
+
+        // Make focusable for accessibility
+        clusterElement.setAttribute('tabindex', '0');
+        clusterElement.setAttribute('role', 'button');
+        clusterElement.setAttribute('aria-label', `${cluster.length} events clustered together`);
+
+        timeline.appendChild(clusterElement);
+    }
+
+    renderSingleEvent(timeline, event, minDate, totalTimeRange) {
+        const eventDate = new Date(event.date);
+        const position = ((eventDate - minDate) / totalTimeRange) * 100;
+
+        const category = this.categories.find(cat => cat.name === event.category);
+        const color = category ? category.color : '#333';
+
+        const eventElement = document.createElement('div');
+        eventElement.className = 'timeline-event';
+        eventElement.style.left = `${Math.min(position, 98)}%`;
+        eventElement.style.backgroundColor = color;
+        eventElement.style.position = 'absolute';
+        eventElement.dataset.eventId = event.id;
+
+        // Improved sizing based on importance with better minimum size
+        const importance = Number(event.importance) || 5;
+        const size = Math.max(12, Math.min(24, importance * 2.4));
+        eventElement.style.width = `${size}px`;
+        eventElement.style.height = `${size}px`;
+
+        // Add z-index for overlapping events
+        eventElement.style.zIndex = Math.floor(importance);
+
+        const tooltip = document.createElement('div');
+        tooltip.className = 'timeline-tooltip';
+        tooltip.textContent = `${event.title} (${eventDate.getFullYear()}) • ${event.region || 'Unknown'}`;
+        eventElement.appendChild(tooltip);
+
+        eventElement.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+
+            // Add visual feedback for click
+            eventElement.classList.add('clicked');
+            setTimeout(() => {
+                eventElement.classList.remove('clicked');
+            }, 150);
+
+            try {
+                this.selectEvent(event.id);
+            } catch (error) {
+                console.error('Error selecting event:', error);
+            }
+        });
+
+        // Add keyboard support for accessibility
+        eventElement.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.selectEvent(event.id);
+            }
+        });
+
+        // Make focusable for keyboard navigation
+        eventElement.setAttribute('tabindex', '0');
+        eventElement.setAttribute('role', 'button');
+        eventElement.setAttribute('aria-label', `Select event: ${event.title}`);
+
+        timeline.appendChild(eventElement);
+    }
+
     rebuildTimeline() {
-        this.initializeTimeline();
+        // Show loading progress
+        const loadingProgress = document.getElementById('timelineLoadingProgress');
+        const loadingProgressFill = document.getElementById('timelineLoadingProgressFill');
+        const loadingProgressText = document.getElementById('timelineLoadingProgressText');
+
+        if (loadingProgress) {
+            loadingProgress.style.display = 'block';
+            if (loadingProgressFill) loadingProgressFill.style.width = '0%';
+            if (loadingProgressText) loadingProgressText.textContent = 'Обробка даних...';
+        }
+
+        // Clear current timeline data
+        this.timelineData = null;
+        this.visibleEvents = new Set();
+
+        // Disconnect virtualization observer
+        if (this.virtualizationObserver) {
+            this.virtualizationObserver.disconnect();
+        }
+
+        // Disconnect resize observer
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+        }
+
+        // Clear performance metrics
+        this.performanceMetrics = {
+            renderCount: 0,
+            lastRenderTime: 0,
+            averageRenderTime: 0
+        };
+
+        // Use progressive loading for large datasets
+        if (this.events && this.events.length > 500) {
+            this.loadTimelineDataChunk(100).then(() => {
+                this.initializeTimeline();
+                if (loadingProgress) {
+                    loadingProgress.style.display = 'none';
+                }
+            });
+        } else {
+            this.initializeTimeline();
+            if (loadingProgress) {
+                loadingProgress.style.display = 'none';
+            }
+        }
+    }
+
+    // Memory cleanup for performance
+    cleanupTimeline() {
+        // Disconnect observers
+        if (this.virtualizationObserver) {
+            this.virtualizationObserver.disconnect();
+        }
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+        }
+
+        // Clear timeouts
+        if (this.resizeTimeout) {
+            clearTimeout(this.resizeTimeout);
+        }
+
+        // Clear performance metrics
+        this.performanceMetrics = null;
+
+        // Clear timeline data
+        this.timelineData = null;
+        this.visibleEvents = null;
+
+        // Clear any pending animations
+        if (this.timelineAnimation) {
+            clearTimeout(this.timelineAnimation);
+            this.timelineAnimation = null;
+        }
+    }
+    }
+
+    // Progressive loading implementation
+    loadTimelineDataChunk(chunkSize = 100) {
+        return new Promise((resolve) => {
+            if (!this.events || this.events.length === 0) {
+                resolve();
+                return;
+            }
+
+            const totalEvents = this.events.length;
+            const chunks = Math.ceil(totalEvents / chunkSize);
+
+            let currentChunk = 0;
+
+            const loadNextChunk = () => {
+                if (currentChunk >= chunks) {
+                    resolve();
+                    return;
+                }
+
+                const startIndex = currentChunk * chunkSize;
+                const endIndex = Math.min(startIndex + chunkSize, totalEvents);
+
+                // Simulate async loading (in real app, this would be API calls)
+                setTimeout(() => {
+                    console.log(`Loaded timeline chunk ${currentChunk + 1}/${chunks} (${startIndex}-${endIndex} events)`);
+
+                    // Update progress indicator if exists
+                    const loadingIndicator = document.getElementById('timelineLoadingProgress');
+                    if (loadingIndicator) {
+                        const progress = ((currentChunk + 1) / chunks) * 100;
+                        loadingIndicator.style.width = `${progress}%`;
+                    }
+
+                    currentChunk++;
+
+                    // Continue loading next chunk
+                    if (currentChunk < chunks) {
+                        loadNextChunk();
+                    } else {
+                        resolve();
+                    }
+                }, 10); // Small delay to show progressive loading
+            };
+
+            loadNextChunk();
+        });
     }
 
     initializeEventHandlers() {
@@ -2127,7 +2498,8 @@ class GeopoliticalApp {
 
     playTimelineAnimation() {
         if (this.isPlaying) return;
-        // ensure timeline is prepared
+
+        // Ensure timeline is prepared
         if (!this.isReady) {
             this.showTimelineReadyOverlay('Підготовка…');
             return;
@@ -2137,48 +2509,68 @@ class GeopoliticalApp {
         this.hideTimelineReadyOverlay();
         this.playbackEvents = [...this.filteredEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
         this.currentPlaybackIndex = 0;
-        
+
         // Update UI
         this.updatePlaybackUI();
-        
-        // Start playback
-        try {
-            this.continuePlayback();
-        } catch (err) {
-            this._telemetryError('play:start', err);
-            this.pauseTimelineAnimation();
-        }
+
+        // Use requestAnimationFrame for smooth animation
+        this.startSmoothPlayback();
     }
-    
+
+    startSmoothPlayback() {
+        let lastFrameTime = 0;
+        const targetFPS = 60;
+        const frameInterval = 1000 / targetFPS;
+
+        const animate = (currentTime) => {
+            if (!this.isPlaying) return;
+
+            // Throttle to target FPS for consistent performance
+            if (currentTime - lastFrameTime >= frameInterval) {
+                this.continuePlayback();
+                lastFrameTime = currentTime;
+            }
+
+            if (this.isPlaying) {
+                requestAnimationFrame(animate);
+            }
+        };
+
+        requestAnimationFrame(animate);
+    }
+
     continuePlayback() {
-        if (!this.isPlaying || this.currentPlaybackIndex >= this.playbackEvents.length) {
+        if (this.currentPlaybackIndex >= this.playbackEvents.length) {
             this.pauseTimelineAnimation();
             return;
         }
-        
+
         const currentEvent = this.playbackEvents[this.currentPlaybackIndex];
-        
-        // Update timeline playhead
-        this.updateTimelinePlayhead();
-        
-        // Update progress
-        this.updateProgress();
-        
-        // Select current event with smooth transition
-        this.selectEvent(currentEvent.id);
-        
-        // Mark timeline event as playing
-        const timelineEvent = document.querySelector(`[data-event-id="${currentEvent.id}"]`);
-        if (timelineEvent) {
-            timelineEvent.classList.add('playing');
-        }
-        
-        this.currentPlaybackIndex++;
-        
+
+        // Batch DOM updates for better performance
+        requestAnimationFrame(() => {
+            // Update timeline playhead (now uses transform for better performance)
+            this.updateTimelinePlayhead();
+
+            // Update progress
+            this.updateProgress();
+
+            // Select current event
+            this.selectEvent(currentEvent.id);
+
+            // Mark timeline event as playing
+            const timelineEvent = document.querySelector(`[data-event-id="${currentEvent.id}"]`);
+            if (timelineEvent) {
+                timelineEvent.classList.add('playing');
+            }
+
+            this.currentPlaybackIndex++;
+        });
+
         // Schedule next event based on speed
         const baseDelay = 2000; // 2 seconds base
         const delay = baseDelay / this.playbackSpeed;
-        
+
         this.timelineAnimation = setTimeout(() => {
             try {
                 this.continuePlayback();
@@ -2203,12 +2595,18 @@ class GeopoliticalApp {
             const eventRect = timelineEvent.getBoundingClientRect();
             const timelineRect = document.getElementById('timeline').getBoundingClientRect();
             const relativeLeft = eventRect.left - timelineRect.left + (eventRect.width / 2);
-            playhead.style.left = `${relativeLeft}px`;
+
+            // Use transform for better performance
+            playhead.style.transform = `translateX(${relativeLeft}px)`;
+            playhead.style.left = '0';
         } else {
             // Fallback to progress-based positioning if event element not found
             const progress = this.currentPlaybackIndex / this.playbackEvents.length;
             const timelineWidth = document.getElementById('timeline').offsetWidth;
-            playhead.style.left = `${progress * timelineWidth}px`;
+
+            // Use transform for better performance
+            playhead.style.transform = `translateX(${progress * timelineWidth}px)`;
+            playhead.style.left = '0';
         }
 
         playhead.classList.add('active');

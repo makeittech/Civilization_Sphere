@@ -2028,6 +2028,41 @@ body.light-theme {
   border-top: 1px solid var(--color-border);
 }
 
+/* Timeline Loading Progress */
+.timeline-loading-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-8) var(--space-16);
+  z-index: 10;
+}
+
+.loading-progress-track {
+  width: 100%;
+  height: 4px;
+  background: var(--color-secondary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: var(--space-4);
+}
+
+.loading-progress-fill {
+  height: 100%;
+  background: var(--color-primary);
+  width: 0%;
+  transition: width var(--duration-normal) var(--ease-standard);
+  border-radius: var(--radius-full);
+}
+
+.loading-progress-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
 .scroll-hint {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
@@ -2075,6 +2110,38 @@ body.light-theme {
 .timeline-event:focus {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+.timeline-cluster {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--color-surface);
+}
+
+.timeline-cluster:hover {
+  transform: translateY(-50%) scale(1.2);
+}
+
+.timeline-cluster:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.timeline-cluster.clicked {
+  transform: translateY(-50%) scale(1.1);
+  opacity: 0.8;
+}
+
+.cluster-tooltip {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: var(--space-4) var(--space-8);
+  max-width: 200px;
+  text-align: center;
 }
 
 .timeline-tooltip {
