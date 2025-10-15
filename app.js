@@ -485,13 +485,31 @@ class GeopoliticalApp {
         const sidebar = document.getElementById('rightSidebar');
         const toggleBtn = document.getElementById('rightSidebarToggle');
         if (!sidebar) return;
-        const shouldOpen = typeof forceState === 'boolean' ? forceState : !sidebar.classList.contains('open');
+
+        // Match CSS breakpoint: overlay behavior up to 1024px, desktop otherwise
+        const isOverlayMode = window.innerWidth <= 1024;
+        const isCurrentlyOpen = isOverlayMode
+            ? sidebar.classList.contains('open')
+            : !sidebar.classList.contains('collapsed');
+
+        const shouldOpen = typeof forceState === 'boolean' ? forceState : !isCurrentlyOpen;
+
         if (shouldOpen) {
-            sidebar.classList.add('open');
+            if (isOverlayMode) {
+                sidebar.classList.add('open');
+            } else {
+                sidebar.classList.remove('collapsed');
+            }
             if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+            sidebar.setAttribute('aria-hidden', 'false');
         } else {
-            sidebar.classList.remove('open');
+            if (isOverlayMode) {
+                sidebar.classList.remove('open');
+            } else {
+                sidebar.classList.add('collapsed');
+            }
             if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+            sidebar.setAttribute('aria-hidden', 'true');
         }
     }
 
@@ -1414,7 +1432,7 @@ class GeopoliticalApp {
             this.toggleMobileMenu();
         }
 
-        // Ensure right sidebar is visible on small screens when an event is selected
+        // Ensure right sidebar is visible when an event is selected
         this.toggleRightSidebar(true);
     }
     
