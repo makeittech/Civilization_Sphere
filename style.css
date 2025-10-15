@@ -2293,36 +2293,38 @@ body.light-theme {
 }
 
 .timeline-scale {
-  height: 24px;
+  height: 40px; /* Increased from 24px to 40px for better label visibility */
   position: relative;
   margin-top: var(--space-8);
   border-top: 1px solid var(--color-border);
   overflow: visible; /* Changed from hidden to visible to prevent clipping */
   padding: 0 var(--space-4);
-  min-height: 24px;
+  min-height: 40px; /* Increased to match height */
   flex-shrink: 0; /* Prevent scale from shrinking */
 }
 
 .timeline-year {
   position: absolute;
-  top: var(--space-4);
+  top: var(--space-6); /* Increased from space-4 to space-6 for better positioning */
   font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
+  color: var(--color-text);
   transform: translateX(-50%);
   background-color: var(--color-surface);
-  padding: var(--space-2) var(--space-6);
+  padding: var(--space-4) var(--space-8);
   border-radius: var(--radius-sm);
   white-space: nowrap;
-  z-index: 1;
-  font-weight: var(--font-weight-medium);
+  z-index: 100; /* Increased from 1 to 100 to ensure visibility above other elements */
+  font-weight: var(--font-weight-semibold);
   pointer-events: none;
   user-select: none;
   max-width: 80px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: visible; /* Changed from hidden to visible */
+  text-overflow: clip;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   border: 1px solid var(--color-border);
   transition: all var(--duration-fast) var(--ease-standard);
+  display: block; /* Ensure display is set */
+  opacity: 1; /* Ensure opacity is 1 */
 }
 
 /* Prevent first year label from overflowing left edge */
@@ -2342,25 +2344,27 @@ body.light-theme {
 @media (min-width: 769px) {
   .timeline-year {
     font-size: var(--font-size-sm);
-    padding: var(--space-4) var(--space-8);
-    max-width: 100px;
+    padding: var(--space-6) var(--space-10);
+    max-width: 120px; /* Increased from 100px */
+    top: var(--space-8); /* Better vertical positioning on desktop */
   }
 }
 
 /* Mobile: Compact year labels */
 @media (max-width: 768px) {
   .timeline-year {
-    font-size: 10px;
-    padding: var(--space-2) var(--space-4);
-    max-width: 60px;
-    font-weight: var(--font-weight-semibold);
+    font-size: 11px; /* Increased from 10px for better readability */
+    padding: var(--space-4) var(--space-6); /* Increased padding */
+    max-width: 70px; /* Increased from 60px */
+    font-weight: var(--font-weight-bold);
+    top: var(--space-6); /* Ensure proper positioning */
   }
   
   /* Ensure better visibility on mobile */
   .timeline-scale {
-    height: 28px;
+    height: 36px; /* Increased for better mobile visibility */
     padding: 0 var(--space-2);
-    min-height: 28px;
+    min-height: 36px;
   }
 }
 
@@ -2368,9 +2372,11 @@ body.light-theme {
 @keyframes fadeInYear {
   from {
     opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
   }
   to {
     opacity: 1;
+    transform: translateX(-50%) translateY(0);
   }
 }
 
@@ -2378,36 +2384,64 @@ body.light-theme {
   animation: fadeInYear var(--duration-normal) var(--ease-standard);
 }
 
+/* Importance-based styling */
+.timeline-year[data-importance="high"] {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  border-width: 2px;
+  box-shadow: 0 3px 12px rgba(var(--color-primary-rgb), 0.25);
+}
+
+.timeline-year[data-importance="medium"] {
+  font-weight: var(--font-weight-semibold);
+}
+
+.timeline-year[data-edge="true"] {
+  font-weight: var(--font-weight-bold);
+}
+
 /* Ensure year labels are above timeline events */
 .timeline-scale {
-  z-index: 10;
+  z-index: 50; /* Increased from 10 to 50 */
   position: relative;
   background-color: var(--color-surface);
 }
 
 /* Improved contrast for timeline years in both themes */
 [data-color-scheme="dark"] .timeline-year {
-  background-color: rgba(var(--color-charcoal-800), 0.95);
-  backdrop-filter: blur(4px);
+  background-color: rgba(38, 40, 40, 0.98); /* More opaque for better visibility */
+  color: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
 [data-color-scheme="light"] .timeline-year {
-  background-color: rgba(var(--color-cream-100), 0.95);
-  backdrop-filter: blur(4px);
+  background-color: rgba(255, 255, 253, 0.98); /* More opaque for better visibility */
+  color: rgba(19, 52, 59, 0.95);
+  border-color: rgba(94, 82, 64, 0.25);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* Ensure years are readable in system preference mode */
 @media (prefers-color-scheme: dark) {
   .timeline-year {
-    background-color: rgba(38, 40, 40, 0.95);
-    backdrop-filter: blur(4px);
+    background-color: rgba(38, 40, 40, 0.98);
+    color: rgba(255, 255, 255, 0.95);
+    border-color: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
   }
 }
 
 @media (prefers-color-scheme: light) {
   .timeline-year {
-    background-color: rgba(255, 255, 253, 0.95);
-    backdrop-filter: blur(4px);
+    background-color: rgba(255, 255, 253, 0.98);
+    color: rgba(19, 52, 59, 0.95);
+    border-color: rgba(94, 82, 64, 0.25);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   }
 }
 

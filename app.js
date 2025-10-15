@@ -1106,7 +1106,8 @@ class GeopoliticalApp {
         uniqueYears.sort((a, b) => a.position - b.position);
         
         // Add year markers with collision detection
-        const YEAR_LABEL_MIN_SPACING = isMobile ? 12 : 5; // More spacing on mobile
+        // Increased spacing to prevent overlap: mobile needs more space due to smaller screen
+        const YEAR_LABEL_MIN_SPACING = isMobile ? 15 : 6; // More spacing on mobile (increased from 12/5)
         const addedYears = [];
         
         uniqueYears.forEach(({ year, position, eventCount }) => {
@@ -1137,10 +1138,23 @@ class GeopoliticalApp {
                 yearElement.style.left = `${position}%`;
                 yearElement.textContent = year;
                 
-                // Add visual emphasis for years with many events (optional)
+                // Add visual emphasis for years with many events
                 if (eventCount >= 5) {
-                    yearElement.style.fontWeight = 'var(--font-weight-bold)';
+                    yearElement.style.fontWeight = '700'; // Extra bold for important years
                     yearElement.style.color = 'var(--color-primary)';
+                    yearElement.style.borderColor = 'var(--color-primary)';
+                    yearElement.style.borderWidth = '2px';
+                    yearElement.setAttribute('data-importance', 'high');
+                } else if (eventCount >= 2) {
+                    yearElement.style.fontWeight = '600'; // Semi-bold for moderate years
+                    yearElement.setAttribute('data-importance', 'medium');
+                } else {
+                    yearElement.setAttribute('data-importance', 'low');
+                }
+                
+                // Mark edge years for reference
+                if (year === minYear || year === maxYear) {
+                    yearElement.setAttribute('data-edge', 'true');
                 }
                 
                 scale.appendChild(yearElement);
