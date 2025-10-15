@@ -64,6 +64,8 @@
   --color-info: var(--color-slate-500);
   --color-focus-ring: rgba(var(--color-teal-500-rgb), 0.4);
   --color-select-caret: rgba(var(--color-slate-900-rgb), 0.8);
+  /* Provide RGB for primary to enable rgba() shadows */
+  --color-primary-rgb: var(--color-teal-500-rgb);
 
   /* Common style patterns */
   --focus-ring: 0 0 0 3px var(--color-focus-ring);
@@ -188,6 +190,8 @@
     --button-border-secondary: rgba(var(--color-gray-400-rgb), 0.2);
     --color-border-secondary: rgba(var(--color-gray-400-rgb), 0.2);
     --color-select-caret: rgba(var(--color-gray-200-rgb), 0.8);
+    /* RGB alias for primary to support rgba() in dark mode */
+    --color-primary-rgb: var(--color-teal-300-rgb);
 
     /* Common style patterns - updated for dark mode */
     --focus-ring: 0 0 0 3px var(--color-focus-ring);
@@ -247,6 +251,8 @@
     inset 0 -1px 0 rgba(0, 0, 0, 0.15);
   --color-border-secondary: rgba(var(--color-gray-400-rgb), 0.2);
   --color-select-caret: rgba(var(--color-gray-200-rgb), 0.8);
+  /* RGB alias for primary to support rgba() when forced */
+  --color-primary-rgb: var(--color-teal-300-rgb);
 
   /* Common style patterns - updated for dark mode */
   --focus-ring: 0 0 0 3px var(--color-focus-ring);
@@ -295,6 +301,8 @@
   --color-error-rgb: var(--color-red-500-rgb);
   --color-warning-rgb: var(--color-orange-500-rgb);
   --color-info-rgb: var(--color-slate-500-rgb);
+  /* RGB alias for primary to support rgba() when forced */
+  --color-primary-rgb: var(--color-teal-500-rgb);
 }
 
 /* Base styles */
@@ -2000,7 +2008,7 @@ body.light-theme {
   z-index: 10;
   opacity: 0;
   transition: all var(--duration-fast) var(--ease-standard);
-  box-shadow: 0 0 10px rgba(var(--color-primary), 0.5);
+  box-shadow: 0 0 10px rgba(var(--color-primary-rgb), 0.5);
 }
 
 .timeline-playhead.active {
@@ -2058,7 +2066,7 @@ body.light-theme {
 
 .timeline-event.active {
   transform: translateY(-50%) scale(1.8);
-  box-shadow: 0 0 0 4px rgba(var(--color-primary), 0.3);
+  box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.3);
 }
 
 .timeline-tooltip {
