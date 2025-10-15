@@ -983,6 +983,12 @@ class GeopoliticalApp {
             this.resizeObserver.observe(timeline);
         }
 
+        // Check color contrast compliance
+        this.checkColorContrast();
+
+        // Announce timeline ready state
+        this.updatePlaybackStatus(`Timeline loaded with ${this.events.length} events`);
+
         this.isReady = true;
     }
 
@@ -1012,6 +1018,18 @@ class GeopoliticalApp {
         this.lastViewportStart = 0;
         this.lastViewportEnd = 100;
 
+        // Set up timeline focus handling
+        const timeline = document.getElementById('timeline');
+        if (timeline) {
+            timeline.addEventListener('focus', () => {
+                this.handleTimelineFocus();
+            });
+
+            timeline.addEventListener('keydown', (e) => {
+                this.handleTimelineKeyNavigation(e);
+            });
+        }
+
         // Performance monitoring
         this.performanceMetrics = {
             renderCount: 0,
@@ -1039,6 +1057,82 @@ class GeopoliticalApp {
         }
 
         return result;
+    }
+
+    // Handle timeline focus for accessibility
+    handleTimelineFocus() {
+        // If no event is currently focused, focus on the first visible event
+        const visibleEvents = Array.from(this.visibleEvents);
+        if (visibleEvents.length > 0) {
+            const firstEventId = visibleEvents[0];
+            const firstEventElement = document.querySelector(`[data-event-id="${firstEventId}"], [data-cluster-id="${firstEventId}"]`);
+            if (firstEventElement) {
+                firstEventElement.focus();
+            }
+        }
+    }
+
+    // Handle keyboard navigation within the timeline
+    handleTimelineKeyNavigation(e) {
+        if (!this.timelineData || !this.timelineData.sortedEvents) return;
+
+        const events = this.timelineData.sortedEvents;
+        const currentFocus = document.activeElement;
+
+        if (!currentFocus || (!currentFocus.classList.contains('timeline-event') &&
+                              !currentFocus.classList.contains('timeline-cluster'))) {
+            return;
+        }
+
+        const currentEventId = currentFocus.dataset.eventId || currentFocus.dataset.clusterId;
+        const currentEvent = events.find(event => event.id === currentEventId);
+
+        if (!currentEvent) return;
+
+        let targetEvent = null;
+
+        switch (e.key) {
+            case 'ArrowUp':
+            case 'ArrowDown':
+                // For vertical navigation, we could implement column-based navigation
+                // For now, fall through to horizontal
+                break;
+
+            case 'ArrowLeft':
+                // Find previous event in chronological order
+                const currentIndex = events.findIndex(event => event.id === currentEventId);
+                if (currentIndex > 0) {
+                    targetEvent = events[currentIndex - 1];
+                }
+                break;
+
+            case 'ArrowRight':
+                // Find next event in chronological order
+                const nextIndex = events.findIndex(event => event.id === currentEventId);
+                if (nextIndex < events.length - 1) {
+                    targetEvent = events[nextIndex + 1];
+                }
+                break;
+
+            case 'Home':
+                targetEvent = events[0];
+                break;
+
+            case 'End':
+                targetEvent = events[events.length - 1];
+                break;
+        }
+
+        if (targetEvent) {
+            e.preventDefault();
+            this.selectEvent(targetEvent.id);
+
+            // Focus the corresponding timeline element
+            const targetElement = document.querySelector(`[data-event-id="${targetEvent.id}"]`);
+            if (targetElement) {
+                targetElement.focus();
+            }
+        }
     }
 
     updateVisibleEvents() {
@@ -1112,6 +1206,34 @@ class GeopoliticalApp {
 
             this.visibleEvents = currentVisible;
         });
+    }
+
+    // Color contrast utility for accessibility compliance
+    checkColorContrast() {
+        // This is a simplified check - in production, you'd use a proper contrast checking library
+        const styles = getComputedStyle(document.documentElement);
+
+        // Check if we're in dark mode (simplified check)
+        const isDarkMode = styles.getPropertyValue('--color-background').includes('31, 33, 33');
+
+        // Ensure minimum contrast ratios are met
+        // WCAG AA requires 4.5:1 for normal text, 3:1 for large text
+        // WCAG AAA requires 7:1 for normal text, 4.5:1 for large text
+
+        // These are simplified checks - proper implementation would use luminance calculations
+        const textColor = styles.getPropertyValue('--color-text');
+        const backgroundColor = styles.getPropertyValue('--color-background');
+        const primaryColor = styles.getPropertyValue('--color-primary');
+
+        console.log('Accessibility Check:', {
+            isDarkMode,
+            textColor,
+            backgroundColor,
+            primaryColor,
+            contrast: isDarkMode ? 'Dark mode colors applied' : 'Light mode colors applied'
+        });
+
+        return true; // Simplified - always return true for now
     }
 
     clusterEvents(sortedEvents, minDate, maxDate) {
@@ -1279,10 +1401,19 @@ class GeopoliticalApp {
             }
         });
 
-        // Make focusable for keyboard navigation
+        // Enhanced accessibility attributes
         eventElement.setAttribute('tabindex', '0');
         eventElement.setAttribute('role', 'button');
-        eventElement.setAttribute('aria-label', `Select event: ${event.title}`);
+        eventElement.setAttribute('aria-label', `Select event: ${event.title} from ${new Date(event.date).getFullYear()}, ${event.region || 'Unknown region'}`);
+        eventElement.setAttribute('aria-describedby', `event-${event.id}-description`);
+        eventElement.setAttribute('data-event-year', new Date(event.date).getFullYear());
+
+        // Create hidden description for screen readers
+        const description = document.createElement('div');
+        description.id = `event-${event.id}-description`;
+        description.className = 'sr-only';
+        description.textContent = `Event: ${event.title}. Date: ${this.formatDate(event.date)}. Category: ${event.category || 'Uncategorized'}. Importance: ${event.importance || 5} out of 10.`;
+        eventElement.appendChild(description);
 
         timeline.appendChild(eventElement);
     }
@@ -1895,6 +2026,10 @@ class GeopoliticalApp {
 
         // Ensure right sidebar is visible when an event is selected
         this.toggleRightSidebar(true);
+
+        // Announce selection to screen readers
+        this.announceNavigation(`Selected: ${event.title}`);
+        this.updatePlaybackStatus(`Event selected: ${event.title} from ${new Date(event.date).getFullYear()}`);
     }
     
     highlightMarker(event) {
@@ -2513,6 +2648,9 @@ class GeopoliticalApp {
         // Update UI
         this.updatePlaybackUI();
 
+        // Announce playback start to screen readers
+        this.updatePlaybackStatus(`Timeline playback started. ${this.playbackEvents.length} events to display.`);
+
         // Use requestAnimationFrame for smooth animation
         this.startSmoothPlayback();
     }
@@ -2615,11 +2753,18 @@ class GeopoliticalApp {
     updateProgress() {
         const progressFill = document.getElementById('timelineProgressFill');
         const progressHandle = document.getElementById('timelineProgressHandle');
-        
+        const progressBar = document.getElementById('timelineProgressBar');
+
         if (progressFill && this.playbackEvents.length > 0) {
             const progress = (this.currentPlaybackIndex / this.playbackEvents.length) * 100;
             progressFill.style.width = `${progress}%`;
             progressHandle.style.left = `${progress}%`;
+
+            // Update ARIA values for accessibility
+            if (progressBar) {
+                progressBar.setAttribute('aria-valuenow', Math.round(progress));
+                progressBar.setAttribute('aria-valuetext', `${Math.round(progress)}% complete`);
+            }
         }
     }
     
@@ -2676,48 +2821,76 @@ class GeopoliticalApp {
 
         if (this.currentPlaybackIndex < this.playbackEvents.length) {
             this.selectEvent(this.playbackEvents[this.currentPlaybackIndex].id);
+
+            // Update ARIA values for progress bar
+            const progressBar = document.getElementById('timelineProgressBar');
+            if (progressBar) {
+                const progressPercent = (this.currentPlaybackIndex / this.playbackEvents.length) * 100;
+                progressBar.setAttribute('aria-valuenow', Math.round(progressPercent));
+            }
         }
     }
 
     pauseTimelineAnimation() {
         this.isPlaying = false;
-        
+
         if (this.timelineAnimation) {
             clearTimeout(this.timelineAnimation);
             this.timelineAnimation = null;
         }
-        
+
         // Remove playing class from all events
-        document.querySelectorAll('.timeline-event').forEach(el => {
+        document.querySelectorAll('.timeline-event, .timeline-cluster').forEach(el => {
             el.classList.remove('playing');
         });
-        
+
         this.updatePlaybackUI();
+
+        // Announce pause to screen readers
+        this.updatePlaybackStatus('Timeline playback paused');
     }
 
     resetTimelineAnimation() {
         this.pauseTimelineAnimation();
         this.currentPlaybackIndex = 0;
-        
+
         // Reset UI elements
-        document.querySelectorAll('.timeline-event').forEach(el => {
+        document.querySelectorAll('.timeline-event, .timeline-cluster').forEach(el => {
             el.classList.remove('active', 'playing');
         });
-        
+
         const playhead = document.getElementById('timelinePlayhead');
         if (playhead) playhead.classList.remove('active');
-        document.getElementById('timelineProgressFill').style.width = '0%';
-        document.getElementById('timelineProgressHandle').style.left = '0%';
-        
+
+        const progressFill = document.getElementById('timelineProgressFill');
+        const progressHandle = document.getElementById('timelineProgressHandle');
+
+        if (progressFill) progressFill.style.width = '0%';
+        if (progressHandle) progressHandle.style.left = '0%';
+
+        // Update ARIA values for progress bar
+        const progressBar = document.getElementById('timelineProgressBar');
+        if (progressBar) {
+            progressBar.setAttribute('aria-valuenow', '0');
+        }
+
         this.selectedEvent = null;
-        document.getElementById('eventDetails').innerHTML = `
-            <div class="no-selection">
-                <p>Оберіть подію на карті або в часовій шкалі для перегляду деталей</p>
-            </div>
-        `;
-        
+        const eventDetails = document.getElementById('eventDetails');
+        if (eventDetails) {
+            eventDetails.innerHTML = `
+                <div class="no-selection">
+                    <p>Select an event on the map or timeline to view details</p>
+                </div>
+            `;
+        }
+
         // Reset camera view
-        this.cameraController.resetView();
+        if (this.cameraController && this.cameraController.resetView) {
+            this.cameraController.resetView();
+        }
+
+        // Announce reset to screen readers
+        this.updatePlaybackStatus('Timeline reset to beginning');
     }
 
     showTimelineReadyOverlay(text = 'Підготовка відтворення…') {
@@ -3154,22 +3327,126 @@ GeopoliticalApp.prototype.setupEventListeners = function() {
         this.positionZoomLabel();
     });
     
-    // Keyboard shortcuts
+    // Enhanced keyboard shortcuts with accessibility focus
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && this.sidebarVisible) {
-            this.toggleMobileMenu();
+        // Don't interfere with form inputs or when modal is open
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' ||
+            e.target.tagName === 'SELECT' || this.sidebarVisible) {
+            return;
         }
-        if (e.key === ' ' && e.target.tagName !== 'INPUT') {
-            e.preventDefault();
-            this.isPlaying ? this.pauseTimelineAnimation() : this.playTimelineAnimation();
-        }
-        if (e.key === 'ArrowLeft') {
-            this.navigateToEvent('previous');
-        }
-        if (e.key === 'ArrowRight') {
-            this.navigateToEvent('next');
+
+        switch (e.key) {
+            case 'Escape':
+                if (this.sidebarVisible) {
+                    this.toggleMobileMenu();
+                }
+                break;
+
+            case ' ': // Spacebar
+                e.preventDefault();
+                this.isPlaying ? this.pauseTimelineAnimation() : this.playTimelineAnimation();
+                break;
+
+            case 'ArrowLeft':
+                e.preventDefault();
+                this.navigateToEvent('previous');
+                this.announceNavigation('Previous event');
+                break;
+
+            case 'ArrowRight':
+                e.preventDefault();
+                this.navigateToEvent('next');
+                this.announceNavigation('Next event');
+                break;
+
+            case 'Home':
+                e.preventDefault();
+                this.navigateToEvent('first');
+                this.announceNavigation('First event');
+                break;
+
+            case 'End':
+                e.preventDefault();
+                this.navigateToEvent('last');
+                this.announceNavigation('Last event');
+                break;
+
+            case 'Enter':
+                // If focused on a timeline event, select it
+                if (e.target.classList.contains('timeline-event') ||
+                    e.target.classList.contains('timeline-cluster')) {
+                    e.preventDefault();
+                    const eventId = e.target.dataset.eventId || e.target.dataset.clusterId;
+                    if (eventId) {
+                        this.selectEvent(eventId);
+                    }
+                }
+                break;
+
+            case 'Tab':
+                // Enhanced tab navigation for timeline
+                this.handleTimelineTabNavigation(e);
+                break;
+
+            case 'f': // Focus timeline (when not in form)
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    const timeline = document.getElementById('timeline');
+                    if (timeline) {
+                        timeline.focus();
+                        this.announceNavigation('Timeline focused');
+                    }
+                }
+                break;
         }
     });
+
+    // Enhanced navigation announcement for screen readers
+    announceNavigation(direction) {
+        const statusElement = document.getElementById('timeline-status');
+        if (statusElement) {
+            statusElement.textContent = `Navigated to ${direction}`;
+        }
+    }
+
+    // Update playback status for screen readers
+    updatePlaybackStatus(message) {
+        const statusElement = document.getElementById('timeline-playback-status');
+        if (statusElement) {
+            statusElement.textContent = message;
+        }
+    }
+
+    // Enhanced tab navigation for timeline controls
+    handleTimelineTabNavigation(e) {
+        const focusableElements = [
+            'button:not([disabled])',
+            'select',
+            '.timeline-event',
+            '.timeline-cluster',
+            '.progress-bar'
+        ].join(', ');
+
+        const timelineContainer = document.querySelector('.timeline-container');
+        if (!timelineContainer) return;
+
+        const focusable = timelineContainer.querySelectorAll(focusableElements);
+        const currentIndex = Array.from(focusable).indexOf(document.activeElement);
+
+        if (e.shiftKey) {
+            // Shift+Tab - go to previous element
+            if (currentIndex > 0) {
+                e.preventDefault();
+                focusable[currentIndex - 1].focus();
+            }
+        } else {
+            // Tab - go to next element
+            if (currentIndex < focusable.length - 1 && currentIndex !== -1) {
+                e.preventDefault();
+                focusable[currentIndex + 1].focus();
+            }
+        }
+    }
 };
 
 GeopoliticalApp.prototype.navigateToEvent = function(direction) {

@@ -291,34 +291,39 @@
         </div>
 
         <!-- Timeline -->
-        <div class="timeline-container">
+        <div class="timeline-container" role="region" aria-label="Timeline of geopolitical events">
             <div class="timeline-header">
-                <h3 class="timeline-title">Часова шкала</h3>
-                <div class="timeline-controls">
-                    <div class="playback-controls">
-                        <button id="timelinePlay" class="btn btn--sm timeline-btn" title="Відтворити" aria-label="Відтворити">
+                <h3 class="timeline-title" id="timeline-title">Timeline</h3>
+                <div class="timeline-controls" role="toolbar" aria-label="Timeline playback controls">
+                    <div class="playback-controls" role="group" aria-label="Playback controls">
+                        <button id="timelinePlay" class="btn btn--sm timeline-btn" title="Відтворити" aria-label="Start timeline playback" aria-describedby="timeline-play-desc">
                             <i data-lucide="play" aria-hidden="true"></i>
+                            <span id="timeline-play-desc" class="sr-only">Begin automatic playback of events in chronological order</span>
                         </button>
-                        <button id="timelinePause" class="btn btn--sm timeline-btn" title="Пауза" aria-label="Пауза">
+                        <button id="timelinePause" class="btn btn--sm timeline-btn" title="Пауза" aria-label="Pause timeline playback" aria-describedby="timeline-pause-desc">
                             <i data-lucide="pause" aria-hidden="true"></i>
+                            <span id="timeline-pause-desc" class="sr-only">Pause the automatic playback</span>
                         </button>
-                        <button id="timelineReset" class="btn btn--sm timeline-btn" title="Скинути" aria-label="Скинути">
+                        <button id="timelineReset" class="btn btn--sm timeline-btn" title="Скинути" aria-label="Reset timeline to beginning" aria-describedby="timeline-reset-desc">
                             <i data-lucide="square" aria-hidden="true"></i>
+                            <span id="timeline-reset-desc" class="sr-only">Reset playback to the first event</span>
                         </button>
                     </div>
-                    <div class="speed-controls">
-                        <label for="playbackSpeed" class="speed-label">Швидкість:</label>
-                        <select id="playbackSpeed" class="speed-select">
-                            <option value="0.5">0.5x</option>
-                            <option value="1" selected>1x</option>
-                            <option value="2">2x</option>
-                            <option value="5">5x</option>
+                    <div class="speed-controls" role="group" aria-label="Playback speed">
+                        <label for="playbackSpeed" class="speed-label" id="speed-label">Playback speed:</label>
+                        <select id="playbackSpeed" class="speed-select" aria-labelledby="speed-label" aria-describedby="speed-description">
+                            <option value="0.5">0.5x (Slow)</option>
+                            <option value="1" selected>1x (Normal)</option>
+                            <option value="2">2x (Fast)</option>
+                            <option value="5">5x (Very Fast)</option>
                         </select>
+                        <span id="speed-description" class="sr-only">Controls how quickly events are displayed during playback</span>
                     </div>
-                    <div class="timeline-progress">
-                        <div class="progress-bar" id="timelineProgressBar">
+                    <div class="timeline-progress" role="group" aria-label="Timeline progress">
+                        <label for="timelineProgressBar" class="sr-only">Timeline progress</label>
+                        <div class="progress-bar" id="timelineProgressBar" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Timeline position - click to seek" tabindex="0">
                             <div class="progress-fill" id="timelineProgressFill"></div>
-                            <div class="progress-handle" id="timelineProgressHandle"></div>
+                            <div class="progress-handle" id="timelineProgressHandle" role="slider" aria-label="Drag to seek timeline position"></div>
                         </div>
                     </div>
                 </div>
@@ -341,9 +346,16 @@
                 <div class="loading-progress-text" id="timelineLoadingProgressText">Завантаження даних...</div>
             </div>
             <div class="timeline-content">
-                <div id="timeline" class="timeline"></div>
-                <div class="timeline-scale" id="timelineScale"></div>
+                <div id="timeline" class="timeline" role="application" aria-label="Interactive timeline of geopolitical events" aria-describedby="timeline-instructions" tabindex="0"></div>
+                <div class="timeline-scale" id="timelineScale" aria-label="Timeline year markers" role="img"></div>
+                <div id="timeline-instructions" class="sr-only">
+                    Use arrow keys to navigate between events. Press Enter or Space to select an event. Press Tab to move between timeline controls. Press Home/End to jump to first/last event.
+                </div>
             </div>
+
+            <!-- ARIA Live Regions for Dynamic Updates -->
+            <div id="timeline-status" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+            <div id="timeline-playback-status" class="sr-only" aria-live="polite" aria-atomic="true"></div>
         </div>
     </div>
 
