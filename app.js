@@ -1058,13 +1058,41 @@ class GeopoliticalApp {
             yearMarkers.push({ year: maxYear, position: 100 });
         }
         
-        // Add year markers to scale
+        // Add year markers to scale with collision detection
+        const YEAR_LABEL_MIN_SPACING = 8; // Minimum percentage spacing between year labels
+        const addedYears = [];
+        
         yearMarkers.forEach(({ year, position }) => {
-            const yearElement = document.createElement('div');
-            yearElement.className = 'timeline-year';
-            yearElement.style.left = `${position}%`;
-            yearElement.textContent = year;
-            scale.appendChild(yearElement);
+            // Check if this year would collide with any already added years
+            const wouldCollide = addedYears.some(addedYear => {
+                return Math.abs(addedYear.position - position) < YEAR_LABEL_MIN_SPACING;
+            });
+            
+            // Always add first and last year, skip others if they would collide
+            const isEdgeYear = year === minYear || year === maxYear;
+            if (!wouldCollide || isEdgeYear) {
+                // If it's an edge year that would collide, remove the colliding year
+                if (isEdgeYear && wouldCollide) {
+                    const collidingIndex = addedYears.findIndex(addedYear => 
+                        Math.abs(addedYear.position - position) < YEAR_LABEL_MIN_SPACING
+                    );
+                    if (collidingIndex !== -1) {
+                        const collidingElement = addedYears[collidingIndex].element;
+                        if (collidingElement && collidingElement.parentNode) {
+                            collidingElement.parentNode.removeChild(collidingElement);
+                        }
+                        addedYears.splice(collidingIndex, 1);
+                    }
+                }
+                
+                const yearElement = document.createElement('div');
+                yearElement.className = 'timeline-year';
+                yearElement.style.left = `${position}%`;
+                yearElement.textContent = year;
+                scale.appendChild(yearElement);
+                
+                addedYears.push({ year, position, element: yearElement });
+            }
         });
 
         // Ensure timeline playhead exists and is appended to the timeline

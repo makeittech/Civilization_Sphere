@@ -2294,6 +2294,8 @@ body.light-theme {
   position: relative;
   margin-top: var(--space-8);
   border-top: 1px solid var(--color-border);
+  overflow: hidden;
+  padding: 0 var(--space-4);
 }
 
 .timeline-year {
@@ -2308,6 +2310,23 @@ body.light-theme {
   white-space: nowrap;
   z-index: 1;
   font-weight: var(--font-weight-medium);
+  pointer-events: none;
+  user-select: none;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Prevent first year label from overflowing left edge */
+.timeline-year:first-child {
+  transform: translateX(0);
+  left: 0 !important;
+}
+
+/* Prevent last year label from overflowing right edge */
+.timeline-year:last-child {
+  transform: translateX(-100%);
+  left: 100% !important;
 }
 
 /* Loading */
