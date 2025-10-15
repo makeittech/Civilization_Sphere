@@ -12,9 +12,20 @@ class GeopoliticalApp {
         this.charts = {};
         this.heatmapLayer = null;
         this.connectionLines = [];
+        this.importBuffer = [];
+        this.nextId = 100000; // for generating unique IDs for imported events
+        this.importSettings = {
+            format: 'auto',
+            dateFormat: 'auto',
+            dedupMode: 'auto',
+            importMode: 'append',
+            fieldMapping: {}
+        };
         
         // Enhanced properties for mobile and playback
         this.isPlaying = false;
+        this.isReady = false;
+        this._startupTelemetry = { startedAt: performance.now?.() || Date.now(), marks: [] };
         this.playbackSpeed = 1;
         this.currentPlaybackIndex = 0;
         this.playbackEvents = [];
@@ -25,6 +36,8 @@ class GeopoliticalApp {
         // Touch handling
         this.touchHandler = new TouchHandler(this);
         this.cameraController = new SmartCameraController(this);
+        this.zoomLabelEl = document.getElementById('zoomLabel');
+        this.zoomLabelHideTimer = null;
         
         this.initializeData();
         this.initializeApp();
@@ -313,7 +326,13 @@ class GeopoliticalApp {
             { name: "Політичні системи", color: "#c0392b", icon: "⚖️", count: 0 },
             { name: "Союзи та договори", color: "#f39c12", icon: "🤝", count: 0 },
             { name: "Тероризм", color: "#34495e", icon: "💥", count: 0 },
-            { name: "Глобальні кризи", color: "#e67e22", icon: "🌍", count: 0 }
+            { name: "Глобальні кризи", color: "#e67e22", icon: "🌍", count: 0 },
+            // Additional categories to align with imported resources
+            { name: "Культурні зміни", color: "#e84393", icon: "🎭", count: 0 },
+            { name: "Інфраструктурні проекти", color: "#7f8c8d", icon: "🏗️", count: 0 },
+            { name: "Військові аналізи", color: "#2c3e50", icon: "🛡️", count: 0 },
+            { name: "Соціально-економічні моделі", color: "#1abc9c", icon: "📊", count: 0 },
+            { name: "Економічні моделі", color: "#2ecc71", icon: "📈", count: 0 }
         ];
         
         this.channels = [
@@ -323,7 +342,7 @@ class GeopoliticalApp {
             { name: "Ціна Держави", color: "#27ae60" }
         ];
 
-        this.regions = ["Європа", "Азія", "Близький Схід", "Північна Америка", "Євразія", "Глобально"];
+        this.regions = ["Європа", "Азія", "Близький Схід", "Північна Америка", "Євразія", "Глобально", "Африка/Європа"];
         
         // Calculate category counts
         this.categories.forEach(category => {
@@ -338,19 +357,41 @@ class GeopoliticalApp {
         
         try {
             this.setupTheme();
+            this._mark('init:map:start');
             await this.initializeMap();
+            this._mark('init:map:end');
             this.initializeFilters();
             this.initializeSearch();
+            // Build timeline structure but do not auto-play
             this.initializeTimeline();
             this.initializeEventHandlers();
             this.initializeCharts();
             this.setupMobileOptimizations();
             this.updateDisplay();
+            // Show ready overlay until user explicitly presses Play
+            this.showTimelineReadyOverlay();
+            // Opportunistic bootstrap of local CSV with Ukrainian channels/events (deferred)
+            setTimeout(() => this.tryBootstrapLocalResourcesSafe(), 0);
         } catch (error) {
+            this._telemetryError('init:fatal', error);
             console.error('Error initializing app:', error);
         } finally {
             this.hideLoading();
         }
+    }
+
+    _mark(label) {
+        try {
+            const t = performance.now?.() || Date.now();
+            this._startupTelemetry.marks.push({ label, t });
+        } catch (_) {}
+    }
+
+    _telemetryError(stage, error) {
+        try {
+            const err = error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : { message: String(error) };
+            (this._startupTelemetry.errors ||= []).push({ stage, err, t: performance.now?.() || Date.now() });
+        } catch (_) {}
     }
     
     setupTheme() {
@@ -362,6 +403,10 @@ class GeopoliticalApp {
             btn.addEventListener('click', () => {
                 const theme = btn.dataset.theme;
                 this.switchTheme(theme);
+                if (window.lucide?.createIcons) {
+                    // Re-render icons in case of dynamic DOM changes
+                    window.lucide.createIcons();
+                }
             });
         });
     }
@@ -433,6 +478,38 @@ class GeopoliticalApp {
                     overlayElement.remove();
                 }, 250);
             }
+        }
+    }
+
+    toggleRightSidebar(forceState) {
+        const sidebar = document.getElementById('rightSidebar');
+        const toggleBtn = document.getElementById('rightSidebarToggle');
+        if (!sidebar) return;
+
+        // Match CSS breakpoint: overlay behavior up to 1024px, desktop otherwise
+        const isOverlayMode = window.innerWidth <= 1024;
+        const isCurrentlyOpen = isOverlayMode
+            ? sidebar.classList.contains('open')
+            : !sidebar.classList.contains('collapsed');
+
+        const shouldOpen = typeof forceState === 'boolean' ? forceState : !isCurrentlyOpen;
+
+        if (shouldOpen) {
+            if (isOverlayMode) {
+                sidebar.classList.add('open');
+            } else {
+                sidebar.classList.remove('collapsed');
+            }
+            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+            sidebar.setAttribute('aria-hidden', 'false');
+        } else {
+            if (isOverlayMode) {
+                sidebar.classList.remove('open');
+            } else {
+                sidebar.classList.add('collapsed');
+            }
+            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+            sidebar.setAttribute('aria-hidden', 'true');
         }
     }
 
@@ -524,13 +601,68 @@ class GeopoliticalApp {
             this.markers.forEach(marker => {
                 marker.setOpacity(0.7);
             });
+            this.updateZoomLabel();
         });
         
+        this.map.on('zoom', () => {
+            this.updateZoomLabel();
+        });
+
         this.map.on('zoomend', () => {
             this.markers.forEach(marker => {
                 marker.setOpacity(1);
             });
+            this.queueHideZoomLabel();
         });
+    }
+
+    updateZoomLabel() {
+        if (!this.zoomLabelEl) return;
+        const zoom = this.map ? this.map.getZoom() : null;
+        if (zoom == null) return;
+        const zoomText = `Zoom ${zoom.toFixed(1)}`;
+        if (this.zoomLabelEl.textContent !== zoomText) {
+            this.zoomLabelEl.textContent = zoomText;
+        }
+        this.positionZoomLabel();
+        this.zoomLabelEl.classList.add('visible');
+        this.zoomLabelEl.setAttribute('aria-hidden', 'false');
+        if (this.zoomLabelHideTimer) {
+            clearTimeout(this.zoomLabelHideTimer);
+            this.zoomLabelHideTimer = null;
+        }
+    }
+
+    queueHideZoomLabel() {
+        if (!this.zoomLabelEl) return;
+        if (this.zoomLabelHideTimer) clearTimeout(this.zoomLabelHideTimer);
+        this.zoomLabelHideTimer = setTimeout(() => {
+            this.zoomLabelEl.classList.remove('visible');
+            this.zoomLabelEl.setAttribute('aria-hidden', 'true');
+        }, 500);
+    }
+
+    positionZoomLabel() {
+        if (!this.zoomLabelEl) return;
+        const mapContainer = document.querySelector('.map-container');
+        const controls = document.querySelector('.map-controls');
+        if (!mapContainer) return;
+
+        const mapRect = mapContainer.getBoundingClientRect();
+        let topPx = 16; // fallback spacing
+
+        if (controls) {
+            const controlsRect = controls.getBoundingClientRect();
+            const controlsAreTop = controlsRect.top <= mapRect.top + 20; // threshold near top
+            if (controlsAreTop) {
+                topPx = Math.max(16, Math.round(controlsRect.bottom - mapRect.top + 8));
+            }
+        }
+
+        // Clamp within container height
+        const maxTop = Math.max(0, mapRect.height - 40); // avoid bottom cutoff
+        const clampedTop = Math.min(topPx, maxTop);
+        this.zoomLabelEl.style.top = `${clampedTop}px`;
     }
 
     addMarkersToMap() {
@@ -679,17 +811,25 @@ class GeopoliticalApp {
             regionSelect.appendChild(option);
         });
 
-        // Set default date range
+        // Set default date range to cover entire dataset
         const dateFrom = document.getElementById('dateFrom');
         const dateTo = document.getElementById('dateTo');
-        dateFrom.value = '2024-01-01';
-        dateTo.value = '2025-12-31';
+        const validDates = this.events
+            .map(e => new Date(e.date))
+            .filter(d => !isNaN(d));
+        const minDate = validDates.length ? new Date(Math.min(...validDates)) : new Date('1930-01-01');
+        const maxDate = validDates.length ? new Date(Math.max(...validDates)) : new Date('2025-12-31');
+        dateFrom.value = minDate.toISOString().slice(0, 10);
+        dateTo.value = maxDate.toISOString().slice(0, 10);
 
         // Add event listeners
         categoryContainer.addEventListener('change', () => this.applyFilters());
         regionSelect.addEventListener('change', () => this.applyFilters());
         dateFrom.addEventListener('change', () => this.applyFilters());
         dateTo.addEventListener('change', () => this.applyFilters());
+
+        // Apply initial filters using the full dataset date range
+        this.applyFilters();
     }
     
     applyQuickFilter(filter) {
@@ -719,6 +859,7 @@ class GeopoliticalApp {
         
         this.filteredEvents = this.events.filter(filterFunction);
         this.updateDisplay();
+        this.rebuildTimeline();
     }
 
     initializeSearch() {
@@ -730,24 +871,27 @@ class GeopoliticalApp {
 
             if (query.length < 2) {
                 searchSuggestions.style.display = 'none';
+                searchInput.setAttribute('aria-expanded', 'false');
                 return;
             }
 
             const matches = this.events.filter(event => 
-                event.title.toLowerCase().includes(query) ||
-                event.description.toLowerCase().includes(query) ||
-                event.country.toLowerCase().includes(query)
-            ).slice(0, 5);
+                (event.title && event.title.toLowerCase().includes(query)) ||
+                (event.description && event.description.toLowerCase().includes(query)) ||
+                (event.country && event.country.toLowerCase().includes(query))
+            ).slice(0, 8);
 
             if (matches.length > 0) {
-                searchSuggestions.innerHTML = matches.map(event => 
-                    `<div class="search-suggestion" onclick="app.selectEventAndSearch(${event.id}, '${event.title}')">
+                searchSuggestions.innerHTML = matches.map((event, idx) => 
+                    `<div class="search-suggestion" role="option" id="suggestion-${idx}" onclick="app.selectEventAndSearch(${event.id}, '${event.title.replace(/'/g, "&#39;")}')">
                         ${event.title} (${this.formatDate(event.date)})
                     </div>`
                 ).join('');
                 searchSuggestions.style.display = 'block';
+                searchInput.setAttribute('aria-expanded', 'true');
             } else {
                 searchSuggestions.style.display = 'none';
+                searchInput.setAttribute('aria-expanded', 'false');
             }
         });
 
@@ -755,65 +899,188 @@ class GeopoliticalApp {
         document.addEventListener('click', (e) => {
             if (!searchInput.contains(e.target) && !searchSuggestions.contains(e.target)) {
                 searchSuggestions.style.display = 'none';
+                searchInput.setAttribute('aria-expanded', 'false');
             }
         });
     }
 
     selectEventAndSearch(eventId, title) {
-        document.getElementById('searchInput').value = title;
-        document.getElementById('searchSuggestions').style.display = 'none';
+        const input = document.getElementById('searchInput');
+        const suggestions = document.getElementById('searchSuggestions');
+        input.value = title;
+        suggestions.style.display = 'none';
+        input.setAttribute('aria-expanded', 'false');
         this.selectEvent(eventId);
     }
 
     initializeTimeline() {
         const timeline = document.getElementById('timeline');
         const scale = document.getElementById('timelineScale');
-        
-        // Sort events by date
-        const sortedEvents = [...this.events].sort((a, b) => new Date(a.date) - new Date(b.date));
-        
-        const minYear = new Date(sortedEvents[0].date).getFullYear();
-        const maxYear = new Date(sortedEvents[sortedEvents.length - 1].date).getFullYear();
-        const yearRange = maxYear - minYear;
-        
+
+        // Sort currently visible (filtered) events by date
+        const sortedEvents = [...this.filteredEvents]
+            .filter(e => !isNaN(new Date(e.date)))
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // Reset container state
         timeline.innerHTML = '';
         scale.innerHTML = '';
+
+        if (sortedEvents.length === 0) {
+            this.isReady = false;
+            return;
+        }
+
+        const firstDate = new Date(sortedEvents[0].date);
+        const lastDate = new Date(sortedEvents[sortedEvents.length - 1].date);
+        const minYear = firstDate.getFullYear();
+        const maxYear = lastDate.getFullYear();
+        const yearRange = Math.max(0, maxYear - minYear);
+
+        // Calculate positions for all events first
+        const eventPositions = sortedEvents.map((event, idx) => {
+            const eventDate = new Date(event.date);
+            const eventYear = eventDate.getFullYear();
+
+            // Handle short or zero ranges gracefully
+            let position;
+            if (yearRange === 0) {
+                const denom = Math.max(sortedEvents.length - 1, 1);
+                position = (idx / denom) * 100;
+            } else {
+                position = ((eventYear - minYear) / yearRange) * 100;
+            }
+
+            const size = Math.max(8, Math.min(18, (Number(event.importance) || 5) * 1.2));
+            
+            return {
+                event,
+                position,
+                size,
+                row: 0 // Will be calculated for collision detection
+            };
+        });
+
+        // Collision detection and vertical stacking
+        // Group events that are within a certain threshold (2% of timeline width)
+        const COLLISION_THRESHOLD = 2; // percentage
         
-        // Add events to timeline
-        sortedEvents.forEach(event => {
-            const eventYear = new Date(event.date).getFullYear();
-            const position = ((eventYear - minYear) / yearRange) * 100;
+        for (let i = 0; i < eventPositions.length; i++) {
+            const current = eventPositions[i];
+            let maxRowBelow = -1;
+            
+            // Check all previous events for collisions
+            for (let j = 0; j < i; j++) {
+                const other = eventPositions[j];
+                const distance = Math.abs(current.position - other.position);
+                
+                // If events overlap or are very close
+                if (distance < COLLISION_THRESHOLD) {
+                    maxRowBelow = Math.max(maxRowBelow, other.row);
+                }
+            }
+            
+            // Place current event in the next available row
+            current.row = maxRowBelow + 1;
+        }
+
+        // Calculate the maximum number of rows needed
+        const maxRows = Math.max(...eventPositions.map(ep => ep.row), 0) + 1;
+        
+        // Adjust timeline height if needed (with a reasonable max)
+        const baseHeight = 60;
+        const rowHeight = 20;
+        const calculatedHeight = Math.min(baseHeight + (maxRows - 1) * rowHeight, 120);
+        // Set height on the timeline element
+        timeline.style.height = `${calculatedHeight}px`;
+        timeline.style.minHeight = `${calculatedHeight}px`;
+
+        // Add events to timeline with collision-aware positioning
+        eventPositions.forEach(({ event, position, size, row }) => {
+            const eventDate = new Date(event.date);
+            const eventYear = eventDate.getFullYear();
             
             const category = this.categories.find(cat => cat.name === event.category);
             const color = category ? category.color : '#333';
-            
+
             const eventElement = document.createElement('div');
             eventElement.className = 'timeline-event';
             eventElement.style.left = `${position}%`;
             eventElement.style.backgroundColor = color;
             eventElement.dataset.eventId = event.id;
+            eventElement.style.width = `${size}px`;
+            eventElement.style.height = `${size}px`;
             
+            // Apply vertical offset based on row
+            // Center events when there are multiple rows
+            const verticalOffset = row * rowHeight - ((maxRows - 1) * rowHeight) / 2;
+            // Use CSS variable or direct positioning without conflicting with transform
+            // We need to override the default 50% transform with an absolute position
+            eventElement.style.top = `${50 + (verticalOffset / calculatedHeight * 100)}%`;
+            eventElement.style.transform = 'translate(-50%, -50%)';
+
             const tooltip = document.createElement('div');
             tooltip.className = 'timeline-tooltip';
-            tooltip.textContent = `${event.title} (${eventYear})`;
+            tooltip.textContent = `${event.title} (${eventYear}) • ${event.region}`;
             eventElement.appendChild(tooltip);
-            
+
+            // Adjust tooltip position for edge events
+            if (position < 15) {
+                tooltip.style.left = '0';
+                tooltip.style.transform = 'translateX(0)';
+            } else if (position > 85) {
+                tooltip.style.left = 'auto';
+                tooltip.style.right = '0';
+                tooltip.style.transform = 'translateX(0)';
+            }
+
             eventElement.addEventListener('click', () => {
                 this.selectEvent(event.id);
             });
-            
+
             timeline.appendChild(eventElement);
         });
+
+        // Add year markers with collision avoidance
+        const step = yearRange >= 10 ? 10 : yearRange >= 5 ? 5 : 1;
+        const yearMarkers = [];
         
-        // Add year markers
-        for (let year = minYear; year <= maxYear; year += 10) {
-            const position = ((year - minYear) / yearRange) * 100;
+        for (let year = minYear; year <= maxYear; year += step) {
+            const position = yearRange === 0 ? 0 : ((year - minYear) / yearRange) * 100;
+            yearMarkers.push({ year, position });
+        }
+        
+        // Ensure first and last years are always shown if not already included
+        if (yearMarkers.length === 0 || yearMarkers[0].year !== minYear) {
+            yearMarkers.unshift({ year: minYear, position: 0 });
+        }
+        if (yearMarkers[yearMarkers.length - 1].year !== maxYear && yearRange > 0) {
+            yearMarkers.push({ year: maxYear, position: 100 });
+        }
+        
+        // Add year markers to scale
+        yearMarkers.forEach(({ year, position }) => {
             const yearElement = document.createElement('div');
             yearElement.className = 'timeline-year';
             yearElement.style.left = `${position}%`;
             yearElement.textContent = year;
             scale.appendChild(yearElement);
+        });
+
+        // Ensure timeline playhead exists and is appended to the timeline
+        let playhead = document.getElementById('timelinePlayhead');
+        if (!playhead) {
+            playhead = document.createElement('div');
+            playhead.id = 'timelinePlayhead';
+            playhead.className = 'timeline-playhead';
         }
+        // Re-append to ensure it's within the freshly rebuilt timeline
+        timeline.appendChild(playhead);
+        this.isReady = true;
+    }
+
+    rebuildTimeline() {
+        this.initializeTimeline();
     }
 
     initializeEventHandlers() {
@@ -821,6 +1088,28 @@ class GeopoliticalApp {
         document.getElementById('clearFilters').addEventListener('click', () => {
             this.clearFilters();
         });
+
+        // Import/Discovery controls
+        const scanBtn = document.getElementById('scanSourcesBtn');
+        const importBtn = document.getElementById('importBtn');
+        const clearBtn = document.getElementById('clearImportBtn');
+        const importFileInput = document.getElementById('importFile');
+
+        if (scanBtn) {
+            scanBtn.addEventListener('click', () => this.handleScanButton());
+        }
+        if (importBtn) {
+            importBtn.addEventListener('click', () => this.importBufferedEvents());
+        }
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearImportPreview());
+        }
+        if (importFileInput) {
+            importFileInput.addEventListener('change', (e) => this.handleImportFile(e));
+        }
+
+        // Import UI controls and behaviors
+        this.setupImportUi();
 
         // Enhanced map controls
         document.getElementById('resetView').addEventListener('click', () => {
@@ -851,8 +1140,15 @@ class GeopoliticalApp {
             this.exportToCSV();
         });
 
+        // Right sidebar toggle on larger screens too
+        const rightToggle = document.getElementById('rightSidebarToggle');
+        if (rightToggle) {
+            rightToggle.addEventListener('click', () => this.toggleRightSidebar());
+        }
+
         // Enhanced timeline controls
         document.getElementById('timelinePlay').addEventListener('click', () => {
+            this.hideTimelineReadyOverlay();
             this.playTimelineAnimation();
         });
 
@@ -874,6 +1170,198 @@ class GeopoliticalApp {
         progressBar.addEventListener('click', (e) => {
             this.seekToProgress(e);
         });
+
+        // Ready overlay explicit play
+        const readyBtn = document.getElementById('timelineReadyPlayBtn');
+        if (readyBtn) {
+            readyBtn.addEventListener('click', () => {
+                this.hideTimelineReadyOverlay();
+                this.playTimelineAnimation();
+            });
+        }
+    }
+
+    setupImportUi() {
+        const importFormat = document.getElementById('importFormat');
+        const dateFormat = document.getElementById('dateFormat');
+        const dedupMode = document.getElementById('dedupMode');
+        const importFileInput = document.getElementById('importFile');
+        const importModeRadios = Array.from(document.querySelectorAll('input[name="importMode"]'));
+
+        if (importFormat) {
+            importFormat.addEventListener('change', (e) => {
+                this.importSettings.format = e.target.value || 'auto';
+                if (importFileInput) {
+                    const fmt = this.importSettings.format;
+                    importFileInput.setAttribute('accept', fmt === 'csv' ? '.csv' : (fmt === 'json' ? '.json' : '.csv,.json'));
+                }
+            });
+        }
+
+        if (dateFormat) {
+            dateFormat.addEventListener('change', (e) => {
+                this.importSettings.dateFormat = e.target.value || 'auto';
+            });
+        }
+
+        if (dedupMode) {
+            dedupMode.addEventListener('change', (e) => {
+                this.importSettings.dedupMode = e.target.value || 'auto';
+            });
+        }
+
+        if (importModeRadios && importModeRadios.length) {
+            importModeRadios.forEach(r => r.addEventListener('change', (e) => {
+                if (e.target.checked) this.importSettings.importMode = e.target.value;
+            }));
+        }
+
+        // Initialize mapping listeners (will be populated after CSV is selected)
+        const mappingIds = ['map-title','map-date','map-lat','map-lng','map-description','map-category','map-region','map-country','map-importance','map-sources'];
+        mappingIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', () => {
+                    const key = id.replace('map-','');
+                    this.importSettings.fieldMapping[key] = el.value || '';
+                });
+            }
+        });
+    }
+
+    setupFieldMappingForCsv(csvText) {
+        const headers = this.extractCsvHeaders(csvText);
+        if (!headers || !headers.length) return;
+        this.refreshFieldMappingOptions(headers);
+        // Preselect guesses
+        const guess = this.guessMappingFromHeaders(headers);
+        this.importSettings.fieldMapping = { ...guess };
+        Object.entries(guess).forEach(([key, header]) => {
+            const el = document.getElementById(`map-${key}`);
+            if (el && header) el.value = header;
+        });
+    }
+
+    extractCsvHeaders(text) {
+        const firstLine = (text.split(/\r?\n/).find(Boolean) || '').trim();
+        if (!firstLine) return [];
+        const headers = this.splitCsvLine(firstLine).map(h => (h || '').trim());
+        return headers;
+    }
+
+    refreshFieldMappingOptions(headers) {
+        const mappingIds = ['map-title','map-date','map-lat','map-lng','map-description','map-category','map-region','map-country','map-importance','map-sources'];
+        mappingIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.innerHTML = '';
+            const frag = document.createDocumentFragment();
+            const empty = document.createElement('option');
+            empty.value = '';
+            empty.textContent = '—';
+            frag.appendChild(empty);
+            headers.forEach(h => {
+                const opt = document.createElement('option');
+                opt.value = h;
+                opt.textContent = h;
+                frag.appendChild(opt);
+            });
+            el.appendChild(frag);
+        });
+    }
+
+    guessMappingFromHeaders(headers) {
+        const lc = headers.map(h => h.toLowerCase());
+        const pick = (...candidates) => {
+            for (const c of candidates) {
+                const idx = lc.indexOf(c);
+                if (idx !== -1) return headers[idx];
+            }
+            return '';
+        };
+        return {
+            title: pick('title','name','headline'),
+            date: pick('date','published','publishedat','pubdate','updated','time'),
+            lat: pick('lat','latitude','y'),
+            lng: pick('lng','longitude','lon','x'),
+            description: pick('description','summary','content','desc'),
+            category: pick('category','type','topic'),
+            region: pick('region','area'),
+            country: pick('country','nation','state'),
+            importance: pick('importance','priority','score','rank'),
+            sources: pick('sources','link','url')
+        };
+    }
+
+    applyFieldMappingToObject(obj, mapping) {
+        if (!mapping) return obj;
+        const out = { ...obj };
+        const entries = Object.entries(mapping).filter(([, src]) => src);
+        const targetToDefault = {
+            title: '', date: '', lat: '', lng: '', description: '', category: '', region: '', country: '', importance: '', sources: ''
+        };
+        const mapped = { ...targetToDefault };
+        for (const [target, src] of entries) {
+            mapped[target] = obj[src];
+        }
+        // Preserve unknown fields as-is but prefer mapped values for known targets
+        return { ...obj, ...mapped };
+    }
+
+    parseDateByFormat(input, format) {
+        try {
+            if (!input) return '';
+            const s = String(input).trim();
+            const pad = (n) => n.toString().padStart(2, '0');
+            if (format === 'YYYY-MM-DD') {
+                const m = s.match(/^(\d{4})[-\/.](\d{2})[-\/.](\d{2})$/);
+                if (!m) return '';
+                return `${m[1]}-${m[2]}-${m[3]}`;
+            }
+            if (format === 'DD/MM/YYYY') {
+                const m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);
+                if (!m) return '';
+                const dd = pad(parseInt(m[1]));
+                const mm = pad(parseInt(m[2]));
+                const yyyy = m[3];
+                return `${yyyy}-${mm}-${dd}`;
+            }
+            if (format === 'MM/DD/YYYY') {
+                const m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);
+                if (!m) return '';
+                const mm = pad(parseInt(m[1]));
+                const dd = pad(parseInt(m[2]));
+                const yyyy = m[3];
+                return `${yyyy}-${mm}-${dd}`;
+            }
+            if (format === 'YYYY-MM-DDTHH:mm:ssZ') {
+                const d = new Date(s);
+                if (isNaN(d.getTime())) return '';
+                return d.toISOString().slice(0,10);
+            }
+        } catch (_) {}
+        return '';
+    }
+
+    computeEventDedupKeyByMode(mode, event) {
+        const m = (mode || 'auto').toLowerCase();
+        if (m === 'off') {
+            return `no:${event.id}:${Math.random().toString(36).slice(2)}`;
+        }
+        if (m === 'title_date_coords') {
+            const title = (event.title || '').toLowerCase().replace(/\s+/g, ' ').trim();
+            const date = event.date || '';
+            const lat = Number.isFinite(event.lat) ? event.lat.toFixed(3) : 'x';
+            const lng = Number.isFinite(event.lng) ? event.lng.toFixed(3) : 'x';
+            return `tdl:${title}|${date}|${lat}|${lng}`;
+        }
+        // auto
+        return this.computeEventDedupKey(event);
+    }
+
+    showValidation(message) {
+        const el = document.getElementById('importValidation');
+        if (el) el.textContent = message || '';
     }
 
     initializeCharts() {
@@ -941,6 +1429,34 @@ class GeopoliticalApp {
         });
     }
 
+    refreshCharts() {
+        // Recompute category counts
+        this.categories.forEach(category => {
+            category.count = this.events.filter(event => event.category === category.name).length;
+        });
+
+        if (this.charts.category) {
+            this.charts.category.data.datasets[0].data = this.categories.map(cat => cat.count);
+            this.charts.category.update();
+        }
+
+        if (this.charts.timeline) {
+            // Simple heuristic: recompute by decade buckets
+            const counts = new Map();
+            this.events.forEach(ev => {
+                const y = new Date(ev.date).getFullYear();
+                const bucketStart = Math.floor(y / 10) * 10;
+                const key = `${bucketStart}-${bucketStart + 10}`;
+                counts.set(key, (counts.get(key) || 0) + 1);
+            });
+            const labels = Array.from(counts.keys()).sort((a,b) => parseInt(a.split('-')[0]) - parseInt(b.split('-')[0]));
+            const data = labels.map(l => counts.get(l));
+            this.charts.timeline.data.labels = labels;
+            this.charts.timeline.data.datasets[0].data = data;
+            this.charts.timeline.update();
+        }
+    }
+
     applyFilters() {
         const selectedCategories = Array.from(
             document.querySelectorAll('#categoryFilters input[type="checkbox"]:checked')
@@ -961,6 +1477,7 @@ class GeopoliticalApp {
         });
 
         this.updateDisplay();
+        this.rebuildTimeline();
     }
 
     clearFilters() {
@@ -986,6 +1503,9 @@ class GeopoliticalApp {
         // Update statistics
         document.getElementById('totalEvents').textContent = `Всього подій: ${this.events.length}`;
         document.getElementById('filteredEvents').textContent = `Відфільтровано: ${this.filteredEvents.length}`;
+
+        // Update charts after data changes
+        this.refreshCharts();
     }
 
     selectEvent(eventId) {
@@ -1016,6 +1536,9 @@ class GeopoliticalApp {
         if (this.isMobile && this.sidebarVisible) {
             this.toggleMobileMenu();
         }
+
+        // Ensure right sidebar is visible when an event is selected
+        this.toggleRightSidebar(true);
     }
     
     highlightMarker(event) {
@@ -1082,19 +1605,23 @@ class GeopoliticalApp {
     }
 
     exportToCSV() {
-        const headers = ['ID', 'Назва', 'Дата', 'Категорія', 'Регіон', 'Країна', 'Опис', 'Учасники', 'Вплив'];
+        const headers = ['ID', 'Назва', 'Канал', 'Дата', 'Категорія', 'Регіон', 'Країна', 'lat', 'lng', 'Опис', 'Учасники', 'Вплив', 'Джерела'];
         const csvContent = [
             headers.join(','),
             ...this.filteredEvents.map(event => [
                 event.id,
                 `"${event.title}"`,
+                `"${event.channel || ''}"`,
                 event.date,
                 `"${event.category}"`,
                 `"${event.region}"`,
                 `"${event.country}"`,
+                event.lat,
+                event.lng,
                 `"${event.description}"`,
                 `"${event.participants.join('; ')}"`,
-                `"${event.impact}"`
+                `"${event.impact}"`,
+                `"${(event.sources || []).join('; ')}"`
             ].join(','))
         ].join('\n');
 
@@ -1109,10 +1636,520 @@ class GeopoliticalApp {
         document.body.removeChild(link);
     }
 
+    // ===================== IMPORT / DISCOVERY =====================
+    setImportStatus(text, progress = null) {
+        const status = document.getElementById('importStatusText');
+        const fill = document.getElementById('importProgressFill');
+        if (status) status.textContent = text;
+        if (fill && progress !== null) fill.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+    }
+
+    clearImportPreview() {
+        this.importBuffer = [];
+        const list = document.getElementById('importPreviewList');
+        const importBtn = document.getElementById('importBtn');
+        if (list) list.innerHTML = '';
+        if (importBtn) importBtn.disabled = true;
+        this.setImportStatus('Очищено', 0);
+    }
+
+    appendToImportPreview(events) {
+        const list = document.getElementById('importPreviewList');
+        if (!list) return;
+        const fragment = document.createDocumentFragment();
+        events.forEach(ev => {
+            const item = document.createElement('div');
+            item.className = 'import-preview-item';
+            const dateStr = this.formatDate(ev.date);
+            item.innerHTML = `
+                <div>
+                    <strong>${ev.title}</strong>
+                    <div class="meta">${dateStr} • ${ev.region || ''} • ${ev.country || ''}</div>
+                </div>
+                <div>${ev.category || ''}</div>
+            `;
+            fragment.appendChild(item);
+        });
+        list.appendChild(fragment);
+    }
+
+    handleImportFile(e) {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const content = reader.result;
+                let parsed = [];
+                const fmtPref = (this.importSettings.format || 'auto').toLowerCase();
+                const isJson = fmtPref === 'json' || file.name.toLowerCase().endsWith('.json');
+                if (isJson) {
+                    const data = JSON.parse(content);
+                    parsed = Array.isArray(data) ? data : (data.events || []);
+                } else {
+                    // CSV
+                    this.setupFieldMappingForCsv(content);
+                    parsed = this.parseCsv(content);
+                    // Apply field mapping and date format if provided
+                    const mapping = this.importSettings.fieldMapping || {};
+                    const dateFmt = this.importSettings.dateFormat || 'auto';
+                    parsed = parsed.map(obj => {
+                        const mapped = this.applyFieldMappingToObject(obj, mapping);
+                        if (dateFmt && dateFmt !== 'auto' && mapped.date) {
+                            const d = this.parseDateByFormat(mapped.date, dateFmt);
+                            if (d) mapped.date = d;
+                        }
+                        return mapped;
+                    });
+                }
+
+                // Normalize and validate
+                const normalized = this.normalizeAndValidateBatch(parsed);
+                // Preserve original string IDs for stronger deduplication if present
+                normalized.forEach((ev, idx) => {
+                    const rawId = parsed[idx]?.id;
+                    if (rawId && typeof rawId === 'string' && !Number.isInteger(Number(rawId))) {
+                        ev._originalId = String(rawId);
+                    }
+                });
+
+                // Deduplicate within the imported set
+                const seen = new Set();
+                const dedupMode = this.importSettings.dedupMode || 'auto';
+                const unique = [];
+                for (const ev of normalized) {
+                    const key = this.computeEventDedupKeyByMode(dedupMode, ev);
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        unique.push(ev);
+                    }
+                }
+
+                // Remove items already present in the app (by chosen dedup mode)
+                const existingKeys = new Set(this.events.map(ev => this.computeEventDedupKeyByMode(dedupMode, ev)));
+                const toBuffer = unique.filter(ev => !existingKeys.has(this.computeEventDedupKeyByMode(dedupMode, ev)));
+
+                const invalidCount = Math.max(0, parsed.length - normalized.length);
+                this.showValidation(invalidCount ? `Валідно: ${normalized.length}. Пропущено: ${invalidCount}.` : '');
+
+                this.importBuffer.push(...toBuffer);
+                this.appendToImportPreview(toBuffer);
+                document.getElementById('importBtn').disabled = this.importBuffer.length === 0;
+                this.setImportStatus(`Завантажено з файлу: ${toBuffer.length}`, 30);
+            } catch (err) {
+                console.error('Import file parse error', err);
+                this.showValidation('Помилка читання або парсингу файлу');
+                this.showToast('Помилка читання файлу імпорту');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    parseCsv(text) {
+        const lines = text.split(/\r?\n/).filter(Boolean);
+        if (lines.length <= 1) return [];
+        const headers = lines[0].split(',').map(h => h.trim());
+        const rows = lines.slice(1).map(line => this.splitCsvLine(line));
+        return rows.map(cols => {
+            const obj = {};
+            headers.forEach((h, i) => obj[h] = cols[i]);
+            // Normalize some common header variants inline for CSV convenience
+            if (obj.lat === undefined && obj.latitude !== undefined) obj.lat = obj.latitude;
+            if (obj.lng === undefined && (obj.longitude !== undefined || obj.lon !== undefined)) obj.lng = obj.longitude ?? obj.lon;
+            return obj;
+        });
+    }
+
+    splitCsvLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (ch === '"') {
+                inQuotes = !inQuotes;
+            } else if (ch === ',' && !inQuotes) {
+                result.push(current);
+                current = '';
+            } else {
+                current += ch;
+            }
+        }
+        result.push(current);
+        return result.map(s => s.replace(/^\"|\"$/g, ''));
+    }
+
+    normalizeAndValidateBatch(rawItems) {
+        const out = [];
+        for (const raw of rawItems) {
+            const normalized = this.normalizeEvent(raw);
+            if (normalized && this.validateEvent(normalized)) {
+                out.push(normalized);
+            }
+        }
+        return out;
+    }
+
+    normalizeEvent(raw) {
+        // Map incoming fields to internal schema
+        const toNumber = (v) => {
+            const num = typeof v === 'string' ? parseFloat(v) : v;
+            return isFinite(num) ? num : 0;
+        };
+        const toNumericId = (v) => {
+            // Preserve numeric IDs; convert prefixed IDs to a stable hash-like number space via incrementing counter
+            if (v === undefined || v === null || v === '') return this.nextId++;
+            const asNum = Number(v);
+            if (Number.isInteger(asNum)) return asNum;
+            // Non-numeric id: keep in sources and still give numeric id for app usage
+            return this.nextId++;
+        };
+        const ensureArray = (v) => Array.isArray(v) ? v : (typeof v === 'string' && v.startsWith('[') ? JSON.parse(v.replace(/'/g, '"')) : (v ? [String(v)] : []));
+        const dateRaw = raw.date || raw.publishedAt || raw.pubDate || raw.updated || '';
+        const normalizedDate = this.normalizeEventDate(dateRaw);
+
+        // Normalize region/category labels and compute importance with fallbacks
+        const normalizedRegion = this.normalizeRegionLabel(raw.region || '');
+        const normalizedCategory = this.normalizeCategoryLabel(raw.category || raw.topic);
+        let importanceValue = Number.parseInt(raw.importance);
+        if (!Number.isFinite(importanceValue)) {
+            const conf = Number.parseFloat(raw.confidence);
+            if (Number.isFinite(conf)) {
+                importanceValue = Math.round(conf * 10);
+            }
+        }
+        if (!Number.isFinite(importanceValue)) {
+            importanceValue = 5;
+        }
+        const event = {
+            id: toNumericId(raw.id),
+            title: (raw.title || raw.headline || 'Без назви').toString().trim(),
+            channel: raw.channel || raw.source || raw.channel_name || '',
+            date: normalizedDate || new Date().toISOString().slice(0,10),
+            category: normalizedCategory || 'Політичні зміни',
+            region: normalizedRegion || '',
+            country: raw.country || '',
+            lat: toNumber(raw.lat ?? raw.latitude),
+            lng: toNumber(raw.lng ?? raw.longitude),
+            description: raw.description || raw.summary || raw.content || '',
+            participants: ensureArray(raw.participants),
+            impact: raw.impact || '',
+            importance: Math.max(1, Math.min(10, importanceValue)),
+            sources: ensureArray(raw.sources || raw.link || raw.url)
+        };
+        return event;
+    }
+
+    validateEvent(event) {
+        // Basic required fields
+        if (!event.title || !event.date) return false;
+        const time = Date.parse(event.date);
+        if (isNaN(time)) return false;
+        if (typeof event.lat !== 'number' || typeof event.lng !== 'number') return false;
+        if (event.lat < -90 || event.lat > 90 || event.lng < -180 || event.lng > 180) return false;
+        // Category whitelist: ensure it exists or default
+        const category = this.categories.find(c => c.name === event.category);
+        if (!category) {
+            // Fallback to a default category
+            event.category = 'Політичні зміни';
+        }
+        // Region fallback
+        if (!event.region) {
+            event.region = 'Глобально';
+        }
+        if (!event.country) {
+            event.country = 'Світ';
+        }
+        if (!event.importance || isNaN(event.importance)) {
+            event.importance = 5;
+        }
+        if (!event.participants) event.participants = [];
+        // Deduplicate participants and trim
+        event.participants = Array.from(new Set(event.participants.map(p => String(p).trim()).filter(Boolean)));
+        if (!event.sources) event.sources = [];
+        // Ensure sources are strings and valid-ish URLs if present
+        event.sources = event.sources.map(s => String(s).trim()).filter(Boolean);
+        // Enforce consistent country casing and trimming
+        event.country = String(event.country).trim();
+        event.region = String(event.region).trim();
+        event.category = String(event.category).trim();
+        // Round coordinates to 6 decimals to avoid floating jitter
+        if (Number.isFinite(event.lat)) event.lat = Math.round(event.lat * 1e6) / 1e6;
+        if (Number.isFinite(event.lng)) event.lng = Math.round(event.lng * 1e6) / 1e6;
+        return true;
+    }
+
+    normalizeEventDate(input) {
+        if (!input) return '';
+        // Respect explicit date format if chosen
+        const fmt = this.importSettings?.dateFormat || 'auto';
+        if (fmt && fmt !== 'auto') {
+            const d = this.parseDateByFormat(String(input), fmt);
+            if (d) return d;
+        }
+        // Fallback: Attempt to parse various formats and normalize to YYYY-MM-DD
+        const parsed = new Date(input);
+        if (isNaN(parsed.getTime())) return '';
+        const iso = parsed.toISOString();
+        return iso.slice(0, 10);
+    }
+
+    normalizeRegionLabel(input) {
+        const value = String(input || '').trim();
+        if (!value) return value;
+        const low = value.toLowerCase();
+        if (/(africa).*(europe)|(europe).*(africa)/.test(low)) {
+            return 'Африка/Європа';
+        }
+        const mapping = new Map([
+            ['europe', 'Європа'],
+            ['asia', 'Азія'],
+            ['middle east', 'Близький Схід'],
+            ['north america', 'Північна Америка'],
+            ['eurasia', 'Євразія'],
+            ['global', 'Глобально'],
+            ['world', 'Глобально'],
+            ['ukraine', 'Європа'],
+        ]);
+        return mapping.get(low) || value;
+    }
+
+    normalizeCategoryLabel(input) {
+        const value = String(input || '').trim();
+        if (!value) return value;
+        const low = value.toLowerCase();
+        const mapping = new Map([
+            ['global crises', 'Глобальні кризи'],
+            ['wars and conflicts', 'Війни та конфлікти'],
+            ['political changes', 'Політичні зміни'],
+            ['economic changes', 'Економічні зміни'],
+            ['technological changes', 'Технологічні зміни'],
+        ]);
+        return mapping.get(low) || value;
+    }
+
+    computeEventDedupKey(event) {
+        // Prefer stable link if available
+        const link = Array.isArray(event.sources) && event.sources.length ? event.sources[0] : '';
+        if (link && /^https?:\/\//i.test(link)) {
+            return `link:${link}`;
+        }
+        // If original string id present in sources, use it to strengthen dedup
+        const originalId = (event._originalId && typeof event._originalId === 'string') ? event._originalId : '';
+        const title = (event.title || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        const date = event.date || '';
+        const lat = Number.isFinite(event.lat) ? event.lat.toFixed(3) : 'x';
+        const lng = Number.isFinite(event.lng) ? event.lng.toFixed(3) : 'x';
+        return originalId ? `oid:${originalId}` : `tdl:${title}|${date}|${lat}|${lng}`;
+    }
+
+    async scanSources() {
+        // Backward-compatible manual scan using the new SourceScanner
+        const sources = this.prepareSourcesFromUI();
+        if (!this.scanner) this.scanner = new SourceScanner(this);
+        this.scanner.setSources(sources);
+        this.setImportStatus('Сканування джерел...', 5);
+        const results = await this.scanner.scanOnce({ updateUi: true });
+        // Start auto-refresh after a manual scan if there are sources
+        if (sources.length) {
+            this.scanner.startAutoRefresh();
+            this.updateScanButtonUi(true);
+        }
+        return results;
+    }
+
+    prepareSourcesFromUI() {
+        const rssTextarea = document.getElementById('rssUrls');
+        const newsApiKey = document.getElementById('newsApiKey')?.value?.trim();
+        const newsApiQuery = document.getElementById('newsApiQuery')?.value?.trim() || 'geopolitics';
+        const govJsonUrl = document.getElementById('govJsonUrl')?.value?.trim();
+        const corsProxy = document.getElementById('corsProxyUrl')?.value?.trim();
+
+        const rssUrls = (rssTextarea?.value || '')
+            .split(/\n|[,;]/)
+            .map(u => u.trim())
+            .filter(Boolean);
+
+        const sources = [];
+        rssUrls.forEach((url, idx) => {
+            sources.push({
+                id: `rss:${idx}:${url}`,
+                type: 'rss',
+                url,
+                priority: 2,
+                intervalMs: 15 * 60 * 1000,
+                corsProxy
+            });
+        });
+        if (govJsonUrl) {
+            sources.push({
+                id: `json:${govJsonUrl}`,
+                type: 'json',
+                url: govJsonUrl,
+                priority: 1,
+                intervalMs: 20 * 60 * 1000,
+                corsProxy
+            });
+        }
+        // Always include bundled local CSV resource if available
+        sources.push({
+            id: 'csv:local:ukraine_channels_events.csv',
+            type: 'csv',
+            url: window.location.origin + window.location.pathname.replace(/[^/]*$/, '') + 'ukraine_channels_events.csv',
+            priority: 1,
+            intervalMs: 60 * 60 * 1000,
+            corsProxy
+        });
+        if (newsApiKey) {
+            sources.push({
+                id: `newsapi:${newsApiQuery}`,
+                type: 'newsapi',
+                url: 'https://newsapi.org/v2/everything',
+                priority: 3,
+                intervalMs: 30 * 60 * 1000,
+                corsProxy,
+                params: { apiKey: newsApiKey, query: newsApiQuery }
+            });
+        }
+        return sources;
+    }
+
+    handleScanButton() {
+        const isActive = this.scanner && this.scanner.isAutoRefreshing;
+        if (isActive) {
+            this.scanner.stopAutoRefresh();
+            this.updateScanButtonUi(false);
+            this.showToast('Автооновлення зупинено');
+            return;
+        }
+        // Trigger a manual scan, then auto-refresh will be enabled inside
+        this.scanSources();
+    }
+
+    updateScanButtonUi(isActive) {
+        const scanBtn = document.getElementById('scanSourcesBtn');
+        if (!scanBtn) return;
+        if (isActive) {
+            scanBtn.classList.add('active');
+            scanBtn.textContent = 'Зупинити автооновлення';
+        } else {
+            scanBtn.classList.remove('active');
+            scanBtn.textContent = 'Сканувати джерела';
+        }
+    }
+
+    async fetchWithCors(url, corsProxy, options = {}) {
+        const finalUrl = corsProxy ? `${corsProxy.replace(/\/$/, '')}/${encodeURIComponent(url)}` : url;
+        const res = await fetch(finalUrl, options);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res;
+    }
+
+    async fetchRss(url, corsProxy) {
+        const res = await this.fetchWithCors(url, corsProxy);
+        const text = await res.text();
+        const items = this.parseRss(text);
+        return items.map(item => ({
+            title: item.title,
+            description: item.description,
+            date: item.pubDate || item.published,
+            sources: [item.link],
+            // location/category inference is out of scope; leave defaults
+        }));
+    }
+
+    parseRss(xmlText) {
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(xmlText, 'text/xml');
+        const entries = [];
+        const itemNodes = [...xml.querySelectorAll('item')];
+        if (itemNodes.length) {
+            itemNodes.forEach(n => entries.push({
+                title: n.querySelector('title')?.textContent || '',
+                description: n.querySelector('description')?.textContent || '',
+                link: n.querySelector('link')?.textContent || '',
+                pubDate: n.querySelector('pubDate')?.textContent || ''
+            }));
+        } else {
+            // Atom
+            const atomEntries = [...xml.querySelectorAll('entry')];
+            atomEntries.forEach(n => entries.push({
+                title: n.querySelector('title')?.textContent || '',
+                description: n.querySelector('summary')?.textContent || n.querySelector('content')?.textContent || '',
+                link: n.querySelector('link')?.getAttribute('href') || '',
+                published: n.querySelector('published')?.textContent || n.querySelector('updated')?.textContent || ''
+            }));
+        }
+        return entries;
+    }
+
+    async fetchNewsApi(apiKey, query, corsProxy) {
+        const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&pageSize=100`;
+        const res = await this.fetchWithCors(url, corsProxy, { headers: { 'X-Api-Key': apiKey } }).catch(async () => {
+            // If proxy route with headers fails, try direct
+            const r = await fetch(url, { headers: { 'X-Api-Key': apiKey } });
+            if (!r.ok) throw new Error('NewsAPI failed');
+            return r;
+        });
+        const json = await res.json();
+        if (!json.articles) return [];
+        return json.articles.map(a => ({
+            title: a.title,
+            description: a.description || a.content || '',
+            date: a.publishedAt,
+            sources: [a.url],
+            country: a.source?.name || ''
+        }));
+    }
+
+    async fetchGovJson(url, corsProxy) {
+        const res = await this.fetchWithCors(url, corsProxy).catch(() => fetch(url));
+        const json = await res.json();
+        return Array.isArray(json) ? json : (json.events || []);
+    }
+
+    importBufferedEvents() {
+        if (!this.importBuffer.length) {
+            this.showToast('Немає подій для імпорту');
+            return;
+        }
+        const total = this.importBuffer.length;
+        let imported = 0;
+        const batchSize = 50; // batch import
+        const doBatch = () => {
+            const batch = this.importBuffer.splice(0, batchSize);
+            // Apply replace or append on the first batch
+            if (imported === 0 && (this.importSettings.importMode || 'append') === 'replace') {
+                this.events = [];
+            }
+            batch.forEach(ev => this.events.push(ev));
+            imported += batch.length;
+            this.filteredEvents = [...this.events];
+            this.updateDisplay();
+            this.rebuildTimeline();
+            this.cameraController.calculateOptimalBounds();
+            const progress = Math.round((imported / total) * 100);
+            this.setImportStatus(`Імпортовано ${imported}/${total}`, progress);
+            if (this.importBuffer.length) {
+                setTimeout(doBatch, 50);
+            } else {
+                document.getElementById('importBtn').disabled = true;
+                this.showToast('Імпорт завершено');
+            }
+        };
+        doBatch();
+    }
+
     playTimelineAnimation() {
         if (this.isPlaying) return;
+        // ensure timeline is prepared
+        if (!this.isReady) {
+            this.showTimelineReadyOverlay('Підготовка…');
+            return;
+        }
 
         this.isPlaying = true;
+        this.hideTimelineReadyOverlay();
         this.playbackEvents = [...this.filteredEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
         this.currentPlaybackIndex = 0;
         
@@ -1120,7 +2157,12 @@ class GeopoliticalApp {
         this.updatePlaybackUI();
         
         // Start playback
-        this.continuePlayback();
+        try {
+            this.continuePlayback();
+        } catch (err) {
+            this._telemetryError('play:start', err);
+            this.pauseTimelineAnimation();
+        }
     }
     
     continuePlayback() {
@@ -1153,7 +2195,12 @@ class GeopoliticalApp {
         const delay = baseDelay / this.playbackSpeed;
         
         this.timelineAnimation = setTimeout(() => {
-            this.continuePlayback();
+            try {
+                this.continuePlayback();
+            } catch (err) {
+                this._telemetryError('play:tick', err);
+                this.pauseTimelineAnimation();
+            }
         }, delay);
     }
     
@@ -1162,8 +2209,9 @@ class GeopoliticalApp {
         if (!playhead || this.playbackEvents.length === 0) return;
         
         const progress = this.currentPlaybackIndex / this.playbackEvents.length;
-        const timelineWidth = document.getElementById('timeline').offsetWidth;
-        playhead.style.left = `${progress * timelineWidth}px`;
+        const timelineEl = document.getElementById('timeline');
+        const timelineWidth = timelineEl.offsetWidth;
+        playhead.style.left = `${Math.max(0, Math.min(1, progress)) * timelineWidth}px`;
         playhead.classList.add('active');
     }
     
@@ -1197,6 +2245,7 @@ class GeopoliticalApp {
         
         this.currentPlaybackIndex = Math.max(0, Math.min(targetIndex, this.playbackEvents.length - 1));
         this.updateProgress();
+        this.updateTimelinePlayhead();
         
         if (this.currentPlaybackIndex < this.playbackEvents.length) {
             this.selectEvent(this.playbackEvents[this.currentPlaybackIndex].id);
@@ -1228,7 +2277,11 @@ class GeopoliticalApp {
             el.classList.remove('active', 'playing');
         });
         
-        document.getElementById('timelinePlayhead').classList.remove('active');
+        const playhead = document.getElementById('timelinePlayhead');
+        if (playhead) {
+            playhead.classList.remove('active');
+            playhead.style.left = '0px';
+        }
         document.getElementById('timelineProgressFill').style.width = '0%';
         document.getElementById('timelineProgressHandle').style.left = '0%';
         
@@ -1241,6 +2294,22 @@ class GeopoliticalApp {
         
         // Reset camera view
         this.cameraController.resetView();
+    }
+
+    showTimelineReadyOverlay(text = 'Підготовка відтворення…') {
+        const overlay = document.getElementById('timelineReadyOverlay');
+        const textEl = document.getElementById('timelineReadyText');
+        if (!overlay) return;
+        if (textEl) textEl.textContent = text;
+        overlay.classList.add('visible');
+        overlay.setAttribute('aria-hidden', 'false');
+    }
+
+    hideTimelineReadyOverlay() {
+        const overlay = document.getElementById('timelineReadyOverlay');
+        if (!overlay) return;
+        overlay.classList.remove('visible');
+        overlay.setAttribute('aria-hidden', 'true');
     }
 }
 
@@ -1418,6 +2487,238 @@ class SmartCameraController {
     }
 }
 
+// Source Scanner: multi-source ingestion with normalization, dedup, and auto-refresh
+class SourceScanner {
+    constructor(app) {
+        this.app = app;
+        this.sources = [];
+        this.isAutoRefreshing = false;
+        this.refreshTimer = null;
+        this.sourceStateById = new Map(); // id -> { lastRun, nextRun, errorCount }
+        this.isScanInFlight = false;
+    }
+
+    setSources(sources) {
+        const normalized = (sources || []).map(src => ({
+            id: src.id || `${src.type}:${src.url}`,
+            type: (src.type || 'json').toLowerCase(),
+            url: src.url,
+            priority: Number.isFinite(src.priority) ? src.priority : 5,
+            intervalMs: Number.isFinite(src.intervalMs) ? src.intervalMs : 30 * 60 * 1000,
+            corsProxy: src.corsProxy || '',
+            params: src.params || {}
+        })).filter(s => !!s.url);
+        this.sources = normalized;
+        // Initialize per-source state
+        normalized.forEach(s => {
+            if (!this.sourceStateById.has(s.id)) {
+                this.sourceStateById.set(s.id, { lastRun: 0, nextRun: Date.now(), errorCount: 0 });
+            }
+        });
+    }
+
+    async scanOnce({ updateUi = false } = {}) {
+        if (!this.sources.length) {
+            if (updateUi) this.app.setImportStatus('Немає джерел для сканування', 0);
+            return [];
+        }
+        if (this.isScanInFlight) {
+            return [];
+        }
+        this.isScanInFlight = true;
+        try {
+            const total = this.sources.length;
+            let completed = 0;
+            const allRawItems = [];
+
+            // Fetch all sources in parallel but track progress per-settlement
+            const results = await Promise.allSettled(this.sources.map(async (src) => {
+                const state = this.sourceStateById.get(src.id) || { errorCount: 0 };
+                try {
+                    const items = await this.fetchSource(src);
+                    allRawItems.push(...items.map(i => ({ item: i, _srcId: src.id })));
+                    state.errorCount = 0;
+                    state.lastRun = Date.now();
+                    state.nextRun = state.lastRun + src.intervalMs;
+                    this.sourceStateById.set(src.id, state);
+                } catch (err) {
+                    state.errorCount = (state.errorCount || 0) + 1;
+                    const backoff = Math.min(2 ** state.errorCount, 32);
+                    const base = Math.max(5 * 60 * 1000, src.intervalMs);
+                    state.lastRun = Date.now();
+                    state.nextRun = state.lastRun + backoff * base;
+                    this.sourceStateById.set(src.id, state);
+                    console.warn('Source scan failed', src.id, err);
+                } finally {
+                    completed += 1;
+                    if (updateUi) {
+                        const progress = Math.round((completed / total) * 70) + 10; // 10-80%
+                        this.app.setImportStatus(`Сканування: ${completed}/${total}`, progress);
+                    }
+                }
+            }));
+
+            // Normalize and validate
+            const normalized = this.app.normalizeAndValidateBatch(allRawItems.map(r => r.item));
+            // Deduplicate across sources with priority rules
+            const byKey = new Map();
+            const getPriority = (srcId) => this.sources.find(s => s.id === srcId)?.priority ?? 5;
+            for (const raw of allRawItems) {
+                const event = this.app.normalizeEvent(raw.item);
+                if (!event || !this.app.validateEvent(event)) continue;
+                const key = this.app.computeEventDedupKey(event);
+                const existing = byKey.get(key);
+                const srcPriority = getPriority(raw._srcId);
+                if (!existing || srcPriority < existing.priority) {
+                    byKey.set(key, { event, priority: srcPriority });
+                }
+            }
+
+            // Remove events already present in the app by dedup key
+            const existingKeys = new Set(this.app.events.map(ev => this.app.computeEventDedupKey(ev)));
+            const uniqueEvents = [];
+            for (const [key, { event }] of byKey.entries()) {
+                if (!existingKeys.has(key)) uniqueEvents.push(event);
+            }
+
+            // Update UI preview buffer
+            if (updateUi) {
+                this.app.clearImportPreview();
+                this.app.importBuffer = uniqueEvents;
+                this.app.appendToImportPreview(uniqueEvents);
+                const importBtn = document.getElementById('importBtn');
+                if (importBtn) importBtn.disabled = this.app.importBuffer.length === 0;
+                this.app.setImportStatus(`Знайдено: ${uniqueEvents.length}`, uniqueEvents.length ? 90 : 30);
+            }
+
+            return uniqueEvents;
+        } finally {
+            this.isScanInFlight = false;
+        }
+    }
+
+    startAutoRefresh() {
+        if (this.isAutoRefreshing) return;
+        this.isAutoRefreshing = true;
+        // Align next runs to now
+        const now = Date.now();
+        for (const [id, state] of this.sourceStateById.entries()) {
+            if (!state.nextRun || state.nextRun < now) {
+                state.nextRun = now + 1000;
+                this.sourceStateById.set(id, state);
+            }
+        }
+        // Poller tick
+        const tick = async () => {
+            if (!this.isAutoRefreshing) return;
+            const dueSources = this.sources.filter(s => {
+                const st = this.sourceStateById.get(s.id);
+                return st && st.nextRun && st.nextRun <= Date.now();
+            });
+            if (dueSources.length) {
+                // Temporarily narrow to due sources
+                const all = this.sources;
+                try {
+                    this.sources = dueSources;
+                    await this.scanOnce({ updateUi: true });
+                } finally {
+                    this.sources = all;
+                }
+            }
+            this.refreshTimer = setTimeout(tick, 15 * 1000);
+        };
+        this.refreshTimer = setTimeout(tick, 1500);
+    }
+
+    stopAutoRefresh() {
+        this.isAutoRefreshing = false;
+        if (this.refreshTimer) {
+            clearTimeout(this.refreshTimer);
+            this.refreshTimer = null;
+        }
+    }
+
+    async fetchSource(src) {
+        switch (src.type) {
+            case 'rss':
+                return await this.app.fetchRss(src.url, src.corsProxy);
+            case 'json':
+                return await this.fetchGenericJson(src);
+            case 'csv':
+                return await this.fetchGenericCsv(src);
+            case 'xml':
+                return await this.fetchGenericXml(src);
+            case 'newsapi':
+                return await this.fetchNewsApiWrapper(src);
+            default:
+                // Try JSON, then RSS, then XML
+                try { return await this.fetchGenericJson(src); } catch(_) {}
+                try { return await this.app.fetchRss(src.url, src.corsProxy); } catch(_) {}
+                return await this.fetchGenericXml(src);
+        }
+    }
+
+    async fetchGenericJson(src) {
+        const res = await this.app.fetchWithCors(src.url, src.corsProxy).catch(() => fetch(src.url));
+        const json = await res.json();
+        if (Array.isArray(json)) return json;
+        if (json && Array.isArray(json.events)) return json.events;
+        if (json && json.data && Array.isArray(json.data)) return json.data;
+        return [];
+    }
+
+    async fetchGenericCsv(src) {
+        const res = await this.app.fetchWithCors(src.url, src.corsProxy).catch(() => fetch(src.url));
+        const text = await res.text();
+        return this.app.parseCsv(text);
+    }
+
+    async fetchGenericXml(src) {
+        const res = await this.app.fetchWithCors(src.url, src.corsProxy).catch(() => fetch(src.url));
+        const text = await res.text();
+        return this.parseGenericXmlEvents(text, src.url);
+    }
+
+    async fetchNewsApiWrapper(src) {
+        const { apiKey, query } = src.params || {};
+        if (!apiKey) return [];
+        return await this.app.fetchNewsApi(apiKey, query || 'geopolitics', src.corsProxy);
+    }
+
+    parseGenericXmlEvents(xmlText, baseLink) {
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(xmlText, 'text/xml');
+        const out = [];
+        const eventNodes = [...xml.querySelectorAll('event')];
+        if (eventNodes.length) {
+            eventNodes.forEach(n => {
+                out.push({
+                    title: n.querySelector('title, name')?.textContent || '',
+                    description: n.querySelector('description, summary, details')?.textContent || '',
+                    date: n.querySelector('date, published, updated')?.textContent || '',
+                    category: n.querySelector('category, type, topic')?.textContent || '',
+                    region: n.querySelector('region')?.textContent || '',
+                    country: n.querySelector('country')?.textContent || '',
+                    lat: n.querySelector('lat, latitude')?.textContent,
+                    lng: n.querySelector('lng, longitude, lon')?.textContent,
+                    participants: (n.querySelector('participants')?.textContent || '').split(/[,;|]/),
+                    importance: n.querySelector('importance, score')?.textContent,
+                    sources: [n.querySelector('link, url, href')?.textContent || baseLink || '']
+                });
+            });
+            return out;
+        }
+        // Fallback to RSS/Atom-like nodes
+        const rssItems = this.app.parseRss(xmlText) || [];
+        return rssItems.map(i => ({
+            title: i.title,
+            description: i.description,
+            date: i.pubDate || i.published,
+            sources: [i.link]
+        }));
+    }
+}
+
 // Enhanced App Methods
 GeopoliticalApp.prototype.setupEventListeners = function() {
     // Window resize handler
@@ -1426,6 +2727,7 @@ GeopoliticalApp.prototype.setupEventListeners = function() {
         if (this.map) {
             this.map.invalidateSize();
         }
+        this.positionZoomLabel();
     });
     
     // Keyboard shortcuts
@@ -1591,6 +2893,106 @@ GeopoliticalApp.prototype.showToast = function(message) {
             document.body.removeChild(toast);
         }, 300);
     }, 3000);
+};
+
+GeopoliticalApp.prototype.tryBootstrapLocalResources = function() {
+    const sources = [
+        { type: 'csv', url: 'ukraine_channels_events.csv' },
+        { type: 'csv', url: 'data/new_events.csv', headerIfMissing: 'event_id,title,date,date_precision,location,region,category,source_video,transcript_snippet,confidence,provenance,extraction_method,dupe_flag' },
+        { type: 'json', url: 'data/events_summary.json', jsonSelector: 'sample_new_events' }
+    ];
+
+    const fetchOne = async (src) => {
+        try {
+            const res = await fetch(src.url);
+            if (!res.ok) return [];
+            if (src.type === 'csv') {
+                let text = await res.text();
+                const firstLine = (text.split(/\r?\n/).find(Boolean) || '');
+                const hasHeader = /(^|,)(id|event_id)(,|$)/i.test(firstLine) && /(^|,)(title)(,|$)/i.test(firstLine);
+                if (!hasHeader && src.headerIfMissing) {
+                    text = src.headerIfMissing + '\n' + text;
+                }
+                const rawRows = this.parseCsv(text);
+                const normalized = this.normalizeAndValidateBatch(rawRows);
+                // Preserve original string IDs if present for deduplication strength
+                normalized.forEach((ev, idx) => {
+                    const rid = rawRows[idx]?.id;
+                    if (rid && typeof rid === 'string' && !Number.isInteger(Number(rid))) {
+                        ev._originalId = String(rid);
+                    }
+                });
+                return normalized;
+            }
+            if (src.type === 'json') {
+                const json = await res.json();
+                let arr = [];
+                if (Array.isArray(json)) arr = json;
+                else if (Array.isArray(json.events)) arr = json.events;
+                else if (Array.isArray(json[src.jsonSelector])) {
+                    arr = json[src.jsonSelector].map(item => ({
+                        id: item.id,
+                        title: item.title,
+                        date: item.date,
+                        category: this.normalizeCategoryLabel(item.category || ''),
+                        region: this.normalizeRegionLabel(item.region || ''),
+                        country: item.place || '',
+                        description: item.description || '',
+                        importance: item.importance,
+                        sources: [item.url].filter(Boolean)
+                    }));
+                }
+                return this.normalizeAndValidateBatch(arr);
+            }
+            return [];
+        } catch (_) {
+            return [];
+        }
+    };
+
+    Promise.all(sources.map(fetchOne))
+        .then(lists => {
+            const allNew = lists.flat();
+            if (!allNew.length) return;
+
+            // Deduplicate within new items
+            const seen = new Set();
+            const uniqueNew = [];
+            for (const ev of allNew) {
+                const key = this.computeEventDedupKey(ev);
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniqueNew.push(ev);
+                }
+            }
+
+            // Remove items already present in the app
+            const existingKeys = new Set(this.events.map(ev => this.computeEventDedupKey(ev)));
+            const toAdd = uniqueNew.filter(ev => !existingKeys.has(this.computeEventDedupKey(ev)));
+            if (!toAdd.length) return;
+
+            this.events.push(...toAdd);
+            this.filteredEvents = [...this.events];
+            // Recompute category counts
+            this.categories.forEach(category => {
+                category.count = this.events.filter(event => event.category === category.name).length;
+            });
+            // Refresh UI
+            this.updateDisplay();
+            this.rebuildTimeline();
+            if (this.cameraController) this.cameraController.calculateOptimalBounds();
+            this.showToast(`Імпортовано локальних подій: ${toAdd.length}`);
+        })
+        .catch(() => {});
+};
+
+// Safe wrapper to avoid blocking startup; with error telemetry
+GeopoliticalApp.prototype.tryBootstrapLocalResourcesSafe = function() {
+    try {
+        this.tryBootstrapLocalResources();
+    } catch (err) {
+        this._telemetryError('bootstrap:local', err);
+    }
 };
 
 // Initialize app when DOM is loaded

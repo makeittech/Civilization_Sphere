@@ -1,0 +1,24 @@
+{
+  "name": "workspace",
+  "version": "1.0.0",
+  "description": "**Геополітичні Події** - це інтерактивна веб-платформа для візуалізації та аналізу геополітичних подій у часі та просторі. Проект агрегує контент з українських YouTube-каналів, що аналізують глобальні геополітичні процеси, та представляє його у вигляді інтерактивної карти з часовою шкалою.",
+  "main": "app.js",
+  "scripts": {
+    "serve": "python -m http.server 8000",
+    "test": "node scripts/smoke_test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/makeittech/Civilization_Sphere.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/makeittech/Civilization_Sphere/issues"
+  },
+  "homepage": "https://github.com/makeittech/Civilization_Sphere#readme",
+  "dependencies": {
+    "ytdl-core": "^4.11.5"
+  }
+}

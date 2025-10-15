@@ -1,0 +1,135 @@
+{
+  "total_events": 83,
+  "new_events_added": 22,
+  "counts_per_channel": {
+    "Неаполітичні": 15,
+    "Good Times Bad Times UA": 16,
+    "Чотири сторони": 15,
+    "Ціна Держави": 15,
+    "Historical Pandemics": 22
+  },
+  "sample_new_events": [
+    {
+      "id": "PANDEMIC_JUSTINIAN_541",
+      "title": "Plague of Justinian begins",
+      "date": "0541-01-01T00:00:00.000Z",
+      "region": "Europe",
+      "category": "Global Crises",
+      "channel_name": "Historical Pandemics",
+      "source_url": "https://en.wikipedia.org/wiki/Plague_of_Justinian",
+      "description": "First recorded plague pandemic affecting the Byzantine Empire and Mediterranean.",
+      "channel_id": "",
+      "source": "Historical",
+      "tags": [
+        "pandemic",
+        "epidemic",
+        "disease",
+        "plague",
+        "yersinia pestis"
+      ],
+      "url": "https://en.wikipedia.org/wiki/Plague_of_Justinian",
+      "channels": [
+        "Historical Pandemics"
+      ],
+      "importance": 9,
+      "place": "Byzantine Empire (Constantinople)"
+    },
+    {
+      "id": "PANDEMIC_BLACK_DEATH_1347",
+      "title": "Black Death spreads in Europe",
+      "date": "1347-10-01T00:00:00.000Z",
+      "region": "Europe",
+      "category": "Global Crises",
+      "channel_name": "Historical Pandemics",
+      "source_url": "https://en.wikipedia.org/wiki/Black_Death",
+      "description": "Bubonic plague pandemic killing tens of millions across Eurasia and North Africa.",
+      "channel_id": "",
+      "source": "Historical",
+      "tags": [
+        "pandemic",
+        "epidemic",
+        "disease",
+        "plague",
+        "yersinia pestis"
+      ],
+      "url": "https://en.wikipedia.org/wiki/Black_Death",
+      "channels": [
+        "Historical Pandemics"
+      ],
+      "importance": 10,
+      "place": "Europe and North Africa"
+    },
+    {
+      "id": "PANDEMIC_THIRD_PLAGUE_1894",
+      "title": "Third Plague Pandemic begins",
+      "date": "1894-06-01T00:00:00.000Z",
+      "region": "Asia",
+      "category": "Global Crises",
+      "channel_name": "Historical Pandemics",
+      "source_url": "https://en.wikipedia.org/wiki/Third_plague_pandemic",
+      "description": "Global bubonic plague pandemic originating in Yunnan and Hong Kong.",
+      "channel_id": "",
+      "source": "Historical",
+      "tags": [
+        "pandemic",
+        "epidemic",
+        "disease",
+        "plague"
+      ],
+      "url": "https://en.wikipedia.org/wiki/Third_plague_pandemic",
+      "channels": [
+        "Historical Pandemics"
+      ],
+      "importance": 8,
+      "place": "Hong Kong, Yunnan"
+    },
+    {
+      "id": "PANDEMIC_GREAT_PLAGUE_LONDON_1665",
+      "title": "Great Plague of London",
+      "date": "1665-06-01T00:00:00.000Z",
+      "region": "Europe",
+      "category": "Global Crises",
+      "channel_name": "Historical Pandemics",
+      "source_url": "https://en.wikipedia.org/wiki/Great_Plague_of_London",
+      "description": "Major outbreak of bubonic plague in London killing a quarter of the population.",
+      "channel_id": "",
+      "source": "Historical",
+      "tags": [
+        "pandemic",
+        "epidemic",
+        "disease",
+        "plague"
+      ],
+      "url": "https://en.wikipedia.org/wiki/Great_Plague_of_London",
+      "channels": [
+        "Historical Pandemics"
+      ],
+      "importance": 8,
+      "place": "London, England"
+    },
+    {
+      "id": "PANDEMIC_MARSEILLE_1720",
+      "title": "Great Plague of Marseille",
+      "date": "1720-05-25T00:00:00.000Z",
+      "region": "Europe",
+      "category": "Global Crises",
+      "channel_name": "Historical Pandemics",
+      "source_url": "https://en.wikipedia.org/wiki/Great_Plague_of_Marseille",
+      "description": "One of the last significant European outbreaks of bubonic plague.",
+      "channel_id": "",
+      "source": "Historical",
+      "tags": [
+        "pandemic",
+        "epidemic",
+        "disease",
+        "plague"
+      ],
+      "url": "https://en.wikipedia.org/wiki/Great_Plague_of_Marseille",
+      "channels": [
+        "Historical Pandemics"
+      ],
+      "importance": 7,
+      "place": "Marseille, France"
+    }
+  ]
+}

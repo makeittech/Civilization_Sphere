@@ -10,8 +10,12 @@
 <body>
     <!-- Theme Toggle -->
     <div class="theme-toggle" id="themeToggle">
-        <button class="theme-btn" data-theme="light">☀️</button>
-        <button class="theme-btn active" data-theme="dark">🌙</button>
+        <button class="theme-btn" data-theme="light" title="Світла тема" aria-label="Світла тема">
+            <i data-lucide="sun" class="btn-icon" aria-hidden="true"></i>
+        </button>
+        <button class="theme-btn active" data-theme="dark" title="Темна тема" aria-label="Темна тема">
+            <i data-lucide="moon" class="btn-icon" aria-hidden="true"></i>
+        </button>
     </div>
 
     <!-- Mobile Menu Toggle -->
@@ -26,9 +30,10 @@
         <header class="header">
             <div class="header-content">
                 <h1 class="app-title">Геополітичні Події</h1>
-                <div class="search-container">
-                    <input type="text" id="searchInput" class="search-input" placeholder="Пошук подій...">
-                    <div id="searchSuggestions" class="search-suggestions"></div>
+                <div class="search-container" role="search">
+                    <label for="searchInput" class="sr-only">Пошук подій</label>
+                    <input type="text" id="searchInput" class="search-input" placeholder="Пошук подій..." aria-autocomplete="list" aria-controls="searchSuggestions" aria-expanded="false">
+                    <div id="searchSuggestions" class="search-suggestions" role="listbox" aria-label="Підказки пошуку"></div>
                 </div>
                 <div class="header-stats">
                     <span id="totalEvents" class="stat-badge">Всього подій: 0</span>
@@ -38,13 +43,15 @@
                         <span>Live режим</span>
                     </div>
                 </div>
+                <button id="rightSidebarToggle" class="btn btn--outline btn--rounded header-action" aria-controls="rightSidebar" aria-expanded="false" title="Панель деталей">ℹ️</button>
             </div>
         </header>
 
         <!-- Main Content -->
         <div class="main-content">
-            <!-- Left Sidebar - Filters -->
+            <!-- Left Sidebar - Filters & Import -->
             <aside class="sidebar left-sidebar" id="leftSidebar">
+
                 <div class="sidebar-section">
                     <h3 class="sidebar-title">Фільтри</h3>
                     
@@ -83,6 +90,133 @@
                     <button id="clearFilters" class="btn btn--secondary btn--full-width">Очистити фільтри</button>
                 </div>
 
+                <!-- UI Tabs: Data Import (placed below Filters) -->
+                <div class="sidebar-section" id="uiTabsSection">
+                    <div class="tabs" role="tablist" aria-label="UI">
+                        <button id="tabDataImport" class="tab active" role="tab" aria-selected="true" aria-controls="panelDataImport" tabindex="0">Data Import</button>
+                    </div>
+                    <div id="panelDataImport" class="tabpanel active" role="tabpanel" tabindex="0" aria-labelledby="tabDataImport">
+                        <h3 class="sidebar-title">Імпорт даних</h3>
+
+                        <div class="filter-group">
+                            <h4 class="filter-title">Формат</h4>
+                            <select id="importFormat" class="form-control" aria-label="Формат імпорту">
+                                <option value="auto" selected>Автовизначення</option>
+                                <option value="csv">CSV</option>
+                                <option value="json">JSON</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <h4 class="filter-title">Пакетний імпорт (CSV/JSON)</h4>
+                            <input id="importFile" class="form-control" type="file" accept=".csv,.json" aria-label="Файл для імпорту">
+                        </div>
+
+                        <div class="filter-group">
+                            <h4 class="filter-title">Формат дати (CSV)</h4>
+                            <select id="dateFormat" class="form-control" aria-label="Формат дати">
+                                <option value="auto" selected>Автовизначення</option>
+                                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                <option value="YYYY-MM-DDTHH:mm:ssZ">ISO 8601</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <h4 class="filter-title">Мапінг полів (CSV)</h4>
+                            <div class="field-mapping" id="fieldMapping">
+                                <label class="form-label" for="map-title">Назва</label>
+                                <select id="map-title" class="form-control" aria-label="Мапінг: назва"></select>
+
+                                <label class="form-label" for="map-date">Дата</label>
+                                <select id="map-date" class="form-control" aria-label="Мапінг: дата"></select>
+
+                                <label class="form-label" for="map-lat">Широта</label>
+                                <select id="map-lat" class="form-control" aria-label="Мапінг: широта"></select>
+
+                                <label class="form-label" for="map-lng">Довгота</label>
+                                <select id="map-lng" class="form-control" aria-label="Мапінг: довгота"></select>
+
+                                <label class="form-label" for="map-description">Опис</label>
+                                <select id="map-description" class="form-control" aria-label="Мапінг: опис"></select>
+
+                                <label class="form-label" for="map-category">Категорія</label>
+                                <select id="map-category" class="form-control" aria-label="Мапінг: категорія"></select>
+
+                                <label class="form-label" for="map-region">Регіон</label>
+                                <select id="map-region" class="form-control" aria-label="Мапінг: регіон"></select>
+
+                                <label class="form-label" for="map-country">Країна</label>
+                                <select id="map-country" class="form-control" aria-label="Мапінг: країна"></select>
+
+                                <label class="form-label" for="map-importance">Важливість</label>
+                                <select id="map-importance" class="form-control" aria-label="Мапінг: важливість"></select>
+
+                                <label class="form-label" for="map-sources">Джерела/посилання</label>
+                                <select id="map-sources" class="form-control" aria-label="Мапінг: джерела"></select>
+                            </div>
+                        </div>
+
+                        <div class="filter-group">
+                            <h4 class="filter-title">Дедуплікація</h4>
+                            <select id="dedupMode" class="form-control" aria-label="Режим дедуплікації">
+                                <option value="auto" selected>Авто (посилання/ID)</option>
+                                <option value="title_date_coords">Назва + дата + координати</option>
+                                <option value="off">Вимкнено</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <h4 class="filter-title">Режим імпорту</h4>
+                            <div class="radio-group" role="radiogroup" aria-label="Режим імпорту">
+                                <label><input type="radio" name="importMode" value="append" checked> Додати (append)</label>
+                                <label><input type="radio" name="importMode" value="replace"> Замінити (replace)</label>
+                            </div>
+                        </div>
+
+                        <div class="filter-group">
+                            <h4 class="filter-title">RSS джерела</h4>
+                            <textarea id="rssUrls" class="form-control" rows="3" placeholder="Вставте URL RSS (по одному в рядок)"></textarea>
+                        </div>
+                        <div class="filter-group">
+                            <h4 class="filter-title">Новинні API (опц.)</h4>
+                            <input id="newsApiKey" class="form-control" type="text" placeholder="NewsAPI ключ (клієнтське використання може бути обмежене CORS)">
+                            <input id="newsApiQuery" class="form-control" type="text" placeholder="Пошуковий запит (напр., geopolitics, war)">
+                        </div>
+                        <div class="filter-group">
+                            <h4 class="filter-title">Урядові звіти (JSON, опц.)</h4>
+                            <input id="govJsonUrl" class="form-control" type="url" placeholder="URL на JSON звіт (open data)">
+                        </div>
+                        <div class="filter-group">
+                            <h4 class="filter-title">CORS Proxy (опц.)</h4>
+                            <input id="corsProxyUrl" class="form-control" type="url" placeholder="https://cors.isomorphic-git.org/ або ваш проксі">
+                        </div>
+
+                        <div class="import-actions">
+                            <button id="scanSourcesBtn" class="btn btn--primary btn--full-width">Сканувати джерела</button>
+                            <button id="importBtn" class="btn btn--secondary btn--full-width" disabled>Імпортувати знайдені</button>
+                            <button id="clearImportBtn" class="btn btn--outline btn--full-width">Очистити попередній перегляд</button>
+                        </div>
+
+                        <div class="import-progress" id="importProgress" aria-live="polite">
+                            <div class="progress-track">
+                                <div class="progress-fill" id="importProgressFill" style="width: 0%"></div>
+                            </div>
+                            <div class="progress-status">
+                                <span id="importStatusText">Очікування…</span>
+                            </div>
+                        </div>
+
+                        <div id="importValidation" class="validation-messages" aria-live="polite"></div>
+
+                        <div class="import-preview" id="importPreview">
+                            <div class="import-preview-header">Знайдені події</div>
+                            <div id="importPreviewList" class="import-preview-list"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Statistics Panel -->
                 <div class="sidebar-section">
                     <h3 class="sidebar-title">Статистика</h3>
@@ -98,30 +232,30 @@
                 <div id="map" class="map"></div>
                 <div class="map-controls">
                     <div class="control-group">
-                        <button id="resetView" class="btn btn--outline map-btn" title="Скинути вид">
-                            <span class="btn-icon">🏠</span>
+                        <button id="resetView" class="btn btn--outline map-btn" title="Скинути вид" aria-label="Скинути вид">
+                            <i data-lucide="home" class="btn-icon" aria-hidden="true"></i>
                         </button>
-                        <button id="fullscreen" class="btn btn--outline map-btn" title="Повний екран">
-                            <span class="btn-icon">⛶</span>
+                        <button id="fullscreen" class="btn btn--outline map-btn" title="Повний екран" aria-label="Повний екран">
+                            <i data-lucide="maximize" class="btn-icon" aria-hidden="true"></i>
                         </button>
-                        <button id="layersToggle" class="btn btn--outline map-btn" title="Шари">
-                            <span class="btn-icon">🗂</span>
-                        </button>
-                    </div>
-                    <div class="control-group">
-                        <button id="heatmapToggle" class="btn btn--outline map-btn" title="Теплова карта">
-                            <span class="btn-icon">🔥</span>
-                        </button>
-                        <button id="connectionsToggle" class="btn btn--outline map-btn" title="Зв'язки">
-                            <span class="btn-icon">🔗</span>
-                        </button>
-                        <button id="shareMap" class="btn btn--outline map-btn" title="Поділитися">
-                            <span class="btn-icon">📤</span>
+                        <button id="layersToggle" class="btn btn--outline map-btn" title="Тема карти" aria-label="Тема карти">
+                            <i data-lucide="sun-moon" class="btn-icon" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div class="control-group">
-                        <button id="exportData" class="btn btn--outline map-btn" title="Експорт">
-                            <span class="btn-icon">💾</span>
+                        <button id="heatmapToggle" class="btn btn--outline map-btn" title="Теплова карта" aria-label="Теплова карта">
+                            <i data-lucide="flame" class="btn-icon" aria-hidden="true"></i>
+                        </button>
+                        <button id="connectionsToggle" class="btn btn--outline map-btn" title="Зв'язки" aria-label="Зв'язки">
+                            <i data-lucide="git-branch" class="btn-icon" aria-hidden="true"></i>
+                        </button>
+                        <button id="shareMap" class="btn btn--outline map-btn" title="Поділитися" aria-label="Поділитися">
+                            <i data-lucide="share-2" class="btn-icon" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <div class="control-group">
+                        <button id="exportData" class="btn btn--outline map-btn" title="Експорт" aria-label="Експорт">
+                            <i data-lucide="download" class="btn-icon" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -138,10 +272,13 @@
                     <div class="loading-spinner"></div>
                     <span>Завантаження карти...</span>
                 </div>
+
+                <!-- Zoom Label (shown during pinch/zoom) -->
+                <div id="zoomLabel" class="zoom-label" aria-live="polite" aria-hidden="true"></div>
             </main>
 
             <!-- Right Sidebar - Event Details -->
-            <aside class="sidebar right-sidebar" id="rightSidebar">
+            <aside class="sidebar right-sidebar collapsed" id="rightSidebar">
                 <div class="sidebar-section">
                     <h3 class="sidebar-title">Деталі події</h3>
                     <div id="eventDetails" class="event-details">
@@ -159,14 +296,14 @@
                 <h3 class="timeline-title">Часова шкала</h3>
                 <div class="timeline-controls">
                     <div class="playback-controls">
-                        <button id="timelinePlay" class="btn btn--sm timeline-btn" title="Відтворити">
-                            <span class="play-icon">▶</span>
+                        <button id="timelinePlay" class="btn btn--sm timeline-btn" title="Відтворити" aria-label="Відтворити">
+                            <i data-lucide="play" aria-hidden="true"></i>
                         </button>
-                        <button id="timelinePause" class="btn btn--sm timeline-btn" title="Пауза">
-                            <span class="pause-icon">⏸</span>
+                        <button id="timelinePause" class="btn btn--sm timeline-btn" title="Пауза" aria-label="Пауза">
+                            <i data-lucide="pause" aria-hidden="true"></i>
                         </button>
-                        <button id="timelineReset" class="btn btn--sm timeline-btn" title="Скинути">
-                            <span class="reset-icon">⏹</span>
+                        <button id="timelineReset" class="btn btn--sm timeline-btn" title="Скинути" aria-label="Скинути">
+                            <i data-lucide="square" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div class="speed-controls">
@@ -186,6 +323,15 @@
                     </div>
                 </div>
             </div>
+            <!-- Timeline Ready/Loading Overlay -->
+                <div class="timeline-ready-overlay" id="timelineReadyOverlay" aria-live="polite" aria-hidden="true">
+                <div class="loading-spinner"></div>
+                <span id="timelineReadyText">Підготовка відтворення…</span>
+                    <button id="timelineReadyPlayBtn" class="btn btn--primary btn--sm" type="button" aria-label="Почати відтворення">
+                        <i data-lucide="play" aria-hidden="true"></i>
+                        <span class="sr-only">Відтворити</span>
+                    </button>
+            </div>
             <div class="timeline-content">
                 <div id="timeline" class="timeline"></div>
                 <div class="timeline-scale" id="timelineScale"></div>
@@ -202,6 +348,14 @@
     <!-- Scripts -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@0.451.0/dist/umd/lucide.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        if (window.lucide) {
+          lucide.createIcons();
+        }
+      });
+    </script>
     <script src="app.js"></script>
 </body>
 </html>
