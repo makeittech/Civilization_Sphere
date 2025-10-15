@@ -937,8 +937,8 @@ class GeopoliticalApp {
         const maxYear = lastDate.getFullYear();
         const yearRange = Math.max(0, maxYear - minYear);
 
-        // Add events to timeline with importance-weighted sizing
-        sortedEvents.forEach((event, idx) => {
+        // Calculate positions for all events first
+        const eventPositions = sortedEvents.map((event, idx) => {
             const eventDate = new Date(event.date);
             const eventYear = eventDate.getFullYear();
 
@@ -951,6 +951,53 @@ class GeopoliticalApp {
                 position = ((eventYear - minYear) / yearRange) * 100;
             }
 
+            const size = Math.max(8, Math.min(18, (Number(event.importance) || 5) * 1.2));
+            
+            return {
+                event,
+                position,
+                size,
+                row: 0 // Will be calculated for collision detection
+            };
+        });
+
+        // Collision detection and vertical stacking
+        // Group events that are within a certain threshold (2% of timeline width)
+        const COLLISION_THRESHOLD = 2; // percentage
+        
+        for (let i = 0; i < eventPositions.length; i++) {
+            const current = eventPositions[i];
+            let maxRowBelow = -1;
+            
+            // Check all previous events for collisions
+            for (let j = 0; j < i; j++) {
+                const other = eventPositions[j];
+                const distance = Math.abs(current.position - other.position);
+                
+                // If events overlap or are very close
+                if (distance < COLLISION_THRESHOLD) {
+                    maxRowBelow = Math.max(maxRowBelow, other.row);
+                }
+            }
+            
+            // Place current event in the next available row
+            current.row = maxRowBelow + 1;
+        }
+
+        // Calculate the maximum number of rows needed
+        const maxRows = Math.max(...eventPositions.map(ep => ep.row), 0) + 1;
+        
+        // Adjust timeline height if needed (with a reasonable max)
+        const baseHeight = 60;
+        const rowHeight = 20;
+        const calculatedHeight = Math.min(baseHeight + (maxRows - 1) * rowHeight, 120);
+        timeline.style.height = `${calculatedHeight}px`;
+
+        // Add events to timeline with collision-aware positioning
+        eventPositions.forEach(({ event, position, size, row }) => {
+            const eventDate = new Date(event.date);
+            const eventYear = eventDate.getFullYear();
+            
             const category = this.categories.find(cat => cat.name === event.category);
             const color = category ? category.color : '#333';
 
@@ -959,14 +1006,28 @@ class GeopoliticalApp {
             eventElement.style.left = `${position}%`;
             eventElement.style.backgroundColor = color;
             eventElement.dataset.eventId = event.id;
-            const size = Math.max(8, Math.min(18, (Number(event.importance) || 5) * 1.2));
             eventElement.style.width = `${size}px`;
             eventElement.style.height = `${size}px`;
+            
+            // Apply vertical offset based on row
+            // Center events when there are multiple rows
+            const verticalOffset = row * rowHeight - ((maxRows - 1) * rowHeight) / 2;
+            eventElement.style.top = `calc(50% + ${verticalOffset}px)`;
 
             const tooltip = document.createElement('div');
             tooltip.className = 'timeline-tooltip';
             tooltip.textContent = `${event.title} (${eventYear}) • ${event.region}`;
             eventElement.appendChild(tooltip);
+
+            // Adjust tooltip position for edge events
+            if (position < 15) {
+                tooltip.style.left = '0';
+                tooltip.style.transform = 'translateX(0)';
+            } else if (position > 85) {
+                tooltip.style.left = 'auto';
+                tooltip.style.right = '0';
+                tooltip.style.transform = 'translateX(0)';
+            }
 
             eventElement.addEventListener('click', () => {
                 this.selectEvent(event.id);
@@ -975,16 +1036,31 @@ class GeopoliticalApp {
             timeline.appendChild(eventElement);
         });
 
-        // Add year markers
-        const step = yearRange >= 10 ? 10 : 1;
+        // Add year markers with collision avoidance
+        const step = yearRange >= 10 ? 10 : yearRange >= 5 ? 5 : 1;
+        const yearMarkers = [];
+        
         for (let year = minYear; year <= maxYear; year += step) {
             const position = yearRange === 0 ? 0 : ((year - minYear) / yearRange) * 100;
+            yearMarkers.push({ year, position });
+        }
+        
+        // Ensure first and last years are always shown if not already included
+        if (yearMarkers.length === 0 || yearMarkers[0].year !== minYear) {
+            yearMarkers.unshift({ year: minYear, position: 0 });
+        }
+        if (yearMarkers[yearMarkers.length - 1].year !== maxYear && yearRange > 0) {
+            yearMarkers.push({ year: maxYear, position: 100 });
+        }
+        
+        // Add year markers to scale
+        yearMarkers.forEach(({ year, position }) => {
             const yearElement = document.createElement('div');
             yearElement.className = 'timeline-year';
             yearElement.style.left = `${position}%`;
             yearElement.textContent = year;
             scale.appendChild(yearElement);
-        }
+        });
 
         // Ensure timeline playhead exists and is appended to the timeline
         let playhead = document.getElementById('timelinePlayhead');
