@@ -918,7 +918,7 @@ class GeopoliticalApp {
         const scale = document.getElementById('timelineScale');
 
         // Sort currently visible (filtered) events by date
-        const sortedEvents = [...this.filteredEvents]
+        let sortedEvents = [...this.filteredEvents]
             .filter(e => !isNaN(new Date(e.date)))
             .sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -926,6 +926,39 @@ class GeopoliticalApp {
         timeline.innerHTML = '';
         scale.innerHTML = '';
 
+        // If no events pass the filter, fall back to the year with the most events
+        if (sortedEvents.length === 0 && this.events.length > 0) {
+            // Count events by year across all events
+            const yearEventCounts = {};
+            this.events.forEach(event => {
+                const eventDate = new Date(event.date);
+                if (!isNaN(eventDate)) {
+                    const year = eventDate.getFullYear();
+                    if (!yearEventCounts[year]) {
+                        yearEventCounts[year] = [];
+                    }
+                    yearEventCounts[year].push(event);
+                }
+            });
+
+            // Find the year with the most events
+            let maxCount = 0;
+            let maxYear = null;
+            Object.keys(yearEventCounts).forEach(year => {
+                if (yearEventCounts[year].length > maxCount) {
+                    maxCount = yearEventCounts[year].length;
+                    maxYear = year;
+                }
+            });
+
+            // Use events from the year with most events
+            if (maxYear) {
+                sortedEvents = yearEventCounts[maxYear]
+                    .sort((a, b) => new Date(a.date) - new Date(b.date));
+            }
+        }
+
+        // If still no events, bail out
         if (sortedEvents.length === 0) {
             this.isReady = false;
             return;
