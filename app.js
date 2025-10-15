@@ -1041,28 +1041,75 @@ class GeopoliticalApp {
             timeline.appendChild(eventElement);
         });
 
-        // Add year markers with collision avoidance
-        const step = yearRange >= 10 ? 10 : yearRange >= 5 ? 5 : 1;
-        const yearMarkers = [];
+        // ===== RESPONSIVE TIMELINE YEAR DISPLAY =====
+        // This section implements a dynamic, importance-based year display system:
+        // - Desktop: Shows up to 20 most important years
+        // - Mobile: Shows up to 7 most important years
+        // - Importance is determined by the number of events in each year
+        // - First and last years are always displayed for context
+        // - Collision detection prevents overlapping labels
         
-        for (let year = minYear; year <= maxYear; year += step) {
-            const position = yearRange === 0 ? 0 : ((year - minYear) / yearRange) * 100;
-            yearMarkers.push({ year, position });
+        // Calculate year importance based on event counts
+        const yearEventCounts = {};
+        sortedEvents.forEach(event => {
+            const eventYear = new Date(event.date).getFullYear();
+            yearEventCounts[eventYear] = (yearEventCounts[eventYear] || 0) + 1;
+        });
+        
+        // Create array of years with their importance (event count)
+        const allYears = [];
+        for (let year = minYear; year <= maxYear; year++) {
+            allYears.push({
+                year: year,
+                eventCount: yearEventCounts[year] || 0,
+                position: yearRange === 0 ? 50 : ((year - minYear) / yearRange) * 100
+            });
         }
         
-        // Ensure first and last years are always shown if not already included
-        if (yearMarkers.length === 0 || yearMarkers[0].year !== minYear) {
-            yearMarkers.unshift({ year: minYear, position: 0 });
+        // Sort years by importance (event count descending), then by year
+        const sortedYears = [...allYears].sort((a, b) => {
+            if (b.eventCount !== a.eventCount) {
+                return b.eventCount - a.eventCount; // Most events first
+            }
+            return a.year - b.year; // Same count: chronological order
+        });
+        
+        // Determine max years based on screen size
+        const isMobile = window.innerWidth <= 768;
+        const maxYearsToDisplay = isMobile ? 7 : 20; // Mobile: 7 years, Desktop: 20 years
+        
+        // Select top N most important years
+        let yearsToDisplay = sortedYears.slice(0, Math.min(maxYearsToDisplay, sortedYears.length));
+        
+        // Always include first and last year if not already included
+        const firstYearObj = allYears.find(y => y.year === minYear);
+        const lastYearObj = allYears.find(y => y.year === maxYear);
+        
+        if (!yearsToDisplay.some(y => y.year === minYear) && firstYearObj) {
+            yearsToDisplay.push(firstYearObj);
         }
-        if (yearMarkers[yearMarkers.length - 1].year !== maxYear && yearRange > 0) {
-            yearMarkers.push({ year: maxYear, position: 100 });
+        if (!yearsToDisplay.some(y => y.year === maxYear) && lastYearObj && yearRange > 0) {
+            yearsToDisplay.push(lastYearObj);
         }
         
-        // Add year markers to scale with collision detection
-        const YEAR_LABEL_MIN_SPACING = 8; // Minimum percentage spacing between year labels
+        // Remove duplicates and sort by position for rendering
+        const uniqueYears = [];
+        const seenYears = new Set();
+        yearsToDisplay.forEach(yearObj => {
+            if (!seenYears.has(yearObj.year)) {
+                seenYears.add(yearObj.year);
+                uniqueYears.push(yearObj);
+            }
+        });
+        
+        // Sort by position for proper left-to-right ordering
+        uniqueYears.sort((a, b) => a.position - b.position);
+        
+        // Add year markers with collision detection
+        const YEAR_LABEL_MIN_SPACING = isMobile ? 12 : 5; // More spacing on mobile
         const addedYears = [];
         
-        yearMarkers.forEach(({ year, position }) => {
+        uniqueYears.forEach(({ year, position, eventCount }) => {
             // Check if this year would collide with any already added years
             const wouldCollide = addedYears.some(addedYear => {
                 return Math.abs(addedYear.position - position) < YEAR_LABEL_MIN_SPACING;
@@ -1089,9 +1136,16 @@ class GeopoliticalApp {
                 yearElement.className = 'timeline-year';
                 yearElement.style.left = `${position}%`;
                 yearElement.textContent = year;
+                
+                // Add visual emphasis for years with many events (optional)
+                if (eventCount >= 5) {
+                    yearElement.style.fontWeight = 'var(--font-weight-bold)';
+                    yearElement.style.color = 'var(--color-primary)';
+                }
+                
                 scale.appendChild(yearElement);
                 
-                addedYears.push({ year, position, element: yearElement });
+                addedYears.push({ year, position, element: yearElement, eventCount });
             }
         });
 
@@ -2749,13 +2803,27 @@ class SourceScanner {
 
 // Enhanced App Methods
 GeopoliticalApp.prototype.setupEventListeners = function() {
-    // Window resize handler
+    // Window resize handler with debouncing for timeline updates
+    let resizeTimeout;
+    let previousIsMobile = this.isMobile;
+    
     window.addEventListener('resize', () => {
-        this.isMobile = window.innerWidth <= 768;
+        const newIsMobile = window.innerWidth <= 768;
+        this.isMobile = newIsMobile;
+        
         if (this.map) {
             this.map.invalidateSize();
         }
         this.positionZoomLabel();
+        
+        // Rebuild timeline when crossing mobile/desktop breakpoint
+        if (previousIsMobile !== newIsMobile) {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                this.rebuildTimeline();
+                previousIsMobile = newIsMobile;
+            }, 300); // Debounce for 300ms
+        }
     });
     
     // Keyboard shortcuts

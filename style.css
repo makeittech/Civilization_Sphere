@@ -2097,6 +2097,9 @@ body.light-theme {
   padding: var(--space-12) var(--space-16);
   overflow-x: auto;
   overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
 }
 
 /* Smooth scrollbar for timeline */
@@ -2294,8 +2297,10 @@ body.light-theme {
   position: relative;
   margin-top: var(--space-8);
   border-top: 1px solid var(--color-border);
-  overflow: hidden;
+  overflow: visible; /* Changed from hidden to visible to prevent clipping */
   padding: 0 var(--space-4);
+  min-height: 24px;
+  flex-shrink: 0; /* Prevent scale from shrinking */
 }
 
 .timeline-year {
@@ -2305,7 +2310,7 @@ body.light-theme {
   color: var(--color-text-secondary);
   transform: translateX(-50%);
   background-color: var(--color-surface);
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-6);
   border-radius: var(--radius-sm);
   white-space: nowrap;
   z-index: 1;
@@ -2315,18 +2320,95 @@ body.light-theme {
   max-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--color-border);
+  transition: all var(--duration-fast) var(--ease-standard);
 }
 
 /* Prevent first year label from overflowing left edge */
 .timeline-year:first-child {
   transform: translateX(0);
-  left: 0 !important;
+  left: var(--space-4) !important;
 }
 
 /* Prevent last year label from overflowing right edge */
 .timeline-year:last-child {
   transform: translateX(-100%);
-  left: 100% !important;
+  right: var(--space-4);
+  left: auto !important;
+}
+
+/* Desktop: Larger, more visible year labels */
+@media (min-width: 769px) {
+  .timeline-year {
+    font-size: var(--font-size-sm);
+    padding: var(--space-4) var(--space-8);
+    max-width: 100px;
+  }
+}
+
+/* Mobile: Compact year labels */
+@media (max-width: 768px) {
+  .timeline-year {
+    font-size: 10px;
+    padding: var(--space-2) var(--space-4);
+    max-width: 60px;
+    font-weight: var(--font-weight-semibold);
+  }
+  
+  /* Ensure better visibility on mobile */
+  .timeline-scale {
+    height: 28px;
+    padding: 0 var(--space-2);
+    min-height: 28px;
+  }
+}
+
+/* Subtle animation when years appear */
+@keyframes fadeInYear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.timeline-year {
+  animation: fadeInYear var(--duration-normal) var(--ease-standard);
+}
+
+/* Ensure year labels are above timeline events */
+.timeline-scale {
+  z-index: 10;
+  position: relative;
+  background-color: var(--color-surface);
+}
+
+/* Improved contrast for timeline years in both themes */
+[data-color-scheme="dark"] .timeline-year {
+  background-color: rgba(var(--color-charcoal-800), 0.95);
+  backdrop-filter: blur(4px);
+}
+
+[data-color-scheme="light"] .timeline-year {
+  background-color: rgba(var(--color-cream-100), 0.95);
+  backdrop-filter: blur(4px);
+}
+
+/* Ensure years are readable in system preference mode */
+@media (prefers-color-scheme: dark) {
+  .timeline-year {
+    background-color: rgba(38, 40, 40, 0.95);
+    backdrop-filter: blur(4px);
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  .timeline-year {
+    background-color: rgba(255, 255, 253, 0.95);
+    backdrop-filter: blur(4px);
+  }
 }
 
 /* Loading */
