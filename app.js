@@ -859,6 +859,7 @@ class GeopoliticalApp {
         
         this.filteredEvents = this.events.filter(filterFunction);
         this.updateDisplay();
+        this.rebuildTimeline();
     }
 
     initializeSearch() {
@@ -915,28 +916,44 @@ class GeopoliticalApp {
     initializeTimeline() {
         const timeline = document.getElementById('timeline');
         const scale = document.getElementById('timelineScale');
-        
-        // Sort events by date
-        const sortedEvents = [...this.events]
+
+        // Sort currently visible (filtered) events by date
+        const sortedEvents = [...this.filteredEvents]
             .filter(e => !isNaN(new Date(e.date)))
             .sort((a, b) => new Date(a.date) - new Date(b.date));
-        
-        if (sortedEvents.length === 0) return;
-        const minYear = new Date(sortedEvents[0].date).getFullYear();
-        const maxYear = new Date(sortedEvents[sortedEvents.length - 1].date).getFullYear();
-        const yearRange = maxYear - minYear;
-        
+
+        // Reset container state
         timeline.innerHTML = '';
         scale.innerHTML = '';
-        
+
+        if (sortedEvents.length === 0) {
+            this.isReady = false;
+            return;
+        }
+
+        const firstDate = new Date(sortedEvents[0].date);
+        const lastDate = new Date(sortedEvents[sortedEvents.length - 1].date);
+        const minYear = firstDate.getFullYear();
+        const maxYear = lastDate.getFullYear();
+        const yearRange = Math.max(0, maxYear - minYear);
+
         // Add events to timeline with importance-weighted sizing
-        sortedEvents.forEach(event => {
-            const eventYear = new Date(event.date).getFullYear();
-            const position = ((eventYear - minYear) / yearRange) * 100;
-            
+        sortedEvents.forEach((event, idx) => {
+            const eventDate = new Date(event.date);
+            const eventYear = eventDate.getFullYear();
+
+            // Handle short or zero ranges gracefully
+            let position;
+            if (yearRange === 0) {
+                const denom = Math.max(sortedEvents.length - 1, 1);
+                position = (idx / denom) * 100;
+            } else {
+                position = ((eventYear - minYear) / yearRange) * 100;
+            }
+
             const category = this.categories.find(cat => cat.name === event.category);
             const color = category ? category.color : '#333';
-            
+
             const eventElement = document.createElement('div');
             eventElement.className = 'timeline-event';
             eventElement.style.left = `${position}%`;
@@ -945,22 +962,23 @@ class GeopoliticalApp {
             const size = Math.max(8, Math.min(18, (Number(event.importance) || 5) * 1.2));
             eventElement.style.width = `${size}px`;
             eventElement.style.height = `${size}px`;
-            
+
             const tooltip = document.createElement('div');
             tooltip.className = 'timeline-tooltip';
             tooltip.textContent = `${event.title} (${eventYear}) • ${event.region}`;
             eventElement.appendChild(tooltip);
-            
+
             eventElement.addEventListener('click', () => {
                 this.selectEvent(event.id);
             });
-            
+
             timeline.appendChild(eventElement);
         });
-        
+
         // Add year markers
-        for (let year = minYear; year <= maxYear; year += 10) {
-            const position = ((year - minYear) / yearRange) * 100;
+        const step = yearRange >= 10 ? 10 : 1;
+        for (let year = minYear; year <= maxYear; year += step) {
+            const position = yearRange === 0 ? 0 : ((year - minYear) / yearRange) * 100;
             const yearElement = document.createElement('div');
             yearElement.className = 'timeline-year';
             yearElement.style.left = `${position}%`;
@@ -1378,6 +1396,7 @@ class GeopoliticalApp {
         });
 
         this.updateDisplay();
+        this.rebuildTimeline();
     }
 
     clearFilters() {
@@ -2109,8 +2128,9 @@ class GeopoliticalApp {
         if (!playhead || this.playbackEvents.length === 0) return;
         
         const progress = this.currentPlaybackIndex / this.playbackEvents.length;
-        const timelineWidth = document.getElementById('timeline').offsetWidth;
-        playhead.style.left = `${progress * timelineWidth}px`;
+        const timelineEl = document.getElementById('timeline');
+        const timelineWidth = timelineEl.offsetWidth;
+        playhead.style.left = `${Math.max(0, Math.min(1, progress)) * timelineWidth}px`;
         playhead.classList.add('active');
     }
     
@@ -2177,7 +2197,10 @@ class GeopoliticalApp {
         });
         
         const playhead = document.getElementById('timelinePlayhead');
-        if (playhead) playhead.classList.remove('active');
+        if (playhead) {
+            playhead.classList.remove('active');
+            playhead.style.left = '0px';
+        }
         document.getElementById('timelineProgressFill').style.width = '0%';
         document.getElementById('timelineProgressHandle').style.left = '0%';
         
