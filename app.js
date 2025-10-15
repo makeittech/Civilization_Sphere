@@ -917,7 +917,9 @@ class GeopoliticalApp {
         const scale = document.getElementById('timelineScale');
         
         // Sort events by date
-        const sortedEvents = [...this.events].sort((a, b) => new Date(a.date) - new Date(b.date));
+        const sortedEvents = [...this.events]
+            .filter(e => !isNaN(new Date(e.date)))
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
         
         if (sortedEvents.length === 0) return;
         const minYear = new Date(sortedEvents[0].date).getFullYear();
@@ -927,7 +929,7 @@ class GeopoliticalApp {
         timeline.innerHTML = '';
         scale.innerHTML = '';
         
-        // Add events to timeline
+        // Add events to timeline with importance-weighted sizing
         sortedEvents.forEach(event => {
             const eventYear = new Date(event.date).getFullYear();
             const position = ((eventYear - minYear) / yearRange) * 100;
@@ -940,10 +942,13 @@ class GeopoliticalApp {
             eventElement.style.left = `${position}%`;
             eventElement.style.backgroundColor = color;
             eventElement.dataset.eventId = event.id;
+            const size = Math.max(8, Math.min(18, (Number(event.importance) || 5) * 1.2));
+            eventElement.style.width = `${size}px`;
+            eventElement.style.height = `${size}px`;
             
             const tooltip = document.createElement('div');
             tooltip.className = 'timeline-tooltip';
-            tooltip.textContent = `${event.title} (${eventYear})`;
+            tooltip.textContent = `${event.title} (${eventYear}) • ${event.region}`;
             eventElement.appendChild(tooltip);
             
             eventElement.addEventListener('click', () => {
@@ -1703,21 +1708,34 @@ class GeopoliticalApp {
         const dateRaw = raw.date || raw.publishedAt || raw.pubDate || raw.updated || '';
         const normalizedDate = this.normalizeEventDate(dateRaw);
 
+        // Normalize region/category labels and compute importance with fallbacks
+        const normalizedRegion = this.normalizeRegionLabel(raw.region || '');
+        const normalizedCategory = this.normalizeCategoryLabel(raw.category || raw.topic);
+        let importanceValue = Number.parseInt(raw.importance);
+        if (!Number.isFinite(importanceValue)) {
+            const conf = Number.parseFloat(raw.confidence);
+            if (Number.isFinite(conf)) {
+                importanceValue = Math.round(conf * 10);
+            }
+        }
+        if (!Number.isFinite(importanceValue)) {
+            importanceValue = 5;
+        }
         const event = {
             id: toNumericId(raw.id),
             title: (raw.title || raw.headline || 'Без назви').toString().trim(),
-            channel: raw.channel || raw.source || '',
+            channel: raw.channel || raw.source || raw.channel_name || '',
             date: normalizedDate || new Date().toISOString().slice(0,10),
-            category: raw.category || raw.topic || 'Політичні зміни',
-            region: raw.region || '',
+            category: normalizedCategory || 'Політичні зміни',
+            region: normalizedRegion || '',
             country: raw.country || '',
             lat: toNumber(raw.lat ?? raw.latitude),
             lng: toNumber(raw.lng ?? raw.longitude),
             description: raw.description || raw.summary || raw.content || '',
             participants: ensureArray(raw.participants),
             impact: raw.impact || '',
-            importance: Math.max(1, Math.min(10, parseInt(raw.importance || 5))),
-            sources: ensureArray(raw.sources || raw.link)
+            importance: Math.max(1, Math.min(10, importanceValue)),
+            sources: ensureArray(raw.sources || raw.link || raw.url)
         };
         return event;
     }
@@ -1774,6 +1792,40 @@ class GeopoliticalApp {
         if (isNaN(parsed.getTime())) return '';
         const iso = parsed.toISOString();
         return iso.slice(0, 10);
+    }
+
+    normalizeRegionLabel(input) {
+        const value = String(input || '').trim();
+        if (!value) return value;
+        const low = value.toLowerCase();
+        if (/(africa).*(europe)|(europe).*(africa)/.test(low)) {
+            return 'Африка/Європа';
+        }
+        const mapping = new Map([
+            ['europe', 'Європа'],
+            ['asia', 'Азія'],
+            ['middle east', 'Близький Схід'],
+            ['north america', 'Північна Америка'],
+            ['eurasia', 'Євразія'],
+            ['global', 'Глобально'],
+            ['world', 'Глобально'],
+            ['ukraine', 'Європа'],
+        ]);
+        return mapping.get(low) || value;
+    }
+
+    normalizeCategoryLabel(input) {
+        const value = String(input || '').trim();
+        if (!value) return value;
+        const low = value.toLowerCase();
+        const mapping = new Map([
+            ['global crises', 'Глобальні кризи'],
+            ['wars and conflicts', 'Війни та конфлікти'],
+            ['political changes', 'Політичні зміни'],
+            ['economic changes', 'Економічні зміни'],
+            ['technological changes', 'Технологічні зміни'],
+        ]);
+        return mapping.get(low) || value;
     }
 
     computeEventDedupKey(event) {
@@ -2740,26 +2792,81 @@ GeopoliticalApp.prototype.showToast = function(message) {
 };
 
 GeopoliticalApp.prototype.tryBootstrapLocalResources = function() {
-    // Load bundled CSV of Ukrainian channels/events if present
-    fetch('ukraine_channels_events.csv')
-        .then(res => {
-            if (!res.ok) throw new Error('csv not found');
-            return res.text();
-        })
-        .then(text => {
-            const rawRows = this.parseCsv(text);
-            const normalized = this.normalizeAndValidateBatch(rawRows);
-            // Preserve original IDs for stronger deduplication
-            normalized.forEach((ev, idx) => {
-                const rid = rawRows[idx]?.id;
-                if (rid && typeof rid === 'string' && !Number.isInteger(Number(rid))) {
-                    ev._originalId = String(rid);
+    const sources = [
+        { type: 'csv', url: 'ukraine_channels_events.csv' },
+        { type: 'csv', url: 'data/new_events.csv', headerIfMissing: 'event_id,title,date,date_precision,location,region,category,source_video,transcript_snippet,confidence,provenance,extraction_method,dupe_flag' },
+        { type: 'json', url: 'data/events_summary.json', jsonSelector: 'sample_new_events' }
+    ];
+
+    const fetchOne = async (src) => {
+        try {
+            const res = await fetch(src.url);
+            if (!res.ok) return [];
+            if (src.type === 'csv') {
+                let text = await res.text();
+                const firstLine = (text.split(/\r?\n/).find(Boolean) || '');
+                const hasHeader = /(^|,)(id|event_id)(,|$)/i.test(firstLine) && /(^|,)(title)(,|$)/i.test(firstLine);
+                if (!hasHeader && src.headerIfMissing) {
+                    text = src.headerIfMissing + '\n' + text;
                 }
-            });
-            // Deduplicate against existing events
+                const rawRows = this.parseCsv(text);
+                const normalized = this.normalizeAndValidateBatch(rawRows);
+                // Preserve original string IDs if present for deduplication strength
+                normalized.forEach((ev, idx) => {
+                    const rid = rawRows[idx]?.id;
+                    if (rid && typeof rid === 'string' && !Number.isInteger(Number(rid))) {
+                        ev._originalId = String(rid);
+                    }
+                });
+                return normalized;
+            }
+            if (src.type === 'json') {
+                const json = await res.json();
+                let arr = [];
+                if (Array.isArray(json)) arr = json;
+                else if (Array.isArray(json.events)) arr = json.events;
+                else if (Array.isArray(json[src.jsonSelector])) {
+                    arr = json[src.jsonSelector].map(item => ({
+                        id: item.id,
+                        title: item.title,
+                        date: item.date,
+                        category: this.normalizeCategoryLabel(item.category || ''),
+                        region: this.normalizeRegionLabel(item.region || ''),
+                        country: item.place || '',
+                        description: item.description || '',
+                        importance: item.importance,
+                        sources: [item.url].filter(Boolean)
+                    }));
+                }
+                return this.normalizeAndValidateBatch(arr);
+            }
+            return [];
+        } catch (_) {
+            return [];
+        }
+    };
+
+    Promise.all(sources.map(fetchOne))
+        .then(lists => {
+            const allNew = lists.flat();
+            if (!allNew.length) return;
+
+            // Deduplicate within new items
+            const seen = new Set();
+            const uniqueNew = [];
+            for (const ev of allNew) {
+                const key = this.computeEventDedupKey(ev);
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniqueNew.push(ev);
+                }
+            }
+
+            // Remove items already present in the app
             const existingKeys = new Set(this.events.map(ev => this.computeEventDedupKey(ev)));
-            const toAdd = normalized.filter(ev => !existingKeys.has(this.computeEventDedupKey(ev)));
+            const toAdd = uniqueNew.filter(ev => !existingKeys.has(this.computeEventDedupKey(ev)));
             if (!toAdd.length) return;
+
             this.events.push(...toAdd);
             this.filteredEvents = [...this.events];
             // Recompute category counts
