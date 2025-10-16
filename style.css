@@ -3548,3 +3548,57 @@ textarea:focus-visible {
               color var(--duration-normal) var(--ease-standard),
               border-color var(--duration-normal) var(--ease-standard);
 }
+
+/* API Configuration */
+.api-config {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.api-item {
+  padding: var(--space-12);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-base);
+  background: var(--color-surface);
+}
+
+.api-item .form-label {
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--space-8);
+  display: block;
+  color: var(--color-text);
+}
+
+.api-item .form-control {
+  margin-bottom: var(--space-8);
+}
+
+.api-item .btn {
+  margin-top: var(--space-8);
+}
+
+.api-item .checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.api-item .checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.api-item .checkbox-group input[type="checkbox"] {
+  margin: 0;
+}
+
+.no-events {
+  text-align: center;
+  padding: var(--space-24);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}

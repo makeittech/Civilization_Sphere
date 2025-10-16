@@ -198,9 +198,31 @@
                             <textarea id="rssUrls" class="form-control" rows="3" placeholder="Вставте URL RSS (по одному в рядок)"></textarea>
                         </div>
                         <div class="filter-group">
-                            <h4 class="filter-title">Новинні API (опц.)</h4>
-                            <input id="newsApiKey" class="form-control" type="text" placeholder="NewsAPI ключ (клієнтське використання може бути обмежене CORS)">
-                            <input id="newsApiQuery" class="form-control" type="text" placeholder="Пошуковий запит (напр., geopolitics, war)">
+                            <h4 class="filter-title">Зовнішні API</h4>
+                            <div class="api-config">
+                                <div class="api-item">
+                                    <label class="form-label" for="newsApiKey">NewsAPI</label>
+                                    <input id="newsApiKey" class="form-control" type="text" placeholder="API ключ (newsapi.org)">
+                                    <input id="newsApiQuery" class="form-control" type="text" placeholder="Пошуковий запит" value="geopolitics">
+                                    <button id="testNewsAPI" class="btn btn--sm btn--outline">Тест</button>
+                                </div>
+                                
+                                <div class="api-item">
+                                    <label class="form-label">Історичні події</label>
+                                    <div class="checkbox-group">
+                                        <label><input type="checkbox" id="enableHistorical" checked> Увімкнути історичні події</label>
+                                        <label><input type="checkbox" id="enableTodayEvents" checked> Події цього дня в історії</label>
+                                    </div>
+                                </div>
+                                
+                                <div class="api-item">
+                                    <label class="form-label">Геополітичні дані</label>
+                                    <div class="checkbox-group">
+                                        <label><input type="checkbox" id="enableCountryData" checked> Дані про країни</label>
+                                        <label><input type="checkbox" id="enableGeopoliticalData" checked> Геополітичні дані</label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="filter-group">
                             <h4 class="filter-title">Урядові звіти (JSON, опц.)</h4>
@@ -213,6 +235,7 @@
 
                         <div class="import-actions">
                             <button id="scanSourcesBtn" class="btn btn--primary btn--full-width">Сканувати джерела</button>
+                            <button id="fetchExternalBtn" class="btn btn--primary btn--full-width">Завантажити зовнішні дані</button>
                             <button id="importBtn" class="btn btn--secondary btn--full-width" disabled>Імпортувати знайдені</button>
                             <button id="clearImportBtn" class="btn btn--outline btn--full-width">Очистити попередній перегляд</button>
                         </div>
@@ -368,6 +391,13 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@0.451.0/dist/umd/lucide.min.js"></script>
+    
+    <!-- External API Services -->
+    <script src="js/api-services.js"></script>
+    <script src="js/data-normalizer.js"></script>
+    <script src="js/cache-manager.js"></script>
+    <script src="js/error-handler.js"></script>
+    
     <script>
       document.addEventListener('DOMContentLoaded', function () {
         if (window.lucide) {

@@ -39,9 +39,146 @@ class GeopoliticalApp {
         this.zoomLabelEl = document.getElementById('zoomLabel');
         this.zoomLabelHideTimer = null;
         
+        // External API integration
+        this.apiManager = new APIManager();
+        this.dataNormalizer = new DataNormalizer();
+        this.cacheManager = new CacheManager();
+        this.errorHandler = new ErrorHandler();
+        this.healthChecker = new HealthChecker();
+        this.fallbackProvider = new FallbackDataProvider();
+        
+        // Initialize external API services
+        this.initializeExternalAPIs();
+        
         this.initializeData();
         this.initializeApp();
         this.setupEventListeners();
+    }
+
+    async initializeExternalAPIs() {
+        try {
+            // Register fallback providers
+            this.fallbackProvider.registerProvider('news', new NewsAPIFallbackProvider());
+            this.fallbackProvider.registerProvider('historical', new HistoricalEventsFallbackProvider());
+            
+            // Initialize API services
+            const apiKeys = {
+                newsAPI: this.getStoredAPIKey('newsAPI')
+            };
+            
+            await this.apiManager.initializeServices(apiKeys);
+            
+            // Register health checks
+            this.healthChecker.registerCheck('newsAPI', () => this.checkNewsAPIHealth());
+            this.healthChecker.registerCheck('historicalAPI', () => this.checkHistoricalAPIHealth());
+            
+            console.log('External APIs initialized successfully');
+        } catch (error) {
+            console.warn('Failed to initialize external APIs:', error);
+        }
+    }
+
+    getStoredAPIKey(service) {
+        // Try to get API key from localStorage or environment
+        const stored = localStorage.getItem(`api_key_${service}`);
+        if (stored) return stored;
+        
+        // Check if there's an input field for this API key
+        const input = document.getElementById(`${service}ApiKey`);
+        if (input && input.value) {
+            localStorage.setItem(`api_key_${service}`, input.value);
+            return input.value;
+        }
+        
+        return null;
+    }
+
+    async checkNewsAPIHealth() {
+        try {
+            const newsService = this.apiManager.getService('news');
+            if (!newsService) return false;
+            
+            // Try a simple request to check if API is working
+            await newsService.getEverything('test', { pageSize: 1 });
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    async checkHistoricalAPIHealth() {
+        try {
+            const historicalService = this.apiManager.getService('historical');
+            if (!historicalService) return false;
+            
+            // Try a simple request
+            await historicalService.getEventsByDate(1, 1);
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    async fetchExternalEvents(query = 'geopolitics') {
+        try {
+            this.showToast('Завантаження зовнішніх джерел...');
+            
+            const externalEvents = await this.apiManager.fetchEventsFromAllSources(query);
+            const normalizedEvents = this.dataNormalizer.normalizeEvents(externalEvents, 'external');
+            
+            // Add to import buffer for user review
+            this.importBuffer = [...this.importBuffer, ...normalizedEvents];
+            this.updateImportPreview();
+            
+            this.showToast(`Знайдено ${normalizedEvents.length} подій з зовнішніх джерел`);
+            return normalizedEvents;
+        } catch (error) {
+            console.error('Failed to fetch external events:', error);
+            this.showToast('Помилка завантаження зовнішніх джерел', 'error');
+            throw error;
+        }
+    }
+
+    async fetchNewsEvents(query = 'geopolitics') {
+        try {
+            const newsService = this.apiManager.getService('news');
+            if (!newsService) {
+                throw new Error('NewsAPI service not available');
+            }
+            
+            const newsEvents = await newsService.getEverything(query);
+            const normalizedEvents = this.dataNormalizer.normalizeEvents(newsEvents, 'NewsAPI');
+            
+            return normalizedEvents;
+        } catch (error) {
+            console.error('Failed to fetch news events:', error);
+            // Try fallback
+            const fallbackEvents = await this.fallbackProvider.getFallbackData('news', { query });
+            return this.dataNormalizer.normalizeEvents(fallbackEvents, 'NewsAPI_Fallback');
+        }
+    }
+
+    async fetchHistoricalEvents() {
+        try {
+            const historicalService = this.apiManager.getService('historical');
+            if (!historicalService) {
+                throw new Error('Historical events service not available');
+            }
+            
+            const today = new Date();
+            const historicalEvents = await historicalService.getEventsByDate(
+                today.getMonth() + 1, 
+                today.getDate()
+            );
+            
+            const normalizedEvents = this.dataNormalizer.normalizeEvents(historicalEvents, 'Historical');
+            return normalizedEvents;
+        } catch (error) {
+            console.error('Failed to fetch historical events:', error);
+            // Try fallback
+            const fallbackEvents = await this.fallbackProvider.getFallbackData('historical');
+            return this.dataNormalizer.normalizeEvents(fallbackEvents, 'Historical_Fallback');
+        }
     }
 
     initializeData() {
@@ -1237,6 +1374,18 @@ class GeopoliticalApp {
         if (scanBtn) {
             scanBtn.addEventListener('click', () => this.handleScanButton());
         }
+        
+        // External API buttons
+        const fetchExternalBtn = document.getElementById('fetchExternalBtn');
+        if (fetchExternalBtn) {
+            fetchExternalBtn.addEventListener('click', () => this.fetchExternalData());
+        }
+        
+        const testNewsAPIBtn = document.getElementById('testNewsAPI');
+        if (testNewsAPIBtn) {
+            testNewsAPIBtn.addEventListener('click', () => this.testNewsAPI());
+        }
+        
         if (importBtn) {
             importBtn.addEventListener('click', () => this.importBufferedEvents());
         }
@@ -2067,6 +2216,104 @@ class GeopoliticalApp {
         if (list) list.innerHTML = '';
         if (importBtn) importBtn.disabled = true;
         this.setImportStatus('Очищено', 0);
+    }
+
+    // External API methods
+    async fetchExternalData() {
+        try {
+            this.showToast('Завантаження зовнішніх даних...');
+            
+            const query = document.getElementById('newsApiQuery')?.value || 'geopolitics';
+            const externalEvents = await this.fetchExternalEvents(query);
+            
+            // Add to import buffer
+            this.importBuffer = [...this.importBuffer, ...externalEvents];
+            this.updateImportPreview();
+            
+            this.showToast(`Завантажено ${externalEvents.length} подій з зовнішніх джерел`);
+        } catch (error) {
+            console.error('Failed to fetch external data:', error);
+            this.showToast('Помилка завантаження зовнішніх даних', 'error');
+        }
+    }
+
+    async testNewsAPI() {
+        const apiKey = document.getElementById('newsApiKey')?.value;
+        if (!apiKey) {
+            this.showToast('Введіть API ключ NewsAPI', 'error');
+            return;
+        }
+        
+        try {
+            this.showToast('Тестування NewsAPI...');
+            
+            // Store API key
+            localStorage.setItem('api_key_newsAPI', apiKey);
+            
+            // Reinitialize API manager with new key
+            await this.apiManager.initializeServices({ newsAPI: apiKey });
+            
+            // Test the API
+            const testEvents = await this.fetchNewsEvents('test');
+            
+            this.showToast(`NewsAPI працює! Знайдено ${testEvents.length} тестових подій`);
+        } catch (error) {
+            console.error('NewsAPI test failed:', error);
+            this.showToast('NewsAPI тест не пройшов: ' + error.message, 'error');
+        }
+    }
+
+    toggleHistoricalAPI(enabled) {
+        this.config = this.config || {};
+        this.config.historicalEvents = { enabled };
+        this.showToast(`Історичні події ${enabled ? 'увімкнено' : 'вимкнено'}`);
+    }
+
+    toggleTodayEvents(enabled) {
+        this.config = this.config || {};
+        this.config.todayEvents = { enabled };
+        this.showToast(`Події цього дня ${enabled ? 'увімкнено' : 'вимкнено'}`);
+    }
+
+    toggleCountryData(enabled) {
+        this.config = this.config || {};
+        this.config.countryData = { enabled };
+        this.showToast(`Дані про країни ${enabled ? 'увімкнено' : 'вимкнено'}`);
+    }
+
+    toggleGeopoliticalData(enabled) {
+        this.config = this.config || {};
+        this.config.geopoliticalData = { enabled };
+        this.showToast(`Геополітичні дані ${enabled ? 'увімкнено' : 'вимкнено'}`);
+    }
+
+    updateImportPreview() {
+        const list = document.getElementById('importPreviewList');
+        const importBtn = document.getElementById('importBtn');
+        
+        if (!list) return;
+        
+        if (this.importBuffer.length === 0) {
+            list.innerHTML = '<div class="no-events">Немає подій для перегляду</div>';
+            if (importBtn) importBtn.disabled = true;
+            return;
+        }
+        
+        list.innerHTML = this.importBuffer.map(event => `
+            <div class="import-preview-item">
+                <div class="event-title">${event.title}</div>
+                <div class="event-meta">
+                    <span class="event-date">${new Date(event.date).toLocaleDateString()}</span>
+                    <span class="event-category">${event.category}</span>
+                    <span class="event-region">${event.region}</span>
+                    <span class="event-importance">⭐ ${event.importance}</span>
+                </div>
+                <div class="event-description">${event.description.substring(0, 100)}...</div>
+            </div>
+        `).join('');
+        
+        if (importBtn) importBtn.disabled = false;
+        this.setImportStatus(`Готово до імпорту: ${this.importBuffer.length} подій`, 100);
     }
 
     appendToImportPreview(events) {
