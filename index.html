@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Геополітичні Події - Інтерактивна Платформа</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -85,6 +87,22 @@
                         <select id="regionFilter" class="form-control">
                             <option value="">Всі регіони</option>
                         </select>
+                    </div>
+
+                    <!-- Importance Filter -->
+                    <div class="filter-group">
+                        <h4 class="filter-title">Важливість</h4>
+                        <div class="importance-filter">
+                            <input type="range" id="importanceFilter" min="1" max="10" value="1" class="importance-slider">
+                            <div class="importance-labels">
+                                <span>1</span>
+                                <span>5</span>
+                                <span>10</span>
+                            </div>
+                            <div class="importance-value">
+                                <span id="importanceValue">1+</span>
+                            </div>
+                        </div>
                     </div>
 
                     <button id="clearFilters" class="btn btn--secondary btn--full-width">Очистити фільтри</button>
@@ -347,6 +365,7 @@
 
     <!-- Scripts -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@0.451.0/dist/umd/lucide.min.js"></script>
     <script>
