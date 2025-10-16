@@ -1,0 +1,87 @@
+{
+  "page_load": {
+    "status": "PASS",
+    "title": "\u0413\u0435\u043e\u043f\u043e\u043b\u0456\u0442\u0438\u0447\u043d\u0456 \u041f\u043e\u0434\u0456\u0457 - \u0406\u043d\u0442\u0435\u0440\u0430\u043a\u0442\u0438\u0432\u043d\u0430 \u041f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0430",
+    "app_title": "\u0413\u0435\u043e\u043f\u043e\u043b\u0456\u0442\u0438\u0447\u043d\u0456 \u041f\u043e\u0434\u0456\u0457",
+    "url": "http://localhost:8000/"
+  },
+  "interactive_map": {
+    "status": "PASS",
+    "map_loaded": true,
+    "leaflet_loaded": true,
+    "controls_count": 7,
+    "map_visible": true
+  },
+  "timeline_playback": {
+    "status": "PASS",
+    "timeline_loaded": true,
+    "controls_working": true,
+    "speed_options": 4,
+    "progress_bar_present": true
+  },
+  "event_filtering": {
+    "status": "PASS",
+    "search_working": true,
+    "quick_filters_count": 4,
+    "category_filters_count": 13,
+    "date_filters_working": true,
+    "region_options": 8,
+    "clear_filters_working": true
+  },
+  "mobile_responsive": {
+    "status": "PASS",
+    "screen_sizes_tested": 3,
+    "mobile_features": {
+      "375x667": {
+        "mobile_menu_visible": true,
+        "responsive": true
+      },
+      "768x1024": {
+        "mobile_menu_visible": true,
+        "responsive": true
+      },
+      "1920x1080": {
+        "mobile_menu_visible": true,
+        "responsive": true
+      }
+    }
+  },
+  "theme_switching": {
+    "status": "PASS",
+    "theme_toggle_present": true,
+    "light_theme_working": true,
+    "dark_theme_working": true
+  },
+  "data_export": {
+    "status": "PASS",
+    "export_dialog_working": true,
+    "export_formats": [
+      "JSON\n\u041f\u043e\u0432\u043d\u0456 \u0434\u0430\u043d\u0456 \u0437 \u043c\u0435\u0442\u0430\u0434\u0430\u043d\u0438\u043c\u0438",
+      "CSV\n\u0422\u0430\u0431\u043b\u0438\u0446\u044f \u0434\u043b\u044f Excel/Google Sheets",
+      "PDF\n\u0414\u0440\u0443\u043a\u043e\u0432\u0430\u043d\u0438\u0439 \u0437\u0432\u0456\u0442"
+    ],
+    "export_options_count": 3
+  },
+  "statistics_analytics": {
+    "status": "PASS",
+    "event_counters_present": true,
+    "charts_count": 5,
+    "stats_container_present": true,
+    "analytics_section_present": true
+  },
+  "data_import": {
+    "status": "PASS",
+    "import_section_present": true,
+    "format_options": 3,
+    "file_input_present": true,
+    "import_buttons_present": true
+  },
+  "user_experience": {
+    "status": "PASS",
+    "load_time": 0.3,
+    "aria_labels_count": 32,
+    "focusable_elements_count": 75,
+    "keyboard_navigation_working": true,
+    "error_handling_working": true
+  }
+}
