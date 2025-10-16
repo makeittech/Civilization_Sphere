@@ -2061,12 +2061,73 @@ class GeopoliticalApp {
         const govJsonUrl = document.getElementById('govJsonUrl')?.value?.trim();
         const corsProxy = document.getElementById('corsProxyUrl')?.value?.trim();
 
+        // NEW: Trusted data sources
+        const gdeltQuery = document.getElementById('gdeltQuery')?.value?.trim() || 'geopolitical';
+        const gdeltTimespan = document.getElementById('gdeltTimespan')?.value || '7d';
+        const acledApiKey = document.getElementById('acledApiKey')?.value?.trim();
+        const acledCountry = document.getElementById('acledCountry')?.value?.trim() || 'Ukraine';
+        const reliefwebCountry = document.getElementById('reliefwebCountry')?.value?.trim();
+        const eventRegistryKey = document.getElementById('eventRegistryKey')?.value?.trim();
+        const eventRegistryKeyword = document.getElementById('eventRegistryKeyword')?.value?.trim() || 'geopolitics';
+
         const rssUrls = (rssTextarea?.value || '')
             .split(/\n|[,;]/)
             .map(u => u.trim())
             .filter(Boolean);
 
         const sources = [];
+        
+        // Priority 1: GDELT - Free, reliable, geolocated
+        if (gdeltQuery) {
+            sources.push({
+                id: `gdelt:${gdeltQuery}`,
+                type: 'gdelt',
+                url: 'https://api.gdeltproject.org/api/v2/doc/doc',
+                priority: 1,
+                intervalMs: 6 * 60 * 60 * 1000, // 6 hours
+                corsProxy: '',
+                params: { query: gdeltQuery, timespan: gdeltTimespan, maxRecords: 100 }
+            });
+        }
+
+        // Priority 2: ACLED - High quality conflict data (requires key)
+        if (acledApiKey && acledApiKey !== 'your-acled-api-key') {
+            sources.push({
+                id: `acled:${acledCountry}`,
+                type: 'acled',
+                url: 'https://api.acleddata.com/acled/read',
+                priority: 1,
+                intervalMs: 24 * 60 * 60 * 1000, // 24 hours
+                corsProxy: '',
+                params: { apiKey: acledApiKey, country: acledCountry, limit: 100 }
+            });
+        }
+
+        // Priority 3: ReliefWeb - UN humanitarian reports (free)
+        sources.push({
+            id: `reliefweb:${reliefwebCountry || 'all'}`,
+            type: 'reliefweb',
+            url: 'https://api.reliefweb.int/v1/reports',
+            priority: 2,
+            intervalMs: 12 * 60 * 60 * 1000, // 12 hours
+            corsProxy: '',
+            params: { country: reliefwebCountry }
+        });
+
+        // Priority 4: EventRegistry (requires key, better than NewsAPI)
+        if (eventRegistryKey && eventRegistryKey !== 'your-eventregistry-api-key') {
+            sources.push({
+                id: `eventregistry:${eventRegistryKeyword}`,
+                type: 'eventregistry',
+                url: 'https://eventregistry.org/api/v1/article/getArticles',
+                priority: 2,
+                intervalMs: 8 * 60 * 60 * 1000, // 8 hours
+                corsProxy: '',
+                params: { apiKey: eventRegistryKey, keyword: eventRegistryKeyword }
+            });
+        }
+
+        // RSS feeds
         rssUrls.forEach((url, idx) => {
             sources.push({
                 id: `rss:${idx}:${url}`,
@@ -2077,6 +2138,7 @@ class GeopoliticalApp {
                 corsProxy
             });
         });
+        
         if (govJsonUrl) {
             sources.push({
                 id: `json:${govJsonUrl}`,
@@ -2087,6 +2149,7 @@ class GeopoliticalApp {
                 corsProxy
             });
         }
+        
         // Always include bundled local CSV resource if available
         sources.push({
             id: 'csv:local:ukraine_channels_events.csv',
@@ -2096,6 +2159,7 @@ class GeopoliticalApp {
             intervalMs: 60 * 60 * 1000,
             corsProxy
         });
+        
         if (newsApiKey) {
             sources.push({
                 id: `newsapi:${newsApiQuery}`,
@@ -2107,6 +2171,7 @@ class GeopoliticalApp {
                 params: { apiKey: newsApiKey, query: newsApiQuery }
             });
         }
+        
         return sources;
     }
 
@@ -2202,6 +2267,343 @@ class GeopoliticalApp {
         const res = await this.fetchWithCors(url, corsProxy).catch(() => fetch(url));
         const json = await res.json();
         return Array.isArray(json) ? json : (json.events || []);
+    }
+
+    // ========== NEW TRUSTED DATA SOURCES ==========
+
+    /**
+     * Fetch events from GDELT Project (Global Database of Events, Language, and Tone)
+     * No API key required - free public access
+     * @param {string} query - Search query (e.g., "Ukraine war", "geopolitical")
+     * @param {string} timespan - Date range (e.g., "7d" for last 7 days)
+     * @param {number} maxRecords - Maximum records to fetch (default 100)
+     */
+    async fetchGDELT(query = 'geopolitical', timespan = '7d', maxRecords = 100) {
+        try {
+            const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=artlist&maxrecords=${maxRecords}&timespan=${timespan}&format=json`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`GDELT API failed: ${res.status}`);
+            
+            const data = await res.json();
+            if (!data.articles) return [];
+            
+            return data.articles.map(article => ({
+                title: article.title || 'Untitled Event',
+                description: article.url || '',
+                date: this.parseGDELTDate(article.seendate),
+                lat: this.parseFloat(article.lat),
+                lng: this.parseFloat(article.lon),
+                sources: [article.url].filter(Boolean),
+                country: article.sourcecountry || '',
+                region: this.inferRegionFromCountry(article.sourcecountry),
+                category: this.inferCategoryFromText(article.title),
+                importance: 5,
+                _source: 'GDELT',
+                _originalId: article.url
+            })).filter(e => e.lat && e.lng); // Only include geolocated events
+        } catch (err) {
+            console.error('GDELT fetch error:', err);
+            return [];
+        }
+    }
+
+    /**
+     * Fetch conflict events from ACLED (Armed Conflict Location & Event Data Project)
+     * Requires API key - register at https://developer.acleddata.com
+     * @param {string} apiKey - ACLED API key
+     * @param {string} country - Country name (e.g., "Ukraine")
+     * @param {number} limit - Max events to fetch
+     */
+    async fetchACLED(apiKey, country = 'Ukraine', limit = 100) {
+        if (!apiKey || apiKey === 'your-acled-api-key') {
+            console.warn('ACLED: No valid API key provided');
+            return [];
+        }
+        
+        try {
+            const url = `https://api.acleddata.com/acled/read?key=${apiKey}&country=${encodeURIComponent(country)}&limit=${limit}`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`ACLED API failed: ${res.status}`);
+            
+            const data = await res.json();
+            if (!data.data) return [];
+            
+            return data.data.map(event => ({
+                title: `${event.event_type}: ${event.notes?.substring(0, 80) || 'Conflict event'}`,
+                description: event.notes || '',
+                date: event.event_date,
+                lat: parseFloat(event.latitude),
+                lng: parseFloat(event.longitude),
+                region: event.region || this.inferRegionFromCountry(country),
+                country: country,
+                category: 'Війни та конфлікти',
+                importance: event.fatalities > 10 ? 8 : (event.fatalities > 0 ? 6 : 5),
+                sources: event.source ? [event.source] : [],
+                participants: [event.actor1, event.actor2].filter(Boolean),
+                _source: 'ACLED',
+                _originalId: `acled_${event.data_id}`
+            }));
+        } catch (err) {
+            console.error('ACLED fetch error:', err);
+            return [];
+        }
+    }
+
+    /**
+     * Fetch humanitarian reports from UN OCHA ReliefWeb
+     * No API key required
+     * @param {string} country - Country filter (optional)
+     */
+    async fetchReliefWeb(country = '') {
+        try {
+            let url = 'https://api.reliefweb.int/v1/reports?appname=CivilizationSphere&limit=100';
+            if (country) {
+                url += `&filter[field]=country.name&filter[value]=${encodeURIComponent(country)}`;
+            }
+            
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`ReliefWeb API failed: ${res.status}`);
+            
+            const data = await res.json();
+            if (!data.data) return [];
+            
+            return data.data.map(report => {
+                const fields = report.fields;
+                return {
+                    title: fields.title || 'Humanitarian Report',
+                    description: fields.body?.substring(0, 500) || '',
+                    date: fields.date?.created || fields.date?.changed || new Date().toISOString(),
+                    country: fields.primary_country?.name || '',
+                    region: this.inferRegionFromCountry(fields.primary_country?.name),
+                    category: 'Глобальні кризи',
+                    importance: 6,
+                    sources: fields.url ? [fields.url] : [],
+                    _source: 'ReliefWeb',
+                    _originalId: `reliefweb_${report.id}`
+                };
+            });
+        } catch (err) {
+            console.error('ReliefWeb fetch error:', err);
+            return [];
+        }
+    }
+
+    /**
+     * Fetch from EventRegistry (better alternative to NewsAPI)
+     * Requires API key - register at https://eventregistry.org
+     * @param {string} apiKey - EventRegistry API key
+     * @param {string} keyword - Search keyword
+     */
+    async fetchEventRegistry(apiKey, keyword = 'geopolitics') {
+        if (!apiKey || apiKey === 'your-eventregistry-api-key') {
+            console.warn('EventRegistry: No valid API key provided');
+            return [];
+        }
+        
+        try {
+            const url = `https://eventregistry.org/api/v1/article/getArticles`;
+            const body = {
+                apiKey: apiKey,
+                keyword: keyword,
+                resultType: 'articles',
+                articlesSortBy: 'date',
+                articlesCount: 100,
+                includeArticleLocation: true,
+                includeArticleCategories: true
+            };
+            
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            
+            if (!res.ok) throw new Error(`EventRegistry API failed: ${res.status}`);
+            
+            const data = await res.json();
+            if (!data.articles?.results) return [];
+            
+            return data.articles.results.map(article => ({
+                title: article.title || 'News Event',
+                description: article.body?.substring(0, 500) || '',
+                date: article.dateTime || article.date,
+                lat: article.location?.lat,
+                lng: article.location?.lng,
+                country: article.location?.country?.label,
+                region: this.inferRegionFromCountry(article.location?.country?.label),
+                category: this.inferCategoryFromText(article.title),
+                importance: 5,
+                sources: article.url ? [article.url] : [],
+                _source: 'EventRegistry',
+                _originalId: article.uri
+            }));
+        } catch (err) {
+            console.error('EventRegistry fetch error:', err);
+            return [];
+        }
+    }
+
+    /**
+     * Geocode location using Nominatim (OpenStreetMap)
+     * Free service - respects rate limits (1 req/sec)
+     * @param {string} location - Location name to geocode
+     * @returns {Promise<{lat: number, lng: number}|null>}
+     */
+    async geocodeLocation(location) {
+        if (!location || typeof location !== 'string') return null;
+        
+        try {
+            // Rate limiting - ensure 1 second between requests
+            const now = Date.now();
+            if (this._lastGeocodeTime && (now - this._lastGeocodeTime) < 1000) {
+                await new Promise(resolve => setTimeout(resolve, 1000 - (now - this._lastGeocodeTime)));
+            }
+            this._lastGeocodeTime = Date.now();
+            
+            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`;
+            const res = await fetch(url, {
+                headers: { 'User-Agent': 'CivilizationSphere/1.0 (Educational geopolitical events platform)' }
+            });
+            
+            if (!res.ok) return null;
+            
+            const data = await res.json();
+            if (!data || data.length === 0) return null;
+            
+            return {
+                lat: parseFloat(data[0].lat),
+                lng: parseFloat(data[0].lon),
+                displayName: data[0].display_name
+            };
+        } catch (err) {
+            console.error('Geocoding error:', err);
+            return null;
+        }
+    }
+
+    // ========== HELPER UTILITIES ==========
+
+    parseGDELTDate(seendate) {
+        if (!seendate) return new Date().toISOString();
+        // GDELT format: YYYYMMDDHHMMSS
+        const str = String(seendate);
+        const year = str.substring(0, 4);
+        const month = str.substring(4, 6);
+        const day = str.substring(6, 8);
+        return `${year}-${month}-${day}T00:00:00.000Z`;
+    }
+
+    parseFloat(val) {
+        if (val === null || val === undefined || val === '') return null;
+        const num = parseFloat(val);
+        return isNaN(num) ? null : num;
+    }
+
+    inferRegionFromCountry(country) {
+        if (!country) return 'Глобально';
+        
+        const countryLower = country.toLowerCase();
+        const regionMap = {
+            'ukraine': 'Європа',
+            'poland': 'Європа', 'germany': 'Європа', 'france': 'Європа', 'uk': 'Європа',
+            'united kingdom': 'Європа', 'italy': 'Європа', 'spain': 'Європа', 'russia': 'Європа',
+            'syria': 'Близький Схід', 'israel': 'Близький Схід', 'lebanon': 'Близький Схід',
+            'iran': 'Близький Схід', 'iraq': 'Близький Схід', 'saudi arabia': 'Близький Схід',
+            'china': 'Азія', 'japan': 'Азія', 'india': 'Азія', 'pakistan': 'Азія',
+            'vietnam': 'Азія', 'thailand': 'Азія', 'south korea': 'Азія', 'north korea': 'Азія',
+            'usa': 'Північна Америка', 'united states': 'Північна Америка', 'canada': 'Північна Америка',
+            'mexico': 'Латинська Америка', 'brazil': 'Латинська Америка', 'argentina': 'Латинська Америка',
+            'nigeria': 'Африка', 'egypt': 'Африка', 'south africa': 'Африка', 'kenya': 'Африка',
+            'australia': 'Океанія', 'new zealand': 'Океанія'
+        };
+        
+        for (const [key, region] of Object.entries(regionMap)) {
+            if (countryLower.includes(key)) return region;
+        }
+        
+        return 'Глобально';
+    }
+
+    inferCategoryFromText(text) {
+        if (!text) return 'Політичні зміни';
+        
+        const textLower = text.toLowerCase();
+        const categoryKeywords = {
+            'Війни та конфлікти': ['war', 'war', 'conflict', 'battle', 'attack', 'missile', 'bomb', 'strike', 'invasion', 'warfare'],
+            'Політичні зміни': ['election', 'government', 'president', 'parliament', 'reform', 'sanction', 'policy', 'vote', 'legislation'],
+            'Економічні зміни': ['economy', 'trade', 'market', 'gdp', 'inflation', 'oil', 'gas', 'energy', 'export', 'import', 'currency'],
+            'Технологічні зміни': ['technology', 'nuclear', 'reactor', 'chip', 'semiconductor', 'ai', 'cyber', 'space'],
+            'Глобальні кризи': ['crisis', 'disaster', 'humanitarian', 'refugee', 'famine', 'drought', 'pandemic', 'emergency'],
+            'Тероризм': ['terror', 'terrorist', 'bombing', 'hostage', 'extremist']
+        };
+        
+        for (const [category, keywords] of Object.entries(categoryKeywords)) {
+            if (keywords.some(keyword => textLower.includes(keyword))) {
+                return category;
+            }
+        }
+        
+        return 'Політичні зміни';
+    }
+
+    /**
+     * Enhanced deduplication with fuzzy matching
+     * @param {Array} newEvents - Events to check for duplicates
+     * @returns {Array} - Deduplicated events
+     */
+    deduplicateEvents(newEvents) {
+        const existing = new Set(this.events.map(e => this.makeEventKey(e)));
+        const deduplicated = [];
+        
+        for (const event of newEvents) {
+            const key = this.makeEventKey(event);
+            if (!existing.has(key)) {
+                // Additional fuzzy check for similar titles and dates
+                const isDuplicate = this.events.some(existingEvent => {
+                    const titleSimilarity = this.calculateSimilarity(
+                        existingEvent.title?.toLowerCase() || '',
+                        event.title?.toLowerCase() || ''
+                    );
+                    const sameDate = existingEvent.date?.substring(0, 10) === event.date?.substring(0, 10);
+                    return titleSimilarity > 0.85 && sameDate;
+                });
+                
+                if (!isDuplicate) {
+                    deduplicated.push(event);
+                    existing.add(key);
+                }
+            }
+        }
+        
+        return deduplicated;
+    }
+
+    calculateSimilarity(str1, str2) {
+        if (!str1 || !str2) return 0;
+        const longer = str1.length > str2.length ? str1 : str2;
+        const shorter = str1.length > str2.length ? str2 : str1;
+        if (longer.length === 0) return 1.0;
+        return (longer.length - this.editDistance(longer, shorter)) / longer.length;
+    }
+
+    editDistance(str1, str2) {
+        const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(0));
+        
+        for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+        for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+        
+        for (let j = 1; j <= str2.length; j++) {
+            for (let i = 1; i <= str1.length; i++) {
+                const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+                matrix[j][i] = Math.min(
+                    matrix[j][i - 1] + 1,
+                    matrix[j - 1][i] + 1,
+                    matrix[j - 1][i - 1] + cost
+                );
+            }
+        }
+        
+        return matrix[str2.length][str1.length];
     }
 
     importBufferedEvents() {
@@ -2746,12 +3148,53 @@ class SourceScanner {
                 return await this.fetchGenericXml(src);
             case 'newsapi':
                 return await this.fetchNewsApiWrapper(src);
+            case 'gdelt':
+                return await this.fetchGDELTWrapper(src);
+            case 'acled':
+                return await this.fetchACLEDWrapper(src);
+            case 'reliefweb':
+                return await this.fetchReliefWebWrapper(src);
+            case 'eventregistry':
+                return await this.fetchEventRegistryWrapper(src);
             default:
                 // Try JSON, then RSS, then XML
                 try { return await this.fetchGenericJson(src); } catch(_) {}
                 try { return await this.app.fetchRss(src.url, src.corsProxy); } catch(_) {}
                 return await this.fetchGenericXml(src);
         }
+    }
+
+    // ========== NEW DATA SOURCE WRAPPERS ==========
+
+    async fetchGDELTWrapper(src) {
+        const { query, timespan, maxRecords } = src.params || {};
+        return await this.app.fetchGDELT(
+            query || 'geopolitical',
+            timespan || '7d',
+            maxRecords || 100
+        );
+    }
+
+    async fetchACLEDWrapper(src) {
+        const { apiKey, country, limit } = src.params || {};
+        return await this.app.fetchACLED(
+            apiKey || process.env.ACLED_API_KEY || '',
+            country || 'Ukraine',
+            limit || 100
+        );
+    }
+
+    async fetchReliefWebWrapper(src) {
+        const { country } = src.params || {};
+        return await this.app.fetchReliefWeb(country || '');
+    }
+
+    async fetchEventRegistryWrapper(src) {
+        const { apiKey, keyword } = src.params || {};
+        return await this.app.fetchEventRegistry(
+            apiKey || process.env.EVENTREGISTRY_API_KEY || '',
+            keyword || 'geopolitics'
+        );
     }
 
     async fetchGenericJson(src) {

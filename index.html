@@ -176,13 +176,37 @@
                         </div>
 
                         <div class="filter-group">
+                            <h4 class="filter-title">🌍 GDELT (Global Events - Без ключа)</h4>
+                            <input id="gdeltQuery" class="form-control" type="text" placeholder="Запит (напр., Ukraine, Syria)" value="geopolitical">
+                            <select id="gdeltTimespan" class="form-control" style="margin-top: 5px;">
+                                <option value="1d">Остання доба</option>
+                                <option value="7d" selected>Останній тиждень</option>
+                                <option value="30d">Останній місяць</option>
+                            </select>
+                            <small style="color: var(--text-secondary); font-size: 0.85rem;">✓ Не потрібен API ключ</small>
+                        </div>
+
+                        <div class="filter-group">
+                            <h4 class="filter-title">⚔️ ACLED (Конфлікти)</h4>
+                            <input id="acledApiKey" class="form-control" type="text" placeholder="ACLED API ключ (реєстрація на acleddata.com)">
+                            <input id="acledCountry" class="form-control" type="text" placeholder="Країна (напр., Ukraine)" value="Ukraine" style="margin-top: 5px;">
+                        </div>
+
+                        <div class="filter-group">
+                            <h4 class="filter-title">🏥 ReliefWeb (ООН - Гуманітарні)</h4>
+                            <input id="reliefwebCountry" class="form-control" type="text" placeholder="Країна (опціонально)">
+                            <small style="color: var(--text-secondary); font-size: 0.85rem;">✓ Не потрібен API ключ</small>
+                        </div>
+
+                        <div class="filter-group">
+                            <h4 class="filter-title">📰 EventRegistry (Новини)</h4>
+                            <input id="eventRegistryKey" class="form-control" type="text" placeholder="EventRegistry ключ (eventregistry.org)">
+                            <input id="eventRegistryKeyword" class="form-control" type="text" placeholder="Ключове слово" value="geopolitics" style="margin-top: 5px;">
+                        </div>
+
+                        <div class="filter-group">
                             <h4 class="filter-title">RSS джерела</h4>
                             <textarea id="rssUrls" class="form-control" rows="3" placeholder="Вставте URL RSS (по одному в рядок)"></textarea>
-                        </div>
-                        <div class="filter-group">
-                            <h4 class="filter-title">Новинні API (опц.)</h4>
-                            <input id="newsApiKey" class="form-control" type="text" placeholder="NewsAPI ключ (клієнтське використання може бути обмежене CORS)">
-                            <input id="newsApiQuery" class="form-control" type="text" placeholder="Пошуковий запит (напр., geopolitics, war)">
                         </div>
                         <div class="filter-group">
                             <h4 class="filter-title">Урядові звіти (JSON, опц.)</h4>

@@ -71,5 +71,71 @@
       "placeholderKey": "sk-placeholder-for-testing"
     }
   },
-  "qa": { "sampleSize": 20, "lowConfidenceThreshold": 0.7 }
+  "qa": { "sampleSize": 20, "lowConfidenceThreshold": 0.7 },
+  "externalSources": {
+    "gdelt": {
+      "enabled": true,
+      "endpoint": "https://api.gdeltproject.org/api/v2/doc/doc",
+      "queries": ["Ukraine war", "Middle East conflict", "geopolitical", "Syria", "Russia"],
+      "refreshIntervalHours": 6,
+      "maxRecords": 100,
+      "requiresApiKey": false
+    },
+    "acled": {
+      "enabled": true,
+      "endpoint": "https://api.acleddata.com/acled/read",
+      "apiKeyEnv": "ACLED_API_KEY",
+      "countries": ["Ukraine", "Syria", "Russia", "Israel", "Lebanon"],
+      "refreshIntervalHours": 24,
+      "limit": 100,
+      "requiresApiKey": true
+    },
+    "reliefweb": {
+      "enabled": true,
+      "endpoint": "https://api.reliefweb.int/v1/reports",
+      "refreshIntervalHours": 12,
+      "countries": ["Ukraine", "Syria", "Yemen", "Afghanistan"],
+      "requiresApiKey": false
+    },
+    "eventRegistry": {
+      "enabled": true,
+      "endpoint": "https://eventregistry.org/api/v1/article/getArticles",
+      "apiKeyEnv": "EVENTREGISTRY_API_KEY",
+      "keywords": ["geopolitics", "war", "conflict", "diplomatic"],
+      "refreshIntervalHours": 8,
+      "maxRecords": 100,
+      "requiresApiKey": true
+    },
+    "ucdp": {
+      "enabled": false,
+      "endpoint": "https://ucdpapi.pcr.uu.se/api/gedevents/",
+      "version": "23.1",
+      "refreshIntervalHours": 168,
+      "requiresApiKey": false,
+      "note": "Annual updates, enable for bulk historical data"
+    }
+  },
+  "geocoding": {
+    "provider": "nominatim",
+    "endpoint": "https://nominatim.openstreetmap.org/search",
+    "userAgent": "CivilizationSphere/1.0",
+    "rateLimit": {
+      "requestsPerSecond": 1,
+      "maxRetries": 3
+    },
+    "fallbackCoordinates": {
+      "Ukraine": { "lat": 48.3794, "lng": 31.1656 },
+      "Europe": { "lat": 50.8503, "lng": 4.3517 },
+      "Middle East": { "lat": 29.2985, "lng": 42.5510 },
+      "Asia": { "lat": 34.0479, "lng": 100.6197 }
+    }
+  },
+  "dataQuality": {
+    "minImportance": 3,
+    "maxEventAge": 365,
+    "requireCoordinates": false,
+    "autoGeocode": true,
+    "validateDates": true,
+    "deduplicationStrength": "high"
+  }
 }
