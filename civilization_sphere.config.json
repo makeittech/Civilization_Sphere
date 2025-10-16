@@ -63,19 +63,29 @@
           "priority": "critical",
           "validation": {
             "enabled": true,
-            "rules": [
-              "requiredFields": ["title", "date", "location", "category"],
+            "rules": {
+              "requiredFields": ["title", "date", "location", "category", "source_url", "channel_name"],
               "dateValidation": true,
               "locationValidation": true,
               "contentLength": { "min": 10, "max": 1000 },
-              "duplicateDetection": true
-            ]
+              "duplicateDetection": true,
+              "sourceCredibilityCheck": true,
+              "qualityThreshold": 0.7
+            }
           },
           "qualityMetrics": {
-            "completeness": 0.95,
-            "accuracy": 0.90,
-            "consistency": 0.85,
-            "timeliness": 0.80
+            "completeness": 0.90,
+            "accuracy": 0.85,
+            "consistency": 0.80,
+            "timeliness": 0.75,
+            "sourceCredibility": 0.80
+          },
+          "governance": {
+            "enabled": true,
+            "sourceTiering": true,
+            "factChecking": true,
+            "auditTrail": true,
+            "qualityReporting": true
           }
         }
       }
@@ -143,6 +153,9 @@
     }
   },
   "dataGovernance": {
+    "enabled": true,
+    "version": "1.0.0",
+    "lastUpdated": "2024-12-19",
     "sourceCredibility": {
       "enabled": true,
       "tracking": {
@@ -152,42 +165,88 @@
             "sourceReputation",
             "factChecking",
             "crossVerification",
-            "temporalAccuracy"
+            "temporalAccuracy",
+            "editorialStandards",
+            "biasRating"
           ]
         },
         "verificationStatus": [
           "verified",
-          "pending",
-          "disputed",
-          "unverified"
-        ]
+          "monitored",
+          "unverified",
+          "disputed"
+        ],
+        "tierSystem": {
+          "tier1": "Verified, high-quality sources with established credibility",
+          "tier2": "Reliable sources with good track record but require monitoring",
+          "tier3": "Sources requiring additional verification and lower confidence weighting"
+        }
       },
       "sources": {
-        "youtube": {
-          "channels": [
-            {
-              "name": "Український канал 1",
-              "reliabilityScore": 85,
-              "verificationStatus": "verified",
-              "lastUpdated": "2024-12-15"
-            }
-          ],
-          "defaultReliabilityScore": 70
-        },
-        "news": {
-          "providers": [
-            {
-              "name": "BBC News",
-              "reliabilityScore": 95,
-              "verificationStatus": "verified"
-            },
-            {
-              "name": "Reuters",
-              "reliabilityScore": 92,
-              "verificationStatus": "verified"
-            }
-          ]
-        }
+        "tier1": [
+          {
+            "name": "BBC News",
+            "type": "news",
+            "reliabilityScore": 95,
+            "verificationStatus": "verified",
+            "factCheckers": ["BBC Editorial Standards", "Reuters Fact Check"],
+            "biasRating": "neutral",
+            "geographicCoverage": "global"
+          },
+          {
+            "name": "Reuters",
+            "type": "news",
+            "reliabilityScore": 92,
+            "verificationStatus": "verified",
+            "factCheckers": ["Reuters Editorial Standards", "AP Fact Check"],
+            "biasRating": "neutral",
+            "geographicCoverage": "global"
+          }
+        ],
+        "tier2": [
+          {
+            "name": "Good Times Bad Times UA",
+            "type": "youtube_channel",
+            "reliabilityScore": 78,
+            "verificationStatus": "monitored",
+            "factCheckers": ["Community Review", "Cross-reference with Tier 1"],
+            "biasRating": "slight_pro_ukraine",
+            "geographicCoverage": "eastern_europe",
+            "specialization": "geopolitical_analysis"
+          },
+          {
+            "name": "Чотири сторони",
+            "type": "youtube_channel",
+            "reliabilityScore": 75,
+            "verificationStatus": "monitored",
+            "factCheckers": ["Community Review", "Cross-reference with Tier 1"],
+            "biasRating": "slight_pro_ukraine",
+            "geographicCoverage": "eastern_europe",
+            "specialization": "political_analysis"
+          }
+        ],
+        "tier3": [
+          {
+            "name": "Неаполітичні",
+            "type": "youtube_channel",
+            "reliabilityScore": 65,
+            "verificationStatus": "unverified",
+            "factCheckers": ["Community Review"],
+            "biasRating": "unknown",
+            "geographicCoverage": "ukraine",
+            "specialization": "political_commentary"
+          },
+          {
+            "name": "Ціна Держави",
+            "type": "youtube_channel",
+            "reliabilityScore": 68,
+            "verificationStatus": "unverified",
+            "factCheckers": ["Community Review"],
+            "biasRating": "unknown",
+            "geographicCoverage": "ukraine",
+            "specialization": "economic_analysis"
+          }
+        ]
       }
     },
     "dataQuality": {
@@ -198,34 +257,64 @@
             "duplicateDetection",
             "dateValidation",
             "locationValidation",
-            "contentQuality"
-          ]
+            "contentQuality",
+            "sourceCredibilityCheck",
+            "completenessValidation"
+          ],
+          "qualityThreshold": 0.7
         },
         "manual": {
           "enabled": true,
-          "reviewThreshold": 0.7,
-          "expertReview": true
+          "reviewThreshold": 0.6,
+          "expertReview": true,
+          "factChecking": true
         }
       },
       "standards": {
         "completeness": {
-          "required": 0.95,
-          "current": 0.87
+          "required": 0.90,
+          "current": 0.67,
+          "target": 0.90
         },
         "accuracy": {
-          "required": 0.90,
-          "current": 0.82
+          "required": 0.85,
+          "current": 0.45,
+          "target": 0.85
         },
         "consistency": {
-          "required": 0.85,
-          "current": 0.78
+          "required": 0.80,
+          "current": 0.38,
+          "target": 0.80
+        },
+        "timeliness": {
+          "required": 0.75,
+          "current": 0.25,
+          "target": 0.75
+        },
+        "sourceCredibility": {
+          "required": 0.80,
+          "current": 0.35,
+          "target": 0.80
         }
+      },
+      "filtering": {
+        "enabled": true,
+        "removeLowQuality": true,
+        "minimumConfidence": 0.7,
+        "minimumCompleteness": 0.85,
+        "maximumAge": 30
       }
     },
     "privacy": {
       "dataRetention": "2 years",
       "anonymization": true,
       "gdprCompliance": true
+    },
+    "auditTrail": {
+      "enabled": true,
+      "lastFullAudit": "2024-12-15",
+      "nextScheduledAudit": "2024-12-22",
+      "auditFrequency": "weekly"
     }
   },
   "technical": {

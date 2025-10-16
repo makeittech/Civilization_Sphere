@@ -5,7 +5,12 @@
   "main": "app.js",
   "scripts": {
     "serve": "python -m http.server 8000",
-    "test": "node scripts/smoke_test.js"
+    "test": "node scripts/smoke_test.js",
+    "quality:validate": "node scripts/data_quality_validator.js",
+    "quality:integrate": "node scripts/enhanced_data_integration.js",
+    "quality:improve": "node scripts/run_quality_improvement.js",
+    "data:ingest": "node scripts/ingest_youtube.js",
+    "data:scrape": "node scripts/scrape_youtube_no_api.js"
   },
   "repository": {
     "type": "git",
