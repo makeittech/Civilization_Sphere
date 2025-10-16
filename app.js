@@ -395,8 +395,9 @@ class GeopoliticalApp {
     }
     
     setupTheme() {
-        // Set initial theme
-        document.body.classList.add('dark-theme');
+        // Load saved theme or default to dark
+        const savedTheme = localStorage.getItem('civilization-sphere-theme') || 'dark';
+        this.switchTheme(savedTheme);
         
         // Theme toggle handlers
         document.querySelectorAll('.theme-btn').forEach(btn => {
@@ -413,12 +414,21 @@ class GeopoliticalApp {
     
     switchTheme(theme) {
         this.theme = theme;
+        
+        // Update body class and data attribute for CSS
         document.body.className = `${theme}-theme`;
+        document.documentElement.setAttribute('data-color-scheme', theme);
+        
+        // Save theme preference
+        localStorage.setItem('civilization-sphere-theme', theme);
         
         // Update active theme button
         document.querySelectorAll('.theme-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.theme === theme);
         });
+        
+        // Update Chart.js themes
+        this.updateChartThemes();
         
         // Reinitialize map tiles for theme
         if (this.map) {
@@ -429,6 +439,39 @@ class GeopoliticalApp {
             });
             this.addMapTileLayer();
         }
+    }
+
+    updateChartThemes() {
+        const isDark = this.theme === 'dark';
+        const textColor = isDark ? '#f5f5f5' : '#13343b';
+        const gridColor = isDark ? 'rgba(119, 124, 124, 0.3)' : 'rgba(94, 82, 64, 0.2)';
+        const backgroundColor = isDark ? 'rgba(38, 40, 40, 0.8)' : 'rgba(255, 255, 253, 0.8)';
+        
+        // Update existing charts
+        Object.values(this.charts).forEach(chart => {
+            if (chart && typeof chart.update === 'function') {
+                chart.options.scales = chart.options.scales || {};
+                chart.options.scales.x = chart.options.scales.x || {};
+                chart.options.scales.y = chart.options.scales.y || {};
+                
+                chart.options.scales.x.ticks = chart.options.scales.x.ticks || {};
+                chart.options.scales.y.ticks = chart.options.scales.y.ticks || {};
+                chart.options.scales.x.ticks.color = textColor;
+                chart.options.scales.y.ticks.color = textColor;
+                
+                chart.options.scales.x.grid = chart.options.scales.x.grid || {};
+                chart.options.scales.y.grid = chart.options.scales.y.grid || {};
+                chart.options.scales.x.grid.color = gridColor;
+                chart.options.scales.y.grid.color = gridColor;
+                
+                chart.options.plugins = chart.options.plugins || {};
+                chart.options.plugins.legend = chart.options.plugins.legend || {};
+                chart.options.plugins.legend.labels = chart.options.plugins.legend.labels || {};
+                chart.options.plugins.legend.labels.color = textColor;
+                
+                chart.update('none');
+            }
+        });
     }
     
     setupMobileOptimizations() {
@@ -1233,7 +1276,7 @@ class GeopoliticalApp {
         });
 
         document.getElementById('exportData').addEventListener('click', () => {
-            this.exportToCSV();
+            this.showExportDialog();
         });
 
         // Right sidebar toggle on larger screens too
@@ -1461,6 +1504,11 @@ class GeopoliticalApp {
     }
 
     initializeCharts() {
+        const isDark = this.theme === 'dark';
+        const textColor = isDark ? '#f5f5f5' : '#13343b';
+        const gridColor = isDark ? 'rgba(119, 124, 124, 0.3)' : 'rgba(94, 82, 64, 0.2)';
+        const backgroundColor = isDark ? 'rgba(38, 40, 40, 0.8)' : 'rgba(255, 255, 253, 0.8)';
+
         // Category distribution chart
         const categoryCtx = document.getElementById('categoryChart').getContext('2d');
         this.charts.category = new Chart(categoryCtx, {
@@ -1478,7 +1526,20 @@ class GeopoliticalApp {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: false
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            color: textColor,
+                            usePointStyle: true,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: backgroundColor,
+                        titleColor: textColor,
+                        bodyColor: textColor,
+                        borderColor: gridColor,
+                        borderWidth: 1
                     }
                 }
             }
@@ -1486,23 +1547,152 @@ class GeopoliticalApp {
 
         // Timeline distribution chart
         const timelineCtx = document.getElementById('timelineChart').getContext('2d');
-        const timelinePeriods = [
-            { period: "1930-1950", events: 1 },
-            { period: "1950-1970", events: 1 },
-            { period: "1970-1990", events: 2 },
-            { period: "1990-2010", events: 4 },
-            { period: "2010-2025", events: 2 }
-        ];
+        const timelineData = this.generateTimelineData();
 
         this.charts.timeline = new Chart(timelineCtx, {
             type: 'bar',
             data: {
-                labels: timelinePeriods.map(p => p.period),
+                labels: timelineData.labels,
                 datasets: [{
                     label: 'Події',
-                    data: timelinePeriods.map(p => p.events),
-                    backgroundColor: '#32a8b8',
-                    borderWidth: 0
+                    data: timelineData.data,
+                    backgroundColor: isDark ? '#50b8c6' : '#21808d',
+                    borderColor: isDark ? '#32a8b8' : '#21808d',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        labels: {
+                            color: textColor
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: backgroundColor,
+                        titleColor: textColor,
+                        bodyColor: textColor,
+                        borderColor: gridColor,
+                        borderWidth: 1
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: textColor
+                        },
+                        grid: {
+                            color: gridColor
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: textColor,
+                            stepSize: 1
+                        },
+                        grid: {
+                            color: gridColor
+                        }
+                    }
+                }
+            }
+        });
+
+        // Initialize additional analytics charts
+        this.initializeAnalyticsCharts();
+    }
+
+    generateTimelineData() {
+        const monthlyData = {};
+        const currentYear = new Date().getFullYear();
+        
+        // Generate last 12 months
+        for (let i = 11; i >= 0; i--) {
+            const date = new Date();
+            date.setMonth(date.getMonth() - i);
+            const monthKey = date.toISOString().substring(0, 7);
+            monthlyData[monthKey] = 0;
+        }
+
+        // Count events by month
+        this.filteredEvents.forEach(event => {
+            if (event.date) {
+                const monthKey = event.date.substring(0, 7);
+                if (monthlyData.hasOwnProperty(monthKey)) {
+                    monthlyData[monthKey]++;
+                }
+            }
+        });
+
+        return {
+            labels: Object.keys(monthlyData).map(month => {
+                const date = new Date(month + '-01');
+                return date.toLocaleDateString('uk-UA', { month: 'short', year: '2-digit' });
+            }),
+            data: Object.values(monthlyData)
+        };
+    }
+
+    initializeAnalyticsCharts() {
+        // Create additional chart containers if they don't exist
+        this.createAnalyticsContainers();
+        
+        // Region distribution chart
+        this.createRegionChart();
+        
+        // Importance distribution chart
+        this.createImportanceChart();
+        
+        // Channel distribution chart
+        this.createChannelChart();
+    }
+
+    createAnalyticsContainers() {
+        const statsContainer = document.querySelector('.stats-container');
+        if (!statsContainer) return;
+
+        // Add new chart containers
+        const additionalCharts = `
+            <div class="analytics-section">
+                <h4 class="analytics-title">Розподіл по регіонах</h4>
+                <canvas id="regionChart" class="chart-canvas"></canvas>
+            </div>
+            <div class="analytics-section">
+                <h4 class="analytics-title">Рівень важливості</h4>
+                <canvas id="importanceChart" class="chart-canvas"></canvas>
+            </div>
+            <div class="analytics-section">
+                <h4 class="analytics-title">Джерела контенту</h4>
+                <canvas id="channelChart" class="chart-canvas"></canvas>
+            </div>
+        `;
+        
+        statsContainer.insertAdjacentHTML('beforeend', additionalCharts);
+    }
+
+    createRegionChart() {
+        const regionCtx = document.getElementById('regionChart');
+        if (!regionCtx) return;
+
+        const regionStats = this.getRegionStats();
+        const isDark = this.theme === 'dark';
+        const textColor = isDark ? '#f5f5f5' : '#13343b';
+        const gridColor = isDark ? 'rgba(119, 124, 124, 0.3)' : 'rgba(94, 82, 64, 0.2)';
+
+        this.charts.region = new Chart(regionCtx.getContext('2d'), {
+            type: 'horizontalBar',
+            data: {
+                labels: Object.keys(regionStats),
+                datasets: [{
+                    label: 'Кількість подій',
+                    data: Object.values(regionStats),
+                    backgroundColor: isDark ? '#50b8c6' : '#21808d',
+                    borderColor: isDark ? '#32a8b8' : '#21808d',
+                    borderWidth: 1
                 }]
             },
             options: {
@@ -1511,13 +1701,127 @@ class GeopoliticalApp {
                 plugins: {
                     legend: {
                         display: false
+                    },
+                    tooltip: {
+                        backgroundColor: isDark ? 'rgba(38, 40, 40, 0.9)' : 'rgba(255, 255, 253, 0.9)',
+                        titleColor: textColor,
+                        bodyColor: textColor
                     }
                 },
                 scales: {
-                    y: {
-                        beginAtZero: true,
+                    x: {
                         ticks: {
-                            stepSize: 1
+                            color: textColor
+                        },
+                        grid: {
+                            color: gridColor
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: textColor
+                        },
+                        grid: {
+                            color: gridColor
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    createImportanceChart() {
+        const importanceCtx = document.getElementById('importanceChart');
+        if (!importanceCtx) return;
+
+        const importanceStats = this.getImportanceStats();
+        const isDark = this.theme === 'dark';
+        const textColor = isDark ? '#f5f5f5' : '#13343b';
+
+        this.charts.importance = new Chart(importanceCtx.getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: ['Високий (8-10)', 'Середній (5-7)', 'Низький (1-4)'],
+                datasets: [{
+                    data: [importanceStats.high, importanceStats.medium, importanceStats.low],
+                    backgroundColor: isDark ? ['#e74c3c', '#f39c12', '#27ae60'] : ['#c0392b', '#e67e22', '#229954'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            color: textColor,
+                            usePointStyle: true,
+                            padding: 10
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: isDark ? 'rgba(38, 40, 40, 0.9)' : 'rgba(255, 255, 253, 0.9)',
+                        titleColor: textColor,
+                        bodyColor: textColor
+                    }
+                }
+            }
+        });
+    }
+
+    createChannelChart() {
+        const channelCtx = document.getElementById('channelChart');
+        if (!channelCtx) return;
+
+        const channelStats = this.getChannelStats();
+        const isDark = this.theme === 'dark';
+        const textColor = isDark ? '#f5f5f5' : '#13343b';
+        const gridColor = isDark ? 'rgba(119, 124, 124, 0.3)' : 'rgba(94, 82, 64, 0.2)';
+
+        this.charts.channel = new Chart(channelCtx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: Object.keys(channelStats),
+                datasets: [{
+                    label: 'Кількість подій',
+                    data: Object.values(channelStats),
+                    borderColor: isDark ? '#50b8c6' : '#21808d',
+                    backgroundColor: isDark ? 'rgba(80, 184, 198, 0.1)' : 'rgba(33, 128, 141, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: isDark ? 'rgba(38, 40, 40, 0.9)' : 'rgba(255, 255, 253, 0.9)',
+                        titleColor: textColor,
+                        bodyColor: textColor
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: textColor,
+                            maxRotation: 45
+                        },
+                        grid: {
+                            color: gridColor
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: textColor
+                        },
+                        grid: {
+                            color: gridColor
                         }
                     }
                 }
@@ -1528,28 +1832,44 @@ class GeopoliticalApp {
     refreshCharts() {
         // Recompute category counts
         this.categories.forEach(category => {
-            category.count = this.events.filter(event => event.category === category.name).length;
+            category.count = this.filteredEvents.filter(event => event.category === category.name).length;
         });
 
+        // Update category chart
         if (this.charts.category) {
             this.charts.category.data.datasets[0].data = this.categories.map(cat => cat.count);
             this.charts.category.update();
         }
 
+        // Update timeline chart
         if (this.charts.timeline) {
-            // Simple heuristic: recompute by decade buckets
-            const counts = new Map();
-            this.events.forEach(ev => {
-                const y = new Date(ev.date).getFullYear();
-                const bucketStart = Math.floor(y / 10) * 10;
-                const key = `${bucketStart}-${bucketStart + 10}`;
-                counts.set(key, (counts.get(key) || 0) + 1);
-            });
-            const labels = Array.from(counts.keys()).sort((a,b) => parseInt(a.split('-')[0]) - parseInt(b.split('-')[0]));
-            const data = labels.map(l => counts.get(l));
-            this.charts.timeline.data.labels = labels;
-            this.charts.timeline.data.datasets[0].data = data;
+            const timelineData = this.generateTimelineData();
+            this.charts.timeline.data.labels = timelineData.labels;
+            this.charts.timeline.data.datasets[0].data = timelineData.data;
             this.charts.timeline.update();
+        }
+
+        // Update region chart
+        if (this.charts.region) {
+            const regionStats = this.getRegionStats();
+            this.charts.region.data.labels = Object.keys(regionStats);
+            this.charts.region.data.datasets[0].data = Object.values(regionStats);
+            this.charts.region.update();
+        }
+
+        // Update importance chart
+        if (this.charts.importance) {
+            const importanceStats = this.getImportanceStats();
+            this.charts.importance.data.datasets[0].data = [importanceStats.high, importanceStats.medium, importanceStats.low];
+            this.charts.importance.update();
+        }
+
+        // Update channel chart
+        if (this.charts.channel) {
+            const channelStats = this.getChannelStats();
+            this.charts.channel.data.labels = Object.keys(channelStats);
+            this.charts.channel.data.datasets[0].data = Object.values(channelStats);
+            this.charts.channel.update();
         }
     }
 
@@ -2406,6 +2726,357 @@ class GeopoliticalApp {
         if (!overlay) return;
         overlay.classList.remove('visible');
         overlay.setAttribute('aria-hidden', 'true');
+    }
+
+    // Data Export Functionality
+    exportData(format = 'json', includeFiltered = true) {
+        const dataToExport = includeFiltered ? this.filteredEvents : this.events;
+        
+        switch (format.toLowerCase()) {
+            case 'csv':
+                this.exportToCSV(dataToExport);
+                break;
+            case 'json':
+                this.exportToJSON(dataToExport);
+                break;
+            case 'pdf':
+                this.exportToPDF(dataToExport);
+                break;
+            default:
+                console.error('Unsupported export format:', format);
+        }
+    }
+
+    exportToCSV(data) {
+        if (!data || data.length === 0) {
+            alert('Немає даних для експорту');
+            return;
+        }
+
+        const headers = [
+            'ID', 'Назва', 'Канал', 'Дата', 'Категорія', 'Регіон', 'Країна',
+            'Широта', 'Довгота', 'Опис', 'Учасники', 'Вплив', 'Важливість', 'Джерела'
+        ];
+
+        const csvContent = [
+            headers.join(','),
+            ...data.map(event => [
+                event.id,
+                `"${(event.title || '').replace(/"/g, '""')}"`,
+                `"${(event.channel || '').replace(/"/g, '""')}"`,
+                event.date || '',
+                `"${(event.category || '').replace(/"/g, '""')}"`,
+                `"${(event.region || '').replace(/"/g, '""')}"`,
+                `"${(event.country || '').replace(/"/g, '""')}"`,
+                event.lat || '',
+                event.lng || '',
+                `"${(event.description || '').replace(/"/g, '""')}"`,
+                `"${(Array.isArray(event.participants) ? event.participants.join('; ') : '').replace(/"/g, '""')}"`,
+                `"${(event.impact || '').replace(/"/g, '""')}"`,
+                event.importance || '',
+                `"${(Array.isArray(event.sources) ? event.sources.join('; ') : '').replace(/"/g, '""')}"`
+            ].join(','))
+        ].join('\n');
+
+        this.downloadFile(csvContent, `geopolitical-events-${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+    }
+
+    exportToJSON(data) {
+        if (!data || data.length === 0) {
+            alert('Немає даних для експорту');
+            return;
+        }
+
+        const exportData = {
+            metadata: {
+                exportDate: new Date().toISOString(),
+                totalEvents: data.length,
+                appVersion: '1.0.0',
+                theme: this.theme,
+                filters: this.getCurrentFilters()
+            },
+            events: data
+        };
+
+        const jsonContent = JSON.stringify(exportData, null, 2);
+        this.downloadFile(jsonContent, `geopolitical-events-${new Date().toISOString().split('T')[0]}.json`, 'application/json');
+    }
+
+    exportToPDF(data) {
+        if (!data || data.length === 0) {
+            alert('Немає даних для експорту');
+            return;
+        }
+
+        // Create a simple HTML table for PDF generation
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Геополітичні Події - Експорт</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    h1 { color: #2c3e50; text-align: center; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                    th { background-color: #f2f2f2; font-weight: bold; }
+                    .meta { margin-bottom: 20px; font-size: 14px; color: #666; }
+                </style>
+            </head>
+            <body>
+                <h1>Геополітичні Події</h1>
+                <div class="meta">
+                    <p><strong>Дата експорту:</strong> ${new Date().toLocaleDateString('uk-UA')}</p>
+                    <p><strong>Кількість подій:</strong> ${data.length}</p>
+                    <p><strong>Тема:</strong> ${this.theme === 'dark' ? 'Темна' : 'Світла'}</p>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Назва</th>
+                            <th>Дата</th>
+                            <th>Категорія</th>
+                            <th>Регіон</th>
+                            <th>Важливість</th>
+                            <th>Опис</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.map(event => `
+                            <tr>
+                                <td>${event.id}</td>
+                                <td>${event.title || ''}</td>
+                                <td>${event.date || ''}</td>
+                                <td>${event.category || ''}</td>
+                                <td>${event.region || ''}</td>
+                                <td>${event.importance || ''}</td>
+                                <td>${(event.description || '').substring(0, 100)}${(event.description || '').length > 100 ? '...' : ''}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `;
+
+        // Open in new window for printing
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+    }
+
+    downloadFile(content, filename, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
+    getCurrentFilters() {
+        return {
+            categories: Array.from(document.querySelectorAll('#categoryFilters input:checked')).map(cb => cb.value),
+            dateFrom: document.getElementById('dateFrom')?.value || '',
+            dateTo: document.getElementById('dateTo')?.value || '',
+            region: document.getElementById('regionFilter')?.value || '',
+            searchQuery: document.getElementById('searchInput')?.value || ''
+        };
+    }
+
+    // Enhanced Analytics and Statistics
+    generateAnalytics() {
+        const analytics = {
+            totalEvents: this.events.length,
+            filteredEvents: this.filteredEvents.length,
+            categories: this.getCategoryStats(),
+            regions: this.getRegionStats(),
+            timeline: this.getTimelineStats(),
+            importance: this.getImportanceStats(),
+            channels: this.getChannelStats()
+        };
+        return analytics;
+    }
+
+    getCategoryStats() {
+        const stats = {};
+        this.filteredEvents.forEach(event => {
+            const category = event.category || 'Невизначено';
+            stats[category] = (stats[category] || 0) + 1;
+        });
+        return stats;
+    }
+
+    getRegionStats() {
+        const stats = {};
+        this.filteredEvents.forEach(event => {
+            const region = event.region || 'Невизначено';
+            stats[region] = (stats[region] || 0) + 1;
+        });
+        return stats;
+    }
+
+    getTimelineStats() {
+        const monthlyStats = {};
+        this.filteredEvents.forEach(event => {
+            if (event.date) {
+                const month = event.date.substring(0, 7); // YYYY-MM
+                monthlyStats[month] = (monthlyStats[month] || 0) + 1;
+            }
+        });
+        return monthlyStats;
+    }
+
+    getImportanceStats() {
+        const stats = { high: 0, medium: 0, low: 0 };
+        this.filteredEvents.forEach(event => {
+            const importance = event.importance || 0;
+            if (importance >= 8) stats.high++;
+            else if (importance >= 5) stats.medium++;
+            else stats.low++;
+        });
+        return stats;
+    }
+
+    getChannelStats() {
+        const stats = {};
+        this.filteredEvents.forEach(event => {
+            const channel = event.channel || 'Невизначено';
+            stats[channel] = (stats[channel] || 0) + 1;
+        });
+        return stats;
+    }
+
+    // Export Dialog
+    showExportDialog() {
+        const dialog = this.createExportDialog();
+        document.body.appendChild(dialog);
+        
+        // Show dialog with animation
+        setTimeout(() => {
+            dialog.classList.add('visible');
+        }, 10);
+    }
+
+    createExportDialog() {
+        const dialog = document.createElement('div');
+        dialog.className = 'export-dialog-overlay';
+        dialog.innerHTML = `
+            <div class="export-dialog">
+                <div class="export-dialog-header">
+                    <h3>Експорт даних</h3>
+                    <button class="export-dialog-close" aria-label="Закрити">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+                <div class="export-dialog-content">
+                    <div class="export-options">
+                        <div class="export-option">
+                            <label>
+                                <input type="radio" name="exportFormat" value="json" checked>
+                                <span class="export-option-label">
+                                    <i data-lucide="file-text"></i>
+                                    <div>
+                                        <strong>JSON</strong>
+                                        <small>Повні дані з метаданими</small>
+                                    </div>
+                                </span>
+                            </label>
+                        </div>
+                        <div class="export-option">
+                            <label>
+                                <input type="radio" name="exportFormat" value="csv">
+                                <span class="export-option-label">
+                                    <i data-lucide="file-spreadsheet"></i>
+                                    <div>
+                                        <strong>CSV</strong>
+                                        <small>Таблиця для Excel/Google Sheets</small>
+                                    </div>
+                                </span>
+                            </label>
+                        </div>
+                        <div class="export-option">
+                            <label>
+                                <input type="radio" name="exportFormat" value="pdf">
+                                <span class="export-option-label">
+                                    <i data-lucide="file-text"></i>
+                                    <div>
+                                        <strong>PDF</strong>
+                                        <small>Друкований звіт</small>
+                                    </div>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="export-settings">
+                        <label class="export-setting">
+                            <input type="checkbox" id="includeFiltered" checked>
+                            <span>Експортувати тільки відфільтровані події</span>
+                        </label>
+                        <div class="export-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Всього подій:</span>
+                                <span class="stat-value">${this.events.length}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Відфільтровано:</span>
+                                <span class="stat-value">${this.filteredEvents.length}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="export-dialog-footer">
+                    <button class="btn btn--outline export-cancel">Скасувати</button>
+                    <button class="btn btn--primary export-confirm">Експортувати</button>
+                </div>
+            </div>
+        `;
+
+        // Add event listeners
+        dialog.querySelector('.export-dialog-close').addEventListener('click', () => {
+            this.closeExportDialog(dialog);
+        });
+
+        dialog.querySelector('.export-cancel').addEventListener('click', () => {
+            this.closeExportDialog(dialog);
+        });
+
+        dialog.querySelector('.export-confirm').addEventListener('click', () => {
+            const format = dialog.querySelector('input[name="exportFormat"]:checked').value;
+            const includeFiltered = dialog.querySelector('#includeFiltered').checked;
+            this.exportData(format, includeFiltered);
+            this.closeExportDialog(dialog);
+        });
+
+        // Close on overlay click
+        dialog.addEventListener('click', (e) => {
+            if (e.target === dialog) {
+                this.closeExportDialog(dialog);
+            }
+        });
+
+        // Re-render icons
+        if (window.lucide?.createIcons) {
+            window.lucide.createIcons();
+        }
+
+        return dialog;
+    }
+
+    closeExportDialog(dialog) {
+        dialog.classList.remove('visible');
+        setTimeout(() => {
+            if (dialog.parentNode) {
+                dialog.parentNode.removeChild(dialog);
+            }
+        }, 300);
     }
 }
 
