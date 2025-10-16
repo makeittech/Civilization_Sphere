@@ -1,0 +1,1903 @@
+{
+  "timestamp": "2025-10-16T06:57:44.005Z",
+  "summary": {
+    "totalEvents": 83,
+    "passedValidation": 83,
+    "failedValidation": 0,
+    "averageScore": 0.793381526104418,
+    "qualityDistribution": {
+      "excellent": 0,
+      "good": 83,
+      "fair": 0,
+      "poor": 0
+    },
+    "commonIssues": [
+      {
+        "issue": "Missing required field",
+        "count": 83,
+        "percentage": "100.0"
+      },
+      {
+        "issue": "Unknown source",
+        "count": 22,
+        "percentage": "26.5"
+      }
+    ],
+    "sourceCredibilityBreakdown": {
+      "tier1": 0,
+      "tier2": 31,
+      "tier3": 30,
+      "unknown": 22
+    },
+    "recommendations": [
+      "Many unknown sources - expand source credibility database"
+    ]
+  },
+  "detailedResults": [
+    {
+      "eventId": "GiGS8X8YDdI",
+      "score": {
+        "overall": 0.7683333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.45
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Неаполітичні is unverified",
+        "Source Неаполітичні has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "4NI0Ta4f7Jw",
+      "score": {
+        "overall": 0.7683333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.45
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Неаполітичні is unverified",
+        "Source Неаполітичні has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "JBVvo4cP0Bo",
+      "score": {
+        "overall": 0.7683333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.45
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Неаполітичні is unverified",
+        "Source Неаполітичні has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "xzaRi1nOwg0",
+      "score": {
+        "overall": 0.7683333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.45
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Неаполітичні is unverified",
+        "Source Неаполітичні has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "SLfQmyyJIxw",
+      "score": {
+        "overall": 0.7683333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.45
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Неаполітичні is unverified",
+        "Source Неаполітичні has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "xBGnJ2HGrQg",
+      "score": {
+        "overall": 0.7683333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.45
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Неаполітичні is unverified",
+        "Source Неаполітичні has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "cQASF4H3f7o",
+      "score": {
+        "overall": 0.7683333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.45
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Неаполітичні is unverified",
+        "Source Неаполітичні has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "9xn-eKZErq8",
+      "score": {
+        "overall": 0.7683333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.45
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Неаполітичні is unverified",
+        "Source Неаполітичні has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "FKTM16MvmcY",
+      "score": {
+        "overall": 0.7683333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.45
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Неаполітичні is unverified",
+        "Source Неаполітичні has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "iN8DoAhgUxg",
+      "score": {
+        "overall": 0.7683333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.45
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Неаполітичні is unverified",
+        "Source Неаполітичні has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "fcNB9spEZEI",
+      "score": {
+        "overall": 0.7683333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.45
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Неаполітичні is unverified",
+        "Source Неаполітичні has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "kpjMsu5NveI",
+      "score": {
+        "overall": 0.7683333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.45
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Неаполітичні is unverified",
+        "Source Неаполітичні has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "aBRFktRvonA",
+      "score": {
+        "overall": 0.7683333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.45
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Неаполітичні is unverified",
+        "Source Неаполітичні has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "jiuCjii_3Gc",
+      "score": {
+        "overall": 0.7683333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.45
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Неаполітичні is unverified",
+        "Source Неаполітичні has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "YSn6cyy3__0",
+      "score": {
+        "overall": 0.7683333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.45
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Неаполітичні is unverified",
+        "Source Неаполітичні has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "mWdaj4W7kx8",
+      "score": {
+        "overall": 0.8673333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.78
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Good Times Bad Times UA has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "gSg1d0VAy-4",
+      "score": {
+        "overall": 0.8673333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.78
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Good Times Bad Times UA has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "3XZXx-wGLcM",
+      "score": {
+        "overall": 0.8673333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.78
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Good Times Bad Times UA has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "7ahq3G5dHwo",
+      "score": {
+        "overall": 0.8673333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.78
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Good Times Bad Times UA has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "0_1lJdBK5Ls",
+      "score": {
+        "overall": 0.8673333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.78
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Good Times Bad Times UA has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "7ctx_A1EdGI",
+      "score": {
+        "overall": 0.8673333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.78
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Good Times Bad Times UA has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "mCjEz89xtcA",
+      "score": {
+        "overall": 0.8673333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.78
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Good Times Bad Times UA has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "D8YdpThQAeE",
+      "score": {
+        "overall": 0.8673333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.78
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Good Times Bad Times UA has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "XKQy1Z33bWg",
+      "score": {
+        "overall": 0.8673333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.78
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Good Times Bad Times UA has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "r--NSO12P3w",
+      "score": {
+        "overall": 0.8673333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.78
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Good Times Bad Times UA has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "_hCZwzkQrEY",
+      "score": {
+        "overall": 0.8673333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.78
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Good Times Bad Times UA has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "8qS7w0JsfvU",
+      "score": {
+        "overall": 0.8673333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.78
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Good Times Bad Times UA has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "0NwOI3KbIk8",
+      "score": {
+        "overall": 0.8673333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.78
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Good Times Bad Times UA has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "sYg0NU_Q1CE",
+      "score": {
+        "overall": 0.8673333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.78
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Good Times Bad Times UA has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "1AICoRzCzaw",
+      "score": {
+        "overall": 0.8673333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.78
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Good Times Bad Times UA has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "fQSdpGNeISk",
+      "score": {
+        "overall": 0.8583333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.75
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Чотири сторони has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "MuYWbLGB9No",
+      "score": {
+        "overall": 0.8583333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.75
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Чотири сторони has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "1pGaadIekOI",
+      "score": {
+        "overall": 0.8583333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.75
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Чотири сторони has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "81xFrtfzDIg",
+      "score": {
+        "overall": 0.8583333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.75
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Чотири сторони has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "ttOEEnM8UOs",
+      "score": {
+        "overall": 0.8583333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.75
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Чотири сторони has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "5Ad1mRPFlXA",
+      "score": {
+        "overall": 0.8583333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.75
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Чотири сторони has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "HoDOTq9gnCI",
+      "score": {
+        "overall": 0.8583333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.75
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Чотири сторони has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "EyBf5xwdL9Q",
+      "score": {
+        "overall": 0.8583333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.75
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Чотири сторони has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "oL5KD0gByt0",
+      "score": {
+        "overall": 0.8583333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.75
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Чотири сторони has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "lJZy1Mf8uEo",
+      "score": {
+        "overall": 0.8583333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.75
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Чотири сторони has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "uZ_opJXU8ik",
+      "score": {
+        "overall": 0.8583333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.75
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Чотири сторони has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "dXYd97AeCEo",
+      "score": {
+        "overall": 0.8583333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.75
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Чотири сторони has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "fewIrIkjNks",
+      "score": {
+        "overall": 0.8583333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.75
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Чотири сторони has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "JXAPjLV8opE",
+      "score": {
+        "overall": 0.8583333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.75
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Чотири сторони has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "9cwt904b0pc",
+      "score": {
+        "overall": 0.8583333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.75
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Чотири сторони has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "nmiPexHFX9E",
+      "score": {
+        "overall": 0.7773333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.48000000000000004
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Ціна Держави is unverified",
+        "Source Ціна Держави has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "bDRvT1n1hQo",
+      "score": {
+        "overall": 0.7773333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.48000000000000004
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Ціна Держави is unverified",
+        "Source Ціна Держави has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "1V7HJCmoiNc",
+      "score": {
+        "overall": 0.7773333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.48000000000000004
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Ціна Держави is unverified",
+        "Source Ціна Держави has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "QONrB7y7VPE",
+      "score": {
+        "overall": 0.7773333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.48000000000000004
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Ціна Держави is unverified",
+        "Source Ціна Держави has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "2ZMzTZMeWPo",
+      "score": {
+        "overall": 0.7773333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.48000000000000004
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Ціна Держави is unverified",
+        "Source Ціна Держави has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "Gwzynwyi0Fg",
+      "score": {
+        "overall": 0.7773333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.48000000000000004
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Ціна Держави is unverified",
+        "Source Ціна Держави has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "ruTj531CI-M",
+      "score": {
+        "overall": 0.7773333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.48000000000000004
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Ціна Держави is unverified",
+        "Source Ціна Держави has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "ZdT1IX0nh0Y",
+      "score": {
+        "overall": 0.7773333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.48000000000000004
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Ціна Держави is unverified",
+        "Source Ціна Держави has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "byC7x9EKZoU",
+      "score": {
+        "overall": 0.7773333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.48000000000000004
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Ціна Держави is unverified",
+        "Source Ціна Держави has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "lLA3ANH42u0",
+      "score": {
+        "overall": 0.7773333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.48000000000000004
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Ціна Держави is unverified",
+        "Source Ціна Держави has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "fmMXB_tsvU0",
+      "score": {
+        "overall": 0.7773333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.48000000000000004
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Ціна Держави is unverified",
+        "Source Ціна Держави has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "I2jASoIYfjI",
+      "score": {
+        "overall": 0.7773333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.48000000000000004
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Ціна Держави is unverified",
+        "Source Ціна Держави has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "xjKcz2DuN04",
+      "score": {
+        "overall": 0.7773333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.48000000000000004
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Ціна Держави is unverified",
+        "Source Ціна Держави has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "ji3gUwlkaQw",
+      "score": {
+        "overall": 0.7773333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.48000000000000004
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Ціна Держави is unverified",
+        "Source Ціна Держави has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "nhirTM_FUAA",
+      "score": {
+        "overall": 0.7773333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.48000000000000004
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Ціна Держави is unverified",
+        "Source Ціна Держави has unknown bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Verify source credibility through fact-checking",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "8b0gW3io_iQ",
+      "score": {
+        "overall": 0.8673333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.78
+      },
+      "issues": [
+        "Missing required field: location"
+      ],
+      "warnings": [
+        "Missing geographic coordinates",
+        "Source Good Times Bad Times UA has slight_pro_ukraine bias"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping",
+        "Consider bias when interpreting this information"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_JUSTINIAN_541",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_BLACK_DEATH_1347",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_THIRD_PLAGUE_1894",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_GREAT_PLAGUE_LONDON_1665",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_MARSEILLE_1720",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_CHOLERA_FIRST_1817",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_CHOLERA_SECOND_1829",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_CHOLERA_THIRD_1846",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_CHOLERA_FOURTH_1863",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_CHOLERA_FIFTH_1881",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_CHOLERA_SIXTH_1899",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_CHOLERA_SEVENTH_1961",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_SPANISH_FLU_1918",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_ASIAN_FLU_1957",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_HONG_KONG_FLU_1968",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_SARS_2002",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_H1N1_2009",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_MERS_2012",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_EBOLA_WEST_AFRICA_2014",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_ZIKA_2015",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_EBOLA_KIVU_2018",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    },
+    {
+      "eventId": "PANDEMIC_COVID19_2019",
+      "score": {
+        "overall": 0.7233333333333333,
+        "completeness": 0.8333333333333334,
+        "accuracy": 1,
+        "credibility": 0.3
+      },
+      "issues": [
+        "Missing required field: location",
+        "Unknown source: Historical Pandemics"
+      ],
+      "warnings": [
+        "Missing geographic coordinates"
+      ],
+      "passed": true,
+      "recommendations": [
+        "Complete all required fields before publishing",
+        "Add precise geographic coordinates for better mapping"
+      ]
+    }
+  ],
+  "governanceVersion": "1.0.0"
+}

@@ -1,0 +1,131 @@
+{
+  "timestamp": "2025-10-16T06:57:44.054Z",
+  "totalDuration": "93ms",
+  "successRate": "46.2%",
+  "steps": [
+    {
+      "step": "Backup Creation",
+      "status": "starting",
+      "details": "",
+      "timestamp": "2025-10-16T06:57:43.963Z",
+      "duration": "3ms"
+    },
+    {
+      "step": "Backup Creation",
+      "status": "completed",
+      "details": "Backup created at /workspace/data/backups/backup_2025-10-16T06-57-43-964Z",
+      "timestamp": "2025-10-16T06:57:43.968Z",
+      "duration": "7ms"
+    },
+    {
+      "step": "Data Quality Validation",
+      "status": "starting",
+      "details": "",
+      "timestamp": "2025-10-16T06:57:43.968Z",
+      "duration": "7ms"
+    },
+    {
+      "step": "Data Quality Validation",
+      "status": "completed",
+      "details": "Quality report generated",
+      "timestamp": "2025-10-16T06:57:44.013Z",
+      "duration": "52ms"
+    },
+    {
+      "step": "Enhanced Data Integration",
+      "status": "starting",
+      "details": "",
+      "timestamp": "2025-10-16T06:57:44.013Z",
+      "duration": "52ms"
+    },
+    {
+      "step": "Enhanced Data Integration",
+      "status": "completed",
+      "details": "High-quality data integrated",
+      "timestamp": "2025-10-16T06:57:44.048Z",
+      "duration": "87ms"
+    },
+    {
+      "step": "Low Quality Event Filtering",
+      "status": "starting",
+      "details": "",
+      "timestamp": "2025-10-16T06:57:44.049Z",
+      "duration": "88ms"
+    },
+    {
+      "step": "Low Quality Event Filtering",
+      "status": "completed",
+      "details": "Removed 0 low-quality events (0.0%)",
+      "timestamp": "2025-10-16T06:57:44.052Z",
+      "duration": "91ms"
+    },
+    {
+      "step": "Configuration Update",
+      "status": "starting",
+      "details": "",
+      "timestamp": "2025-10-16T06:57:44.052Z",
+      "duration": "91ms"
+    },
+    {
+      "step": "Configuration Update",
+      "status": "completed",
+      "details": "Data governance configuration updated",
+      "timestamp": "2025-10-16T06:57:44.052Z",
+      "duration": "91ms"
+    },
+    {
+      "step": "Quality Report Generation",
+      "status": "starting",
+      "details": "",
+      "timestamp": "2025-10-16T06:57:44.052Z",
+      "duration": "91ms"
+    },
+    {
+      "step": "Quality Report Generation",
+      "status": "completed",
+      "details": "Processed 83 events",
+      "timestamp": "2025-10-16T06:57:44.054Z",
+      "duration": "93ms"
+    },
+    {
+      "step": "Final Report Generation",
+      "status": "starting",
+      "details": "",
+      "timestamp": "2025-10-16T06:57:44.054Z",
+      "duration": "93ms"
+    }
+  ],
+  "summary": {
+    "totalEvents": 83,
+    "passedValidation": 83,
+    "failedValidation": 0,
+    "averageScore": 0.793381526104418,
+    "qualityDistribution": {
+      "excellent": 0,
+      "good": 83,
+      "fair": 0,
+      "poor": 0
+    },
+    "commonIssues": [
+      {
+        "issue": "Missing required field",
+        "count": 83,
+        "percentage": "100.0"
+      },
+      {
+        "issue": "Unknown source",
+        "count": 22,
+        "percentage": "26.5"
+      }
+    ],
+    "recommendations": [
+      "Many unknown sources - expand source credibility database"
+    ]
+  },
+  "errors": [],
+  "recommendations": [
+    "Implement regular quality audits to maintain data standards",
+    "Consider integrating additional Tier 1 news sources for better credibility",
+    "Establish a community feedback mechanism for data quality improvement"
+  ]
+}
