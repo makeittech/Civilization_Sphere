@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/makeittech/Civilization_Sphere#readme",
   "dependencies": {
+    "puppeteer": "^24.25.0",
     "ytdl-core": "^4.11.5"
   }
 }
