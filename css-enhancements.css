@@ -1,0 +1,1073 @@
+/* ============================================================================
+ * CIVILIZATION SPHERE - MODERN UI DESIGN ENHANCEMENTS
+ * Sleek, Professional, and Intuitive Design Improvements
+ * ============================================================================ */
+
+/* ============================================================================
+ * 1. ENHANCED COLOR SYSTEM - Modern Palette
+ * ============================================================================ */
+
+:root {
+  /* Enhanced Primary Colors - More Vibrant & Professional */
+  --color-primary-new: #2D96A4; /* Modern Teal */
+  --color-primary-dark: #1D4A5C; /* Deep Teal */
+  --color-primary-light: #32B8C6; /* Light Teal */
+  
+  /* Enhanced Neutral Colors - Better Contrast & Readability */
+  --color-text-primary-new: #1A1F2E; /* Almost Black */
+  --color-text-secondary-new: #626C71; /* Gray-Blue */
+  --color-surface-new: #F8F9FB; /* Off-white */
+  --color-border-new: #E1E4E8; /* Light Gray */
+  
+  /* Status Colors - Vibrant & Clear */
+  --color-success-new: #10B981; /* Green */
+  --color-warning-new: #F59E0B; /* Amber */
+  --color-error-new: #EF4444; /* Red */
+  --color-info-new: #0EA5E9; /* Sky Blue */
+  
+  /* Category Colors for Events */
+  --color-category-military: #EF4444; /* Red */
+  --color-category-political: #3B82F6; /* Blue */
+  --color-category-economic: #10B981; /* Green */
+  --color-category-technological: #8B5CF6; /* Purple */
+  --color-category-diplomatic: #F59E0B; /* Amber */
+  --color-category-environmental: #06B6D4; /* Cyan */
+  
+  /* Enhanced Shadows - More Depth & Elevation */
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-sm-new: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md-new: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg-new: 0 12px 32px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.16);
+  
+  /* Enhanced Transitions - Smooth & Professional */
+  --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: 350ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  
+  /* Border Radius - Modern Rounded Corners */
+  --radius-xs: 4px;
+  --radius-sm-new: 6px;
+  --radius-md-new: 8px;
+  --radius-lg-new: 12px;
+  --radius-xl: 16px;
+  --radius-full-new: 9999px;
+}
+
+/* Dark Mode Overrides */
+[data-color-scheme="dark"] {
+  --color-text-primary-new: #F5F5F5; /* White */
+  --color-text-secondary-new: #A7A9A9; /* Gray */
+  --color-surface-new: #1F2128; /* Dark */
+  --color-border-new: rgba(119, 124, 124, 0.3); /* Dark border */
+  --color-primary-new: #32B8C6; /* Light Teal */
+}
+
+/* ============================================================================
+ * 2. ENHANCED HEADER - Modern & Clean
+ * ============================================================================ */
+
+.header {
+  background: linear-gradient(135deg, var(--color-surface), rgba(45, 150, 164, 0.02));
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--color-border-new);
+  transition: all var(--transition-normal);
+}
+
+.header:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.header-content {
+  align-items: center;
+  gap: 24px;
+  padding: 0 24px;
+}
+
+.app-title {
+  background: linear-gradient(135deg, var(--color-primary-new), var(--color-primary-dark));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.search-container {
+  position: relative;
+  flex: 1;
+  max-width: 450px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--color-border-new);
+  border-radius: var(--radius-full-new);
+  transition: all var(--transition-fast);
+  font-size: 14px;
+}
+
+.search-input:focus {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--color-primary-new);
+  box-shadow: 0 0 0 3px rgba(45, 150, 164, 0.1);
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: var(--color-text-secondary-new);
+}
+
+.search-suggestions {
+  background: var(--color-surface-new);
+  border: 1px solid var(--color-border-new);
+  border-radius: var(--radius-md-new);
+  box-shadow: var(--shadow-xl);
+  margin-top: 8px;
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+.search-suggestion {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border-new);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.search-suggestion:hover {
+  background-color: rgba(45, 150, 164, 0.08);
+}
+
+.search-suggestion:last-child {
+  border-bottom: none;
+}
+
+.search-suggestion.selected {
+  background: var(--color-primary-new);
+  color: white;
+}
+
+/* ============================================================================
+ * 3. ENHANCED SIDEBAR - Better Hierarchy & Visual Design
+ * ============================================================================ */
+
+.sidebar {
+  background: var(--color-surface-new);
+  border-right: 1px solid var(--color-border-new);
+  box-shadow: inset -1px 0 0 var(--color-border-new);
+}
+
+.sidebar-section {
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+}
+
+.sidebar-section:last-child {
+  border-bottom: none;
+}
+
+.sidebar-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary-new);
+  margin-bottom: 16px;
+  display: block;
+}
+
+/* Filter Groups */
+.filter-group {
+  margin-bottom: 20px;
+}
+
+.filter-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary-new);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.checkbox-group label:hover {
+  color: var(--color-primary-new);
+}
+
+.checkbox-group input[type="checkbox"] {
+  margin-right: 8px;
+  cursor: pointer;
+  accent-color: var(--color-primary-new);
+}
+
+/* Quick Filters */
+.quick-filters {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.quick-filter-btn {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--color-border-new);
+  background: transparent;
+  border-radius: var(--radius-md-new);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--color-text-primary-new);
+}
+
+.quick-filter-btn:hover {
+  border-color: var(--color-primary-new);
+  background: rgba(45, 150, 164, 0.08);
+}
+
+.quick-filter-btn.active {
+  background: var(--color-primary-new);
+  border-color: var(--color-primary-new);
+  color: white;
+  box-shadow: 0 2px 8px rgba(45, 150, 164, 0.3);
+}
+
+/* Date Range */
+.date-range {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.date-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border-new);
+  border-radius: var(--radius-md-new);
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: all var(--transition-fast);
+}
+
+.date-input:focus {
+  border-color: var(--color-primary-new);
+  background: rgba(45, 150, 164, 0.05);
+  outline: none;
+}
+
+.date-separator {
+  font-size: 12px;
+  color: var(--color-text-secondary-new);
+  flex-shrink: 0;
+}
+
+/* Importance Slider */
+.importance-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: var(--radius-full-new);
+  background: linear-gradient(90deg, var(--color-error-new), var(--color-warning-new), var(--color-success-new));
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.importance-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-primary-new);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(45, 150, 164, 0.4);
+  transition: all var(--transition-fast);
+}
+
+.importance-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 4px 12px rgba(45, 150, 164, 0.5);
+}
+
+.importance-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-primary-new);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(45, 150, 164, 0.4);
+  transition: all var(--transition-fast);
+}
+
+.importance-slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 4px 12px rgba(45, 150, 164, 0.5);
+}
+
+.importance-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--color-text-secondary-new);
+  margin-top: 8px;
+}
+
+.importance-value {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary-new);
+  margin-top: 8px;
+}
+
+/* ============================================================================
+ * 4. ENHANCED MAP CONTAINER - Better Controls & Layout
+ * ============================================================================ */
+
+.map {
+  flex: 1;
+  background: linear-gradient(135deg, #f0f2f5, #e8eaed);
+  position: relative;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.map-controls {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: white;
+  border-radius: var(--radius-lg-new);
+  padding: 8px;
+  box-shadow: var(--shadow-lg-new);
+}
+
+.map-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md-new);
+  border: 1px solid var(--color-border-new);
+  background: white;
+  color: var(--color-text-primary-new);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  font-size: 18px;
+}
+
+.map-btn:hover {
+  background: var(--color-primary-new);
+  color: white;
+  border-color: var(--color-primary-new);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(45, 150, 164, 0.3);
+}
+
+.map-btn:active {
+  transform: scale(0.95);
+}
+
+/* Leaflet Marker Enhancements */
+.leaflet-marker-icon {
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
+  transition: all var(--transition-fast);
+}
+
+.leaflet-marker-icon:hover {
+  filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.25));
+  transform: scale(1.1);
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: var(--radius-md-new);
+  box-shadow: var(--shadow-xl);
+}
+
+.leaflet-popup-content {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ============================================================================
+ * 5. ENHANCED TIMELINE - Modern Visualization
+ * ============================================================================ */
+
+.timeline-container {
+  background: var(--color-surface-new);
+  border-top: 1px solid var(--color-border-new);
+  box-shadow: inset 0 1px 0 var(--color-border-new);
+  padding: 16px;
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.timeline-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary-new);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.timeline-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.playback-controls {
+  display: flex;
+  gap: 8px;
+  background: rgba(45, 150, 164, 0.08);
+  padding: 6px;
+  border-radius: var(--radius-full-new);
+}
+
+.timeline-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md-new);
+  background: transparent;
+  border: none;
+  color: var(--color-primary-new);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.timeline-btn:hover {
+  background: rgba(45, 150, 164, 0.2);
+  transform: scale(1.1);
+}
+
+.timeline-btn:active {
+  transform: scale(0.95);
+}
+
+.timeline-btn.active {
+  background: var(--color-primary-new);
+  color: white;
+}
+
+.speed-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.speed-label {
+  color: var(--color-text-secondary-new);
+  font-weight: 500;
+}
+
+.speed-select {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border-new);
+  border-radius: var(--radius-md-new);
+  background: transparent;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.speed-select:hover {
+  border-color: var(--color-primary-new);
+}
+
+.speed-select:focus {
+  border-color: var(--color-primary-new);
+  outline: none;
+}
+
+.timeline-progress {
+  flex: 1;
+  min-width: 200px;
+}
+
+.progress-bar {
+  position: relative;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-full-new);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary-new), var(--color-primary-light));
+  width: 0%;
+  transition: width 50ms linear;
+  border-radius: var(--radius-full-new);
+}
+
+.progress-handle {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  width: 14px;
+  height: 14px;
+  background: var(--color-primary-new);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 2px 8px rgba(45, 150, 164, 0.4);
+  cursor: grab;
+  transition: all var(--transition-fast);
+}
+
+.progress-handle:hover,
+.progress-handle.active {
+  transform: translate(-50%, -50%) scale(1.2);
+  box-shadow: 0 4px 16px rgba(45, 150, 164, 0.6);
+}
+
+.timeline-content {
+  display: flex;
+  gap: 16px;
+  height: 100px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.timeline {
+  display: flex;
+  gap: 16px;
+  height: 100%;
+  align-items: center;
+}
+
+.timeline-event-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.timeline-event-dot:hover {
+  transform: scale(1.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================================================
+ * 6. ENHANCED BUTTONS - Modern & Interactive
+ * ============================================================================ */
+
+.btn {
+  font-weight: 600;
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  transition: left var(--transition-fast);
+  z-index: -1;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn--primary {
+  background: linear-gradient(135deg, var(--color-primary-new), var(--color-primary-dark));
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(45, 150, 164, 0.3);
+}
+
+.btn--primary:hover {
+  box-shadow: 0 6px 24px rgba(45, 150, 164, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn--primary:active {
+  transform: translateY(0);
+}
+
+.btn--secondary {
+  background: rgba(45, 150, 164, 0.1);
+  color: var(--color-primary-new);
+  border: 1px solid rgba(45, 150, 164, 0.3);
+}
+
+.btn--secondary:hover {
+  background: rgba(45, 150, 164, 0.15);
+  border-color: var(--color-primary-new);
+}
+
+.btn--outline {
+  background: transparent;
+  border: 1.5px solid var(--color-border-new);
+  color: var(--color-text-primary-new);
+}
+
+.btn--outline:hover {
+  background: rgba(45, 150, 164, 0.08);
+  border-color: var(--color-primary-new);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-primary-new);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(45, 150, 164, 0.1);
+}
+
+/* ============================================================================
+ * 7. ENHANCED RIGHT SIDEBAR - Event Details
+ * ============================================================================ */
+
+.event-details {
+  padding: 16px;
+}
+
+.no-selection {
+  text-align: center;
+  padding: 40px 16px;
+  color: var(--color-text-secondary-new);
+}
+
+.no-selection p {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.event-header {
+  margin-bottom: 20px;
+}
+
+.event-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary-new);
+  margin-bottom: 8px;
+}
+
+.event-meta {
+  font-size: 12px;
+  color: var(--color-text-secondary-new);
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.event-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.event-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  background: rgba(45, 150, 164, 0.1);
+  border: 1px solid rgba(45, 150, 164, 0.3);
+  border-radius: var(--radius-full-new);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary-new);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.event-description {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-primary-new);
+  margin-bottom: 20px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: var(--radius-md-new);
+  border-left: 3px solid var(--color-primary-new);
+}
+
+.event-details-item {
+  margin-bottom: 16px;
+}
+
+.event-details-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary-new);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.event-details-value {
+  font-size: 13px;
+  color: var(--color-text-primary-new);
+}
+
+.event-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.event-source-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(45, 150, 164, 0.05);
+  border-radius: var(--radius-md-new);
+  font-size: 12px;
+  color: var(--color-primary-new);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  border: 1px solid rgba(45, 150, 164, 0.1);
+}
+
+.event-source-link:hover {
+  background: rgba(45, 150, 164, 0.15);
+  border-color: var(--color-primary-new);
+}
+
+.event-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border-new);
+}
+
+.event-actions button {
+  flex: 1;
+  font-size: 12px;
+}
+
+/* ============================================================================
+ * 8. ENHANCED THEME TOGGLE - Modern Design
+ * ============================================================================ */
+
+.theme-toggle {
+  background: var(--color-surface-new);
+  border: 1px solid var(--color-border-new);
+  box-shadow: var(--shadow-lg-new);
+  backdrop-filter: blur(10px);
+}
+
+.theme-btn {
+  transition: all var(--transition-fast);
+}
+
+.theme-btn:hover {
+  transform: scale(1.1);
+}
+
+.theme-btn.active {
+  background: linear-gradient(135deg, var(--color-primary-new), var(--color-primary-dark));
+  box-shadow: 0 4px 12px rgba(45, 150, 164, 0.3);
+}
+
+/* ============================================================================
+ * 9. ENHANCED CHARTS - Better Styling
+ * ============================================================================ */
+
+.chart-canvas {
+  max-height: 200px;
+  margin-bottom: 16px;
+}
+
+/* ============================================================================
+ * 10. ENHANCED ANIMATIONS - Smooth & Professional
+ * ============================================================================ */
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* ============================================================================
+ * 11. ENHANCED LOADING STATES - Better Feedback
+ * ============================================================================ */
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(45, 150, 164, 0.1);
+  border-top-color: var(--color-primary-new);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.map-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 32px;
+  border-radius: var(--radius-lg-new);
+  color: white;
+  backdrop-filter: blur(10px);
+}
+
+.map-loading span {
+  display: block;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+/* ============================================================================
+ * 12. ENHANCED FORMS - Better UX
+ * ============================================================================ */
+
+.form-control {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--color-border-new);
+  transition: all var(--transition-fast);
+}
+
+.form-control:focus {
+  background: rgba(45, 150, 164, 0.05);
+  border-color: var(--color-primary-new);
+  box-shadow: 0 0 0 3px rgba(45, 150, 164, 0.1);
+  outline: none;
+}
+
+.form-label {
+  color: var(--color-text-primary-new);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================================
+ * 13. ENHANCED RESPONSIVE DESIGN - Mobile First
+ * ============================================================================ */
+
+@media (max-width: 768px) {
+  .header-content {
+    gap: 12px;
+    padding: 0 16px;
+  }
+  
+  .sidebar {
+    --sidebar-width: 280px;
+  }
+  
+  .map-controls {
+    bottom: 16px;
+    right: 16px;
+  }
+  
+  .control-group {
+    flex-direction: row;
+    gap: 4px;
+  }
+  
+  .timeline-controls {
+    gap: 12px;
+  }
+  
+  .timeline-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .quick-filters {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .map-controls {
+    bottom: 12px;
+    right: 12px;
+    gap: 8px;
+  }
+  
+  .control-group {
+    gap: 4px;
+    padding: 4px;
+  }
+  
+  .map-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+  
+  .timeline-container {
+    padding: 12px;
+  }
+  
+  .timeline-controls {
+    gap: 8px;
+  }
+  
+  .playback-controls {
+    padding: 4px;
+    gap: 4px;
+  }
+  
+  .timeline-btn {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* ============================================================================
+ * 14. ENHANCED ACCESSIBILITY - WCAG 2.1 AA Compliance
+ * ============================================================================ */
+
+/* Enhanced focus indicators */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-primary-new);
+  outline-offset: 2px;
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================================
+ * 15. ENHANCED PRINT STYLES - Professional Output
+ * ============================================================================ */
+
+@media print {
+  .header,
+  .sidebar,
+  .timeline-container,
+  .map-controls {
+    display: none;
+  }
+  
+  .map {
+    height: 100%;
+  }
+  
+  * {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+}
+
+/* ============================================================================
+ * END OF ENHANCEMENTS
+ * ============================================================================ */
