@@ -107,9 +107,12 @@
   padding: 10px 16px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--color-border-new);
-  border-radius: var(--radius-full-new);
+  border-radius: var(--radius-md-new);
   transition: all var(--transition-fast);
   font-size: 14px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
 }
 
 .search-input:focus {
@@ -121,6 +124,13 @@
 
 .search-input::placeholder {
   color: var(--color-text-secondary-new);
+  opacity: 0.7;
+}
+
+@media (prefers-color-scheme: dark) {
+  .search-input::placeholder {
+    opacity: 0.8;
+  }
 }
 
 .search-suggestions {
@@ -164,11 +174,16 @@
 }
 
 .sidebar-section {
-  margin-bottom: 28px;
-  padding-bottom: 20px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+}
+
+.sidebar-section:not(:last-child) {
+  border-bottom: 1px solid var(--color-border-new);
 }
 
 .sidebar-section:last-child {
+  margin-bottom: 0;
   border-bottom: none;
 }
 
@@ -182,7 +197,7 @@
   display: block;
 }
 
-/* Filter Groups */
+/* Filter Groups - Unified typography */
 .filter-group {
   margin-bottom: 20px;
 }
@@ -194,6 +209,14 @@
   margin-bottom: 10px;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+}
+
+/* Timeline title unified with sidebar titles */
+.timeline-title {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .checkbox-group {
@@ -229,7 +252,7 @@
 }
 
 .quick-filter-btn {
-  padding: 8px 12px;
+  padding: 10px 16px;
   font-size: 12px;
   font-weight: 500;
   border: 1px solid var(--color-border-new);
@@ -238,6 +261,10 @@
   cursor: pointer;
   transition: all var(--transition-fast);
   color: var(--color-text-primary-new);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .quick-filter-btn:hover {
@@ -392,12 +419,12 @@
   background: var(--color-primary-new);
   color: white;
   border-color: var(--color-primary-new);
-  transform: scale(1.05);
+  transform: translateY(-1px) scale(1.05);
   box-shadow: 0 4px 12px rgba(45, 150, 164, 0.3);
 }
 
 .map-btn:active {
-  transform: scale(0.95);
+  transform: translateY(0) scale(0.95);
 }
 
 /* Leaflet Marker Enhancements */
@@ -571,6 +598,19 @@
   height: 100px;
   overflow-x: auto;
   overflow-y: hidden;
+  scroll-behavior: smooth;
+}
+
+@media (max-width: 768px) {
+  .timeline-content {
+    height: 80px;
+  }
+}
+
+@media (max-width: 640px) {
+  .timeline-content {
+    height: 70px;
+  }
 }
 
 .timeline {
@@ -632,7 +672,7 @@
 
 .btn--primary:hover {
   box-shadow: 0 6px 24px rgba(45, 150, 164, 0.4);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .btn--primary:active {
@@ -648,6 +688,7 @@
 .btn--secondary:hover {
   background: rgba(45, 150, 164, 0.15);
   border-color: var(--color-primary-new);
+  transform: translateY(-1px);
 }
 
 .btn--outline {
@@ -659,6 +700,7 @@
 .btn--outline:hover {
   background: rgba(45, 150, 164, 0.08);
   border-color: var(--color-primary-new);
+  transform: translateY(-1px);
 }
 
 .btn:focus-visible {
@@ -734,6 +776,16 @@
   background: rgba(0, 0, 0, 0.02);
   border-radius: var(--radius-md-new);
   border-left: 3px solid var(--color-primary-new);
+  
+  /* Handle long URLs and text */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.event-description a {
+  word-break: break-all;
+  overflow-wrap: break-word;
 }
 
 .event-details-item {
@@ -1029,11 +1081,40 @@
  * 14. ENHANCED ACCESSIBILITY - WCAG 2.1 AA Compliance
  * ============================================================================ */
 
-/* Enhanced focus indicators */
+/* Enhanced focus indicators - CRITICAL ACCESSIBILITY FIX */
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
+  outline: 2px solid var(--color-primary-new);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(45, 150, 164, 0.1);
+}
+
+/* Additional focus states for interactive elements */
+.timeline-btn:focus-visible {
+  outline: 2px solid var(--color-primary-new);
+  outline-offset: 2px;
+  background: rgba(45, 150, 164, 0.15);
+}
+
+.map-btn:focus-visible {
+  outline: 2px solid var(--color-primary-new);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(45, 150, 164, 0.2);
+}
+
+.checkbox-group input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--color-primary-new);
+  outline-offset: 2px;
+}
+
+.quick-filter-btn:focus-visible {
+  outline: 2px solid var(--color-primary-new);
+  outline-offset: 2px;
+}
+
+.search-input:focus-visible {
   outline: 2px solid var(--color-primary-new);
   outline-offset: 2px;
 }
