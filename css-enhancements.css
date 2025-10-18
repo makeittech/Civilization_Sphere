@@ -60,7 +60,9 @@
   --color-text-secondary-new: #A7A9A9; /* Gray */
   --color-surface-new: #1F2128; /* Dark */
   --color-border-new: rgba(119, 124, 124, 0.3); /* Dark border */
-  --color-primary-new: #32B8C6; /* Light Teal */
+  --color-primary-new: #26C6D9; /* Optimized Light Teal (less saturated) */
+  --color-primary-dark: #1B9DAA; /* Darker variant for dark mode */
+  --color-primary-light: #4DD0E1; /* Lighter variant for dark mode */
 }
 
 /* ============================================================================
