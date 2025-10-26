@@ -1,3121 +1,1021 @@
-// Geopolitical Events Platform
-class GeopoliticalApp {
+/* ============================================================================
+   CIVILIZATION SPHERE - MODERN APPLICATION
+   ============================================================================
+   A comprehensive geopolitical events visualization platform with:
+   - Interactive Leaflet.js map with event markers
+   - Timeline with playback and speed controls
+   - Advanced filtering (categories, regions, dates, channels)
+   - Mobile-optimized responsive design
+   - Dark/light theme switching
+   - Real-time analytics using Chart.js
+   - Data export functionality
+   ============================================================================ */
+
+'use strict';
+
+class CivilizationSphere {
     constructor() {
         this.events = [];
-        this.categories = [];
-        this.regions = [];
         this.filteredEvents = [];
+        this.selectedEvent = null;
         this.map = null;
         this.markers = [];
-        this.selectedEvent = null;
-        this.timelineAnimation = null;
         this.charts = {};
-        this.heatmapLayer = null;
-        this.connectionLines = [];
-        this.importBuffer = [];
-        this.nextId = 100000; // for generating unique IDs for imported events
-        this.importSettings = {
-            format: 'auto',
-            dateFormat: 'auto',
-            dedupMode: 'auto',
-            importMode: 'append',
-            fieldMapping: {}
-        };
-        
-        // Enhanced properties for mobile and playback
         this.isPlaying = false;
-        this.isReady = false;
-        this._startupTelemetry = { startedAt: performance.now?.() || Date.now(), marks: [] };
+        this.playbackIndex = 0;
         this.playbackSpeed = 1;
-        this.currentPlaybackIndex = 0;
-        this.playbackEvents = [];
-        this.isMobile = window.innerWidth <= 768;
-        this.theme = 'dark';
-        this.sidebarVisible = false;
-        
-        // Touch handling
-        this.touchHandler = new TouchHandler(this);
-        this.cameraController = new SmartCameraController(this);
-        this.zoomLabelEl = document.getElementById('zoomLabel');
-        this.zoomLabelHideTimer = null;
-        
-        // External API integration
-        this.apiManager = new APIManager();
-        this.dataNormalizer = new DataNormalizer();
-        this.cacheManager = new CacheManager();
-        this.errorHandler = new ErrorHandler();
-        this.healthChecker = new HealthChecker();
-        this.fallbackProvider = new FallbackDataProvider();
-        
-        // Initialize external API services
-        this.initializeExternalAPIs();
-        
-        this.initializeData();
-        this.initializeApp();
-        this.setupEventListeners();
+        this.playbackInterval = null;
+
+        // Filter state
+        this.filters = {
+            search: '',
+            quickFilter: 'all',
+            categories: new Set(),
+            regions: new Set(),
+            channels: new Set(),
+            dateFrom: null,
+            dateTo: null
+        };
+
+        // UI Elements cache
+        this.uiElements = {};
+
+        // Initialize
+        this.init();
     }
 
-    async initializeExternalAPIs() {
+    /**
+     * Initialize the application
+     */
+    async init() {
         try {
-            // Register fallback providers
-            this.fallbackProvider.registerProvider('news', new NewsAPIFallbackProvider());
-            this.fallbackProvider.registerProvider('historical', new HistoricalEventsFallbackProvider());
-            
-            // Initialize API services
-            const apiKeys = {
-                newsAPI: this.getStoredAPIKey('newsAPI')
-            };
-            
-            await this.apiManager.initializeServices(apiKeys);
-            
-            // Register health checks
-            this.healthChecker.registerCheck('newsAPI', () => this.checkNewsAPIHealth());
-            this.healthChecker.registerCheck('historicalAPI', () => this.checkHistoricalAPIHealth());
-            
-            console.log('External APIs initialized successfully');
+            this.showLoading(true);
+            this.cacheUIElements();
+            this.loadTheme();
+            this.setupEventListeners();
+            await this.loadData();
+            this.initializeMap();
+            this.updateUI();
+            this.showNotification('Додаток успішно завантажений', 'success');
+            this.showLoading(false);
         } catch (error) {
-            console.warn('Failed to initialize external APIs:', error);
+            console.error('Initialization error:', error);
+            this.showNotification('Помилка при завантаженні: ' + error.message, 'error');
+            this.showLoading(false);
         }
     }
 
-    getStoredAPIKey(service) {
-        // Try to get API key from localStorage or environment
-        const stored = localStorage.getItem(`api_key_${service}`);
-        if (stored) return stored;
-        
-        // Check if there's an input field for this API key
-        const input = document.getElementById(`${service}ApiKey`);
-        if (input && input.value) {
-            localStorage.setItem(`api_key_${service}`, input.value);
-            return input.value;
-        }
-        
-        return null;
+    /**
+     * Cache frequently used UI elements
+     */
+    cacheUIElements() {
+        this.uiElements = {
+            // Control Panel
+            searchInput: document.getElementById('search-input'),
+            quickFilterBtns: document.querySelectorAll('.quick-filter-btn'),
+            categoriesContainer: document.getElementById('categories-container'),
+            regionsContainer: document.getElementById('regions-container'),
+            channelsContainer: document.getElementById('channels-container'),
+            dateFrom: document.getElementById('date-from'),
+            dateTo: document.getElementById('date-to'),
+            
+            // Timeline
+            playBtn: document.getElementById('play-btn'),
+            pauseBtn: document.getElementById('pause-btn'),
+            resetTimelineBtn: document.getElementById('reset-timeline-btn'),
+            speedSelect: document.getElementById('speed-select'),
+            timelineSlider: document.getElementById('timeline-slider'),
+            timelineProgress: document.getElementById('timeline-progress'),
+            currentDate: document.getElementById('current-date'),
+            totalDate: document.getElementById('total-date'),
+            
+            // Map
+            mapContainer: document.getElementById('map'),
+            zoomInBtn: document.getElementById('zoom-in-btn'),
+            zoomOutBtn: document.getElementById('zoom-out-btn'),
+            resetViewBtn: document.getElementById('reset-view-btn'),
+            
+            // Event Details
+            eventDetails: document.getElementById('event-details'),
+            eventPanel: document.querySelector('.event-panel'),
+            eventPanelClose: document.getElementById('event-panel-close'),
+            
+            // Control Panel
+            controlPanel: document.querySelector('.control-panel'),
+            panelClose: document.getElementById('panel-close-btn'),
+            
+            // Export buttons
+            exportCsvBtn: document.getElementById('export-csv-btn'),
+            exportJsonBtn: document.getElementById('export-json-btn'),
+            
+            // Statistics
+            totalEvents: document.getElementById('total-events'),
+            visibleEvents: document.getElementById('visible-events'),
+            regionCount: document.getElementById('region-count'),
+            channelCount: document.getElementById('channel-count'),
+            
+            // Theme & Navigation
+            themeToggle: document.getElementById('theme-toggle'),
+            helpBtn: document.getElementById('help-btn'),
+            helpModal: document.getElementById('help-modal'),
+            helpModalClose: document.getElementById('help-modal-close'),
+            
+            // Mobile
+            mobileMenuToggle: document.getElementById('mobile-menu-toggle'),
+            
+            // Notifications
+            loadingSpinner: document.getElementById('loading-spinner'),
+            notificationToast: document.getElementById('notification-toast')
+        };
     }
 
-    async checkNewsAPIHealth() {
-        try {
-            const newsService = this.apiManager.getService('news');
-            if (!newsService) return false;
-            
-            // Try a simple request to check if API is working
-            await newsService.getEverything('test', { pageSize: 1 });
-            return true;
-        } catch (error) {
-            return false;
+    /**
+     * Setup event listeners for all interactive elements
+     */
+    setupEventListeners() {
+        // Search
+        this.uiElements.searchInput.addEventListener('input', (e) => {
+            this.filters.search = e.target.value.toLowerCase();
+            this.applyFilters();
+        });
+
+        // Quick filters
+        this.uiElements.quickFilterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.uiElements.quickFilterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.filters.quickFilter = btn.dataset.filter;
+                this.applyFilters();
+            });
+        });
+
+        // Date filters
+        this.uiElements.dateFrom.addEventListener('change', () => {
+            this.filters.dateFrom = this.uiElements.dateFrom.value;
+            this.applyFilters();
+        });
+
+        this.uiElements.dateTo.addEventListener('change', () => {
+            this.filters.dateTo = this.uiElements.dateTo.value;
+            this.applyFilters();
+        });
+
+        // Timeline controls
+        this.uiElements.playBtn.addEventListener('click', () => this.startPlayback());
+        this.uiElements.pauseBtn.addEventListener('click', () => this.pausePlayback());
+        this.uiElements.resetTimelineBtn.addEventListener('click', () => this.resetPlayback());
+        this.uiElements.speedSelect.addEventListener('change', (e) => {
+            this.playbackSpeed = parseFloat(e.target.value);
+        });
+
+        this.uiElements.timelineSlider.addEventListener('mousedown', (e) => {
+            this.pausePlayback();
+            this.handleTimelineInteraction(e);
+        });
+
+        this.uiElements.timelineSlider.addEventListener('touchstart', (e) => {
+            this.pausePlayback();
+            this.handleTimelineInteraction(e);
+        });
+
+        // Map controls
+        this.uiElements.zoomInBtn.addEventListener('click', () => this.map.zoomIn());
+        this.uiElements.zoomOutBtn.addEventListener('click', () => this.map.zoomOut());
+        this.uiElements.resetViewBtn.addEventListener('click', () => this.resetMapView());
+
+        // Export buttons
+        this.uiElements.exportCsvBtn.addEventListener('click', () => this.exportToCSV());
+        this.uiElements.exportJsonBtn.addEventListener('click', () => this.exportToJSON());
+
+        // Event panel close
+        this.uiElements.eventPanelClose.addEventListener('click', () => {
+            this.uiElements.eventPanel.classList.remove('active');
+        });
+
+        // Control panel close
+        this.uiElements.panelClose.addEventListener('click', () => {
+            this.uiElements.controlPanel.classList.remove('active');
+        });
+
+        // Theme toggle
+        this.uiElements.themeToggle.addEventListener('click', () => this.toggleTheme());
+
+        // Help modal
+        this.uiElements.helpBtn.addEventListener('click', () => {
+            this.uiElements.helpModal.style.display = 'flex';
+        });
+
+        this.uiElements.helpModalClose.addEventListener('click', () => {
+            this.uiElements.helpModal.style.display = 'none';
+        });
+
+        this.uiElements.helpModal.addEventListener('click', (e) => {
+            if (e.target === this.uiElements.helpModal) {
+                this.uiElements.helpModal.style.display = 'none';
+            }
+        });
+
+        // Mobile menu
+        if (this.uiElements.mobileMenuToggle) {
+            this.uiElements.mobileMenuToggle.addEventListener('click', () => {
+                this.uiElements.mobileMenuToggle.classList.toggle('active');
+                this.uiElements.controlPanel.classList.toggle('active');
+            });
         }
+
+        // Close mobile menu on filter change
+        document.addEventListener('click', (e) => {
+            if (this.uiElements.mobileMenuToggle && !e.target.closest('.mobile-menu-toggle') &&
+                !e.target.closest('.control-panel')) {
+                this.uiElements.mobileMenuToggle.classList.remove('active');
+                this.uiElements.controlPanel.classList.remove('active');
+            }
+        });
     }
 
-    async checkHistoricalAPIHealth() {
+    /**
+     * Load events data from data/events.json
+     */
+    async loadData() {
         try {
-            const historicalService = this.apiManager.getService('historical');
-            if (!historicalService) return false;
-            
-            // Try a simple request
-            await historicalService.getEventsByDate(1, 1);
-            return true;
-        } catch (error) {
-            return false;
-        }
-    }
+            const response = await fetch('data/events.json');
+            if (!response.ok) throw new Error('Failed to load events data');
+            this.events = await response.json();
 
-    async fetchExternalEvents(query = 'geopolitics') {
-        try {
-            this.showToast('Завантаження зовнішніх джерел...');
-            
-            const externalEvents = await this.apiManager.fetchEventsFromAllSources(query);
-            const normalizedEvents = this.dataNormalizer.normalizeEvents(externalEvents, 'external');
-            
-            // Add to import buffer for user review
-            this.importBuffer = [...this.importBuffer, ...normalizedEvents];
-            this.updateImportPreview();
-            
-            this.showToast(`Знайдено ${normalizedEvents.length} подій з зовнішніх джерел`);
-            return normalizedEvents;
+            // Enhance events with geographic data
+            this.enhanceEventData();
+
+            // Initialize filter UI
+            this.initializeFilterUI();
+
+            this.filteredEvents = [...this.events];
+            return this.events;
         } catch (error) {
-            console.error('Failed to fetch external events:', error);
-            this.showToast('Помилка завантаження зовнішніх джерел', 'error');
+            console.error('Data loading error:', error);
+            this.showNotification('Не вдалося завантажити дані', 'error');
             throw error;
         }
     }
 
-    async fetchNewsEvents(query = 'geopolitics') {
-        try {
-            const newsService = this.apiManager.getService('news');
-            if (!newsService) {
-                throw new Error('NewsAPI service not available');
+    /**
+     * Enhance event data with geographic coordinates
+     */
+    enhanceEventData() {
+        const regionCoordinates = {
+            'Ukraine': [48.3794, 31.1656],
+            'Europe': [54.5973, 15.2551],
+            'Asia': [34.0479, 100.6197],
+            'Middle East': [25.3548, 55.3643],
+            'Africa': [-8.7832, 34.5085],
+            'North America': [45.7128, -74.0060],
+            'South America': [-15.7975, -52.4894],
+            'Oceania': [-23.6345, 133.8807],
+            'Global': [20.0, 0.0],
+            'Європа': [54.5973, 15.2551],
+            'Азія': [34.0479, 100.6197],
+            'Близький Схід': [25.3548, 55.3643],
+            'Африка': [-8.7832, 34.5085],
+            'Північна Америка': [45.7128, -74.0060],
+            'Південна Америка': [-15.7975, -52.4894],
+            'Океанія': [-23.6345, 133.8807],
+            'Глобально': [20.0, 0.0]
+        };
+
+        this.events.forEach(event => {
+            if (!event.lat || !event.lng) {
+                const coords = regionCoordinates[event.region] || regionCoordinates['Ukraine'];
+                event.lat = coords[0] + (Math.random() - 0.5) * 2;
+                event.lng = coords[1] + (Math.random() - 0.5) * 2;
             }
-            
-            const newsEvents = await newsService.getEverything(query);
-            const normalizedEvents = this.dataNormalizer.normalizeEvents(newsEvents, 'NewsAPI');
-            
-            return normalizedEvents;
-        } catch (error) {
-            console.error('Failed to fetch news events:', error);
-            // Try fallback
-            const fallbackEvents = await this.fallbackProvider.getFallbackData('news', { query });
-            return this.dataNormalizer.normalizeEvents(fallbackEvents, 'NewsAPI_Fallback');
-        }
-    }
-
-    async fetchHistoricalEvents() {
-        try {
-            const historicalService = this.apiManager.getService('historical');
-            if (!historicalService) {
-                throw new Error('Historical events service not available');
-            }
-            
-            const today = new Date();
-            const historicalEvents = await historicalService.getEventsByDate(
-                today.getMonth() + 1, 
-                today.getDate()
-            );
-            
-            const normalizedEvents = this.dataNormalizer.normalizeEvents(historicalEvents, 'Historical');
-            return normalizedEvents;
-        } catch (error) {
-            console.error('Failed to fetch historical events:', error);
-            // Try fallback
-            const fallbackEvents = await this.fallbackProvider.getFallbackData('historical');
-            return this.dataNormalizer.normalizeEvents(fallbackEvents, 'Historical_Fallback');
-        }
-    }
-
-    initializeData() {
-        // Enhanced data with the provided Ukrainian geopolitical events
-        this.events = [
-            // Keep existing events for demo
-            {
-                id: 1,
-                title: "Підготовка Європи до війни з Росією",
-                channel: "Неаполітичні",
-                date: "2024-10-10",
-                category: "Війни та конфлікти",
-                region: "Європа",
-                country: "ЄС",
-                lat: 50.8503,
-                lng: 4.3517,
-                description: "Аналіз підготовки європейських країн до потенційного конфлікту",
-                participants: ["ЄС", "НАТО", "Росія"],
-                impact: "Зростання напруженості",
-                importance: 9,
-                sources: ["Неаполітичні YouTube"]
-            },
-            {
-                id: 2,
-                title: "Падіння режиму Асада в Сирії",
-                channel: "Неаполітичні",
-                date: "2024-09-27",
-                category: "Політичні зміни",
-                region: "Близький Схід",
-                country: "Сирія",
-                lat: 33.5138,
-                lng: 36.2765,
-                description: "Аналіз падіння режиму Башара Асада",
-                participants: ["Сирія", "Росія", "Іран"],
-                impact: "Зміна балансу на Близькому Сході",
-                importance: 8,
-                sources: ["Неаполітичні YouTube"]
-            },
-            {
-                id: 3,
-                title: "Global Britain після Brexit",
-                channel: "Good Times Bad Times UA",
-                date: "2024-10-08",
-                category: "Політичні зміни",
-                region: "Європа",
-                country: "Великобританія",
-                lat: 51.5074,
-                lng: -0.1278,
-                description: "Нова глобальна роль Великобританії",
-                participants: ["Великобританія", "ЄС", "США"],
-                impact: "Переформатування британської політики",
-                importance: 6,
-                sources: ["GTBT UA YouTube"]
-            },
-            {
-                id: 4,
-                title: "Ядерна гонка озброєнь",
-                channel: "Good Times Bad Times UA",
-                date: "2024-09-27",
-                category: "Технологічні зміни",
-                region: "Глобально",
-                country: "Світ",
-                lat: 0,
-                lng: 0,
-                description: "Нова ядерна гонка озброєнь",
-                participants: ["США", "Китай", "Росія"],
-                impact: "Трансформація енергетики",
-                importance: 8,
-                sources: ["GTBT UA YouTube"]
-            },
-            {
-                id: 5,
-                title: "90% чіпів виробляються в Тайвані",
-                channel: "Чотири сторони",
-                date: "2024-08-26",
-                category: "Технологічні зміни",
-                region: "Азія",
-                country: "Тайвань",
-                lat: 25.0330,
-                lng: 121.5654,
-                description: "Домінування Тайваню у виробництві чіпів",
-                participants: ["Тайвань", "США", "Китай"],
-                impact: "Геополітичне значення технологій",
-                importance: 9,
-                sources: ["Чотири сторони YouTube"]
-            },
-            {
-                id: 6,
-                title: "NEOM - місто за $8 трлн",
-                channel: "Чотири сторони",
-                date: "2024-08-03",
-                category: "Економічні зміни",
-                region: "Близький Схід",
-                country: "Саудівська Аравія",
-                lat: 24.7136,
-                lng: 46.6753,
-                description: "Футуристичне місто в пустелі",
-                participants: ["Саудівська Аравія"],
-                impact: "Диверсифікація економіки",
-                importance: 6,
-                sources: ["Чотири сторони YouTube"]
-            },
-            {
-                id: 7,
-                title: "Росія купує бензин у Китаю",
-                channel: "Ціна Держави",
-                date: "2024-10-08",
-                category: "Економічні зміни",
-                region: "Азія",
-                country: "Росія",
-                lat: 55.7558,
-                lng: 37.6173,
-                description: "Енергетична залежність Росії",
-                participants: ["Росія", "Китай"],
-                impact: "Санкційний тиск",
-                importance: 6,
-                sources: ["Ціна Держави YouTube"]
-            },
-            {
-                id: 8,
-                title: "Казахстан - успішна диктатура",
-                channel: "Ціна Держави",
-                date: "2024-09-21",
-                category: "Політичні системи",
-                region: "Азія",
-                country: "Казахстан",
-                lat: 51.1694,
-                lng: 71.4491,
-                description: "Авторитарна модель розвитку",
-                participants: ["Казахстан"],
-                impact: "Ресурсна економіка",
-                importance: 5,
-                sources: ["Ціна Держави YouTube"]
-            },
-            {
-                id: 1,
-                title: "Початок Другої світової війни",
-                date: "1939-09-01",
-                category: "Війни та конфлікти",
-                region: "Європа",
-                country: "Польща",
-                lat: 52.2297,
-                lng: 21.0122,
-                description: "Німецьке вторгнення в Польщу ознаменувало початок найруйнівнішої війни в історії людства",
-                participants: ["Німеччина", "Польща", "Великобританія", "Франція"],
-                impact: "Глобальний конфлікт, який змінив геополітичну карту світу",
-                sources: ["BBC History", "Encyclopedia Britannica"]
-            },
-            {
-                id: 2,
-                title: "Утворення НАТО",
-                date: "1949-04-04",
-                category: "Союзи та договори",
-                region: "Північна Америка",
-                country: "США",
-                lat: 38.9072,
-                lng: -77.0369,
-                description: "Підписання Północноатлантичного договору для колективної безпеки",
-                participants: ["США", "Канада", "Великобританія", "Франція", "Італія"],
-                impact: "Формування біполярного світу часів Холодної війни",
-                sources: ["NATO Official", "US State Department"]
-            },
-            {
-                id: 3,
-                title: "Падіння Берлінської стіни",
-                date: "1989-11-09",
-                category: "Політичні зміни",
-                region: "Європа",
-                country: "Німеччина",
-                lat: 52.5200,
-                lng: 13.4050,
-                description: "Символічне завершення Холодної війни та поділу Європи",
-                participants: ["Східна Німеччина", "Західна Німеччина", "СССР"],
-                impact: "Об'єднання Німеччини та початок краху комуністичного блоку",
-                sources: ["Deutsche Welle", "History Channel"]
-            },
-            {
-                id: 4,
-                title: "Розпад СРСР",
-                date: "1991-12-26",
-                category: "Політичні зміни",
-                region: "Євразія",
-                country: "Росія",
-                lat: 55.7558,
-                lng: 37.6173,
-                description: "Офіційне припинення існування Радянського Союзу",
-                participants: ["СРСР", "15 союзних республік"],
-                impact: "Кінець біполярного світу, поява нових незалежних держав",
-                sources: ["Kremlin Archives", "BBC"]
-            },
-            {
-                id: 5,
-                title: "Утворення Європейського Союзу",
-                date: "1993-11-01",
-                category: "Союзи та договори",
-                region: "Європа",
-                country: "Бельгія",
-                lat: 50.8503,
-                lng: 4.3517,
-                description: "Набрання чинності Маастрихтським договором, що створив ЄС",
-                participants: ["12 країн-засновниць ЄС"],
-                impact: "Поглиблення європейської інтеграції та створення єдиної валюти",
-                sources: ["EU Official", "European Council"]
-            },
-            {
-                id: 6,
-                title: "Теракти 11 вересня",
-                date: "2001-09-11",
-                category: "Тероризм",
-                region: "Північна Америка",
-                country: "США",
-                lat: 40.7128,
-                lng: -74.0060,
-                description: "Терористичні атаки Аль-Каїди на Всесвітній торговий центр та Пентагон",
-                participants: ["Аль-Каїда", "США"],
-                impact: "Початок глобальної війни з тероризмом, зміна міжнародної безпекової політики",
-                sources: ["9/11 Commission Report", "FBI"]
-            },
-            {
-                id: 7,
-                title: "Вторгнення Росії в Україну",
-                date: "2022-02-24",
-                category: "Війни та конфлікти",
-                region: "Європа",
-                country: "Україна",
-                lat: 50.4501,
-                lng: 30.5234,
-                description: "Повномасштабне вторгнення Російської Федерації в Україну",
-                participants: ["Росія", "Україна", "НАТО", "ЄС"],
-                impact: "Найбільший конфлікт в Європі після Другої світової війни",
-                sources: ["UN Security Council", "Reuters", "BBC"]
-            },
-            {
-                id: 8,
-                title: "Brexit - вихід Великобританії з ЄС",
-                date: "2020-01-31",
-                category: "Політичні зміни",
-                region: "Європа",
-                country: "Великобританія",
-                lat: 51.5074,
-                lng: -0.1278,
-                description: "Офіційний вихід Великобританії з Європейського Союзу",
-                participants: ["Великобританія", "Європейський Союз"],
-                impact: "Перший випадок виходу країни з ЄС, вплив на європейську інтеграцію",
-                sources: ["UK Parliament", "European Commission"]
-            },
-            {
-                id: 9,
-                title: "Пандемія COVID-19",
-                date: "2020-03-11",
-                category: "Глобальні кризи",
-                region: "Глобально",
-                country: "Світ",
-                lat: 0,
-                lng: 0,
-                description: "ВООЗ оголосила пандемію COVID-19",
-                participants: ["Всі країни світу", "ВООЗ"],
-                impact: "Глобальна економічна криза, зміна міжнародних відносин",
-                sources: ["WHO", "Johns Hopkins University"]
-            },
-            {
-                id: 10,
-                title: "Китайська економічна реформа",
-                date: "1978-12-18",
-                category: "Економічні зміни",
-                region: "Азія",
-                country: "Китай",
-                lat: 39.9042,
-                lng: 116.4074,
-                description: "Початок економічних реформ Ден Сяопіна в Китаї",
-                participants: ["КНР", "Ден Сяопін"],
-                impact: "Перетворення Китаю на другу економіку світу",
-                sources: ["Chinese Government", "World Bank"]
-            }
-        ];
-
-        this.categories = [
-            { name: "Війни та конфлікти", color: "#e74c3c", icon: "⚔️", count: 0 },
-            { name: "Політичні зміни", color: "#9b59b6", icon: "🏛️", count: 0 },
-            { name: "Економічні зміни", color: "#27ae60", icon: "💰", count: 0 },
-            { name: "Технологічні зміни", color: "#3498db", icon: "⚡", count: 0 },
-            { name: "Політичні системи", color: "#c0392b", icon: "⚖️", count: 0 },
-            { name: "Союзи та договори", color: "#f39c12", icon: "🤝", count: 0 },
-            { name: "Тероризм", color: "#34495e", icon: "💥", count: 0 },
-            { name: "Глобальні кризи", color: "#e67e22", icon: "🌍", count: 0 },
-            // Additional categories to align with imported resources
-            { name: "Культурні зміни", color: "#e84393", icon: "🎭", count: 0 },
-            { name: "Інфраструктурні проекти", color: "#7f8c8d", icon: "🏗️", count: 0 },
-            { name: "Військові аналізи", color: "#2c3e50", icon: "🛡️", count: 0 },
-            { name: "Соціально-економічні моделі", color: "#1abc9c", icon: "📊", count: 0 },
-            { name: "Економічні моделі", color: "#2ecc71", icon: "📈", count: 0 }
-        ];
-        
-        this.channels = [
-            { name: "Неаполітичні", color: "#e74c3c" },
-            { name: "Good Times Bad Times UA", color: "#3498db" },
-            { name: "Чотири сторони", color: "#f39c12" },
-            { name: "Ціна Держави", color: "#27ae60" }
-        ];
-
-        this.regions = ["Європа", "Азія", "Близький Схід", "Північна Америка", "Євразія", "Глобально", "Африка/Європа"];
-        
-        // Calculate category counts
-        this.categories.forEach(category => {
-            category.count = this.events.filter(event => event.category === category.name).length;
+            event.importance = event.importance || 5;
+            event.date = event.date || new Date().toISOString();
         });
 
-        this.filteredEvents = [...this.events];
+        // Sort by date
+        this.events.sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
-    async initializeApp() {
-        this.showLoading();
-        
-        try {
-            this.setupTheme();
-            this._mark('init:map:start');
-            await this.initializeMap();
-            this._mark('init:map:end');
-            this.initializeFilters();
-            this.initializeSearch();
-            // Build timeline structure but do not auto-play
-            this.initializeTimeline();
-            this.initializeEventHandlers();
-            this.initializeCharts();
-            this.setupMobileOptimizations();
-            this.updateDisplay();
-            // Show ready overlay until user explicitly presses Play
-            this.showTimelineReadyOverlay();
-            // Opportunistic bootstrap of local CSV with Ukrainian channels/events (deferred)
-            setTimeout(() => this.tryBootstrapLocalResourcesSafe(), 0);
-        } catch (error) {
-            this._telemetryError('init:fatal', error);
-            console.error('Error initializing app:', error);
-        } finally {
-            this.hideLoading();
-        }
-    }
+    /**
+     * Initialize filter UI elements
+     */
+    initializeFilterUI() {
+        // Get unique values
+        const categories = [...new Set(this.events.map(e => e.category).filter(Boolean))];
+        const regions = [...new Set(this.events.map(e => e.region).filter(Boolean))];
+        const channels = [...new Set(this.events.map(e => e.channel_name).filter(Boolean))];
 
-    _mark(label) {
-        try {
-            const t = performance.now?.() || Date.now();
-            this._startupTelemetry.marks.push({ label, t });
-        } catch (_) {}
-    }
-
-    _telemetryError(stage, error) {
-        try {
-            const err = error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : { message: String(error) };
-            (this._startupTelemetry.errors ||= []).push({ stage, err, t: performance.now?.() || Date.now() });
-        } catch (_) {}
-    }
-    
-    setupTheme() {
-        // Load saved theme or default to dark
-        const savedTheme = localStorage.getItem('civilization-sphere-theme') || 'dark';
-        this.switchTheme(savedTheme);
-        
-        // Theme toggle handlers
-        document.querySelectorAll('.theme-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const theme = btn.dataset.theme;
-                this.switchTheme(theme);
-                if (window.lucide?.createIcons) {
-                    // Re-render icons in case of dynamic DOM changes
-                    window.lucide.createIcons();
-                }
-            });
-        });
-    }
-    
-    switchTheme(theme) {
-        this.theme = theme;
-        
-        // Update body class and data attribute for CSS
-        document.body.className = `${theme}-theme`;
-        document.documentElement.setAttribute('data-color-scheme', theme);
-        
-        // Save theme preference
-        localStorage.setItem('civilization-sphere-theme', theme);
-        
-        // Update active theme button
-        document.querySelectorAll('.theme-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.theme === theme);
-        });
-        
-        // Update Chart.js themes
-        this.updateChartThemes();
-        
-        // Reinitialize map tiles for theme
-        if (this.map) {
-            this.map.eachLayer(layer => {
-                if (layer.options && layer.options.id === 'tileLayer') {
-                    this.map.removeLayer(layer);
-                }
-            });
-            this.addMapTileLayer();
-        }
-    }
-
-    updateChartThemes() {
-        const isDark = this.theme === 'dark';
-        const textColor = isDark ? '#f5f5f5' : '#13343b';
-        const gridColor = isDark ? 'rgba(119, 124, 124, 0.3)' : 'rgba(94, 82, 64, 0.2)';
-        const backgroundColor = isDark ? 'rgba(38, 40, 40, 0.8)' : 'rgba(255, 255, 253, 0.8)';
-        
-        // Update existing charts
-        Object.values(this.charts).forEach(chart => {
-            if (chart && typeof chart.update === 'function') {
-                chart.options.scales = chart.options.scales || {};
-                chart.options.scales.x = chart.options.scales.x || {};
-                chart.options.scales.y = chart.options.scales.y || {};
-                
-                chart.options.scales.x.ticks = chart.options.scales.x.ticks || {};
-                chart.options.scales.y.ticks = chart.options.scales.y.ticks || {};
-                chart.options.scales.x.ticks.color = textColor;
-                chart.options.scales.y.ticks.color = textColor;
-                
-                chart.options.scales.x.grid = chart.options.scales.x.grid || {};
-                chart.options.scales.y.grid = chart.options.scales.y.grid || {};
-                chart.options.scales.x.grid.color = gridColor;
-                chart.options.scales.y.grid.color = gridColor;
-                
-                chart.options.plugins = chart.options.plugins || {};
-                chart.options.plugins.legend = chart.options.plugins.legend || {};
-                chart.options.plugins.legend.labels = chart.options.plugins.legend.labels || {};
-                chart.options.plugins.legend.labels.color = textColor;
-                
-                chart.update('none');
-            }
-        });
-    }
-    
-    setupMobileOptimizations() {
-        if (this.isMobile) {
-            // Setup mobile menu toggle
-            const menuToggle = document.getElementById('mobileMenuToggle');
-            menuToggle.addEventListener('click', () => {
-                this.toggleMobileMenu();
-            });
-            
-            // Setup mobile touch gestures
-            this.touchHandler.initialize();
-            
-            // Show mobile touch hints
-            setTimeout(() => {
-                const hints = document.querySelector('.mobile-touch-controls');
-                if (hints) hints.style.display = 'block';
-            }, 2000);
-        }
-    }
-    
-    toggleMobileMenu() {
-        this.sidebarVisible = !this.sidebarVisible;
-        const sidebar = document.getElementById('leftSidebar');
-        const menuToggle = document.getElementById('mobileMenuToggle');
-        const overlay = document.querySelector('.sidebar-overlay');
-        
-        if (this.sidebarVisible) {
-            sidebar.classList.add('mobile-visible');
-            menuToggle.classList.add('active');
-            if (!overlay) {
-                const overlayElement = document.createElement('div');
-                overlayElement.className = 'sidebar-overlay';
-                overlayElement.addEventListener('click', () => this.toggleMobileMenu());
-                document.body.appendChild(overlayElement);
-            }
-            setTimeout(() => {
-                document.querySelector('.sidebar-overlay').classList.add('visible');
-            }, 10);
-        } else {
-            sidebar.classList.remove('mobile-visible');
-            menuToggle.classList.remove('active');
-            const overlayElement = document.querySelector('.sidebar-overlay');
-            if (overlayElement) {
-                overlayElement.classList.remove('visible');
-                setTimeout(() => {
-                    overlayElement.remove();
-                }, 250);
-            }
-        }
-    }
-
-    toggleRightSidebar(forceState) {
-        const sidebar = document.getElementById('rightSidebar');
-        const toggleBtn = document.getElementById('rightSidebarToggle');
-        if (!sidebar) return;
-
-        // Match CSS breakpoint: overlay behavior up to 1024px, desktop otherwise
-        const isOverlayMode = window.innerWidth <= 1024;
-        const isCurrentlyOpen = isOverlayMode
-            ? sidebar.classList.contains('open')
-            : !sidebar.classList.contains('collapsed');
-
-        const shouldOpen = typeof forceState === 'boolean' ? forceState : !isCurrentlyOpen;
-
-        if (shouldOpen) {
-            if (isOverlayMode) {
-                sidebar.classList.add('open');
-            } else {
-                sidebar.classList.remove('collapsed');
-            }
-            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
-            sidebar.setAttribute('aria-hidden', 'false');
-        } else {
-            if (isOverlayMode) {
-                sidebar.classList.remove('open');
-            } else {
-                sidebar.classList.add('collapsed');
-            }
-            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
-            sidebar.setAttribute('aria-hidden', 'true');
-        }
-    }
-
-    showLoading() {
-        const overlay = document.getElementById('loadingOverlay');
-        if (overlay) overlay.style.display = 'flex';
-    }
-
-    hideLoading() {
-        const overlay = document.getElementById('loadingOverlay');
-        if (overlay) overlay.style.display = 'none';
-    }
-
-    async initializeMap() {
-        // Show map loading indicator
-        const loadingIndicator = document.getElementById('mapLoading');
-        loadingIndicator.classList.add('visible');
-        
-        // Initialize Leaflet map with enhanced mobile options
-        this.map = L.map('map', {
-            center: [50, 10],
-            zoom: 3,
-            zoomControl: !this.isMobile, // Hide default zoom on mobile
-            scrollWheelZoom: true,
-            doubleClickZoom: true,
-            touchZoom: true,
-            tap: true,
-            tapTolerance: 15,
-            zoomAnimation: true,
-            fadeAnimation: true,
-            markerZoomAnimation: true,
-            bounceAtZoomLimits: true,
-            wheelDebounceTime: 60,
-            wheelPxPerZoomLevel: 60
-        });
-        
-        // Add custom zoom control for mobile
-        if (this.isMobile) {
-            const customZoomControl = L.control.zoom({
-                position: 'bottomright'
-            });
-            customZoomControl.addTo(this.map);
-        }
-        
-        // Add tile layer based on theme
-        this.addMapTileLayer();
-        
-        // Initialize smart camera controller
-        this.cameraController.initialize();
-        
-        // Setup map event handlers
-        this.setupMapEventHandlers();
-        
-        // Add markers
-        this.addMarkersToMap();
-        
-        // Hide loading indicator
-        setTimeout(() => {
-            loadingIndicator.classList.remove('visible');
-        }, 1000);
-    }
-    
-    addMapTileLayer() {
-        const isDark = this.theme === 'dark';
-        const tileUrl = isDark 
-            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-            
-        const tileLayer = L.tileLayer(tileUrl, {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            subdomains: 'abcd',
-            maxZoom: 18,
-            id: 'tileLayer'
-        });
-        
-        tileLayer.addTo(this.map);
-    }
-    
-    setupMapEventHandlers() {
-        this.map.on('movestart', () => {
-            document.querySelector('.map-loading').style.opacity = '0.3';
-        });
-        
-        this.map.on('moveend', () => {
-            document.querySelector('.map-loading').style.opacity = '0';
-        });
-        
-        this.map.on('zoomstart', () => {
-            this.markers.forEach(marker => {
-                marker.setOpacity(0.7);
-            });
-            this.updateZoomLabel();
-        });
-        
-        this.map.on('zoom', () => {
-            this.updateZoomLabel();
-        });
-
-        this.map.on('zoomend', () => {
-            this.markers.forEach(marker => {
-                marker.setOpacity(1);
-            });
-            this.queueHideZoomLabel();
-        });
-    }
-
-    updateZoomLabel() {
-        if (!this.zoomLabelEl) return;
-        const zoom = this.map ? this.map.getZoom() : null;
-        if (zoom == null) return;
-        const zoomText = `Zoom ${zoom.toFixed(1)}`;
-        if (this.zoomLabelEl.textContent !== zoomText) {
-            this.zoomLabelEl.textContent = zoomText;
-        }
-        this.positionZoomLabel();
-        this.zoomLabelEl.classList.add('visible');
-        this.zoomLabelEl.setAttribute('aria-hidden', 'false');
-        if (this.zoomLabelHideTimer) {
-            clearTimeout(this.zoomLabelHideTimer);
-            this.zoomLabelHideTimer = null;
-        }
-    }
-
-    queueHideZoomLabel() {
-        if (!this.zoomLabelEl) return;
-        if (this.zoomLabelHideTimer) clearTimeout(this.zoomLabelHideTimer);
-        this.zoomLabelHideTimer = setTimeout(() => {
-            this.zoomLabelEl.classList.remove('visible');
-            this.zoomLabelEl.setAttribute('aria-hidden', 'true');
-        }, 500);
-    }
-
-    positionZoomLabel() {
-        if (!this.zoomLabelEl) return;
-        const mapContainer = document.querySelector('.map-container');
-        const controls = document.querySelector('.map-controls');
-        if (!mapContainer) return;
-
-        const mapRect = mapContainer.getBoundingClientRect();
-        let topPx = 16; // fallback spacing
-
-        if (controls) {
-            const controlsRect = controls.getBoundingClientRect();
-            const controlsAreTop = controlsRect.top <= mapRect.top + 20; // threshold near top
-            if (controlsAreTop) {
-                topPx = Math.max(16, Math.round(controlsRect.bottom - mapRect.top + 8));
-            }
-        }
-
-        // Clamp within container height
-        const maxTop = Math.max(0, mapRect.height - 40); // avoid bottom cutoff
-        const clampedTop = Math.min(topPx, maxTop);
-        this.zoomLabelEl.style.top = `${clampedTop}px`;
-    }
-
-    addMarkersToMap() {
-        // Clear existing markers and connections
-        this.clearMarkersAndConnections();
-
-        this.filteredEvents.forEach(event => {
-            const category = this.categories.find(cat => cat.name === event.category);
-            const channel = this.channels.find(ch => ch.name === event.channel);
-            const color = category ? category.color : '#333';
-            const icon = category ? category.icon : '📍';
-
-            // Create enhanced marker with importance-based sizing
-            const radius = Math.max(6, Math.min(16, event.importance * 1.5));
-            
-            const marker = L.circleMarker([event.lat, event.lng], {
-                radius: radius,
-                fillColor: color,
-                color: channel ? channel.color : '#fff',
-                weight: 3,
-                opacity: 1,
-                fillOpacity: 0.8,
-                className: 'map-marker'
-            });
-
-            // Add enhanced popup with channel info
-            const popupContent = `
-                <div class="marker-popup">
-                    <div class="popup-header">
-                        <span class="popup-icon">${icon}</span>
-                        <h4>${event.title}</h4>
-                    </div>
-                    <div class="popup-meta">
-                        <p><strong>📅 Дата:</strong> ${this.formatDate(event.date)}</p>
-                        <p><strong>📂 Категорія:</strong> ${event.category}</p>
-                        <p><strong>🌍 Регіон:</strong> ${event.region}</p>
-                        <p><strong>📺 Канал:</strong> <span style="color: ${channel?.color}">${event.channel}</span></p>
-                        <p><strong>⭐ Важливість:</strong> ${event.importance}/10</p>
-                    </div>
-                    <div class="popup-actions">
-                        <button onclick="app.selectEvent(${event.id})" class="btn btn--sm btn--primary">Детальніше</button>
-                        <button onclick="app.shareEvent(${event.id})" class="btn btn--sm btn--outline">📤 Поділитися</button>
-                    </div>
+        // Populate categories
+        this.uiElements.categoriesContainer.innerHTML = categories
+            .sort()
+            .map(cat => `
+                <div class="filter-checkbox">
+                    <input type="checkbox" id="cat-${cat}" value="${cat}" class="category-filter">
+                    <label for="cat-${cat}">${cat}</label>
                 </div>
-            `;
+            `)
+            .join('');
 
-            marker.bindPopup(popupContent, {
-                maxWidth: 300,
-                className: 'custom-popup'
-            });
-            
-            // Enhanced click handler with animation
-            marker.on('click', (e) => {
-                this.selectEvent(event.id);
-                e.target.getElement().classList.add('highlight');
-                setTimeout(() => {
-                    e.target.getElement().classList.remove('highlight');
-                }, 1000);
-            });
+        // Populate regions
+        this.uiElements.regionsContainer.innerHTML = regions
+            .sort()
+            .map(reg => `
+                <div class="filter-checkbox">
+                    <input type="checkbox" id="reg-${reg}" value="${reg}" class="region-filter">
+                    <label for="reg-${reg}">${reg}</label>
+                </div>
+            `)
+            .join('');
 
-            // Store event data with marker
-            marker.eventData = event;
-            marker.addTo(this.map);
-            this.markers.push(marker);
+        // Populate channels
+        this.uiElements.channelsContainer.innerHTML = channels
+            .sort()
+            .map(ch => `
+                <div class="filter-checkbox">
+                    <input type="checkbox" id="ch-${ch}" value="${ch}" class="channel-filter">
+                    <label for="ch-${ch}">${ch}</label>
+                </div>
+            `)
+            .join('');
+
+        // Add event listeners to checkboxes
+        document.querySelectorAll('.category-filter').forEach(cb => {
+            cb.addEventListener('change', () => {
+                this.filters.categories = new Set(
+                    Array.from(document.querySelectorAll('.category-filter:checked'))
+                        .map(el => el.value)
+                );
+                this.applyFilters();
+            });
         });
-        
-        // Add connections if enabled
-        if (document.getElementById('connectionsToggle')?.classList.contains('active')) {
-            this.addConnectionLines();
+
+        document.querySelectorAll('.region-filter').forEach(cb => {
+            cb.addEventListener('change', () => {
+                this.filters.regions = new Set(
+                    Array.from(document.querySelectorAll('.region-filter:checked'))
+                        .map(el => el.value)
+                );
+                this.applyFilters();
+            });
+        });
+
+        document.querySelectorAll('.channel-filter').forEach(cb => {
+            cb.addEventListener('change', () => {
+                this.filters.channels = new Set(
+                    Array.from(document.querySelectorAll('.channel-filter:checked'))
+                        .map(el => el.value)
+                );
+                this.applyFilters();
+            });
+        });
+
+        // Set date limits
+        if (this.events.length > 0) {
+            const dates = this.events.map(e => new Date(e.date));
+            const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
+            const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
+
+            this.uiElements.dateFrom.min = minDate.toISOString().split('T')[0];
+            this.uiElements.dateTo.max = maxDate.toISOString().split('T')[0];
         }
     }
-    
-    clearMarkersAndConnections() {
+
+    /**
+     * Apply all active filters
+     */
+    applyFilters() {
+        this.filteredEvents = this.events.filter(event => {
+            // Search filter
+            if (this.filters.search) {
+                const searchLower = this.filters.search.toLowerCase();
+                const matches = (event.title?.toLowerCase().includes(searchLower)) ||
+                               (event.description?.toLowerCase().includes(searchLower)) ||
+                               (event.channel_name?.toLowerCase().includes(searchLower));
+                if (!matches) return false;
+            }
+
+            // Quick filters
+            if (this.filters.quickFilter !== 'all') {
+                const today = new Date();
+                const eventDate = new Date(event.date);
+                switch (this.filters.quickFilter) {
+                    case 'recent':
+                        const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                        if (eventDate < sevenDaysAgo) return false;
+                        break;
+                    case 'important':
+                        if ((event.importance || 0) < 7) return false;
+                        break;
+                    case 'conflicts':
+                        const conflictKeywords = ['war', 'conflict', 'конфлікт', 'війна'];
+                        const isConflict = conflictKeywords.some(kw =>
+                            event.title?.toLowerCase().includes(kw) ||
+                            event.category?.toLowerCase().includes(kw)
+                        );
+                        if (!isConflict) return false;
+                        break;
+                }
+            }
+
+            // Category filter
+            if (this.filters.categories.size > 0) {
+                if (!this.filters.categories.has(event.category)) return false;
+            }
+
+            // Region filter
+            if (this.filters.regions.size > 0) {
+                if (!this.filters.regions.has(event.region)) return false;
+            }
+
+            // Channel filter
+            if (this.filters.channels.size > 0) {
+                if (!this.filters.channels.has(event.channel_name)) return false;
+            }
+
+            // Date range filter
+            if (this.filters.dateFrom) {
+                if (new Date(event.date) < new Date(this.filters.dateFrom)) return false;
+            }
+            if (this.filters.dateTo) {
+                if (new Date(event.date) > new Date(this.filters.dateTo + 'T23:59:59')) return false;
+            }
+
+            return true;
+        });
+
+        this.updateUI();
+    }
+
+    /**
+     * Update UI with filtered data
+     */
+    updateUI() {
+        this.updateStatistics();
+        this.updateMap();
+        this.updateCharts();
+        this.updateTimeline();
+    }
+
+    /**
+     * Update statistics display
+     */
+    updateStatistics() {
+        const uniqueRegions = new Set(this.filteredEvents.map(e => e.region)).size;
+        const uniqueChannels = new Set(this.filteredEvents.map(e => e.channel_name)).size;
+
+        this.uiElements.totalEvents.textContent = this.events.length;
+        this.uiElements.visibleEvents.textContent = this.filteredEvents.length;
+        this.uiElements.regionCount.textContent = uniqueRegions;
+        this.uiElements.channelCount.textContent = uniqueChannels;
+    }
+
+    /**
+     * Initialize Leaflet map
+     */
+    initializeMap() {
+        // Create map
+        this.map = L.map('map').setView([48.3794, 31.1656], 4);
+
+        // Add tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 18,
+            className: 'map-tiles'
+        }).addTo(this.map);
+
+        // Add events to map
+        this.updateMap();
+    }
+
+    /**
+     * Update map with filtered events
+     */
+    updateMap() {
+        // Remove existing markers
         this.markers.forEach(marker => this.map.removeLayer(marker));
         this.markers = [];
-        this.connectionLines.forEach(line => this.map.removeLayer(line));
-        this.connectionLines = [];
-    }
-    
-    addConnectionLines() {
-        // Connect related events (same region or participants)
-        for (let i = 0; i < this.filteredEvents.length; i++) {
-            for (let j = i + 1; j < this.filteredEvents.length; j++) {
-                const event1 = this.filteredEvents[i];
-                const event2 = this.filteredEvents[j];
-                
-                // Check if events are related
-                const sameRegion = event1.region === event2.region;
-                const sharedParticipants = event1.participants.some(p => event2.participants.includes(p));
-                const timeDiff = Math.abs(new Date(event1.date) - new Date(event2.date)) / (1000 * 60 * 60 * 24);
-                const sameChannel = event1.channel === event2.channel;
-                
-                if ((sameRegion || sharedParticipants || sameChannel) && timeDiff < 365) {
-                    const line = L.polyline(
-                        [[event1.lat, event1.lng], [event2.lat, event2.lng]], 
-                        {
-                            color: '#32a8b8',
-                            weight: 2,
-                            opacity: 0.6,
-                            dashArray: '5, 10',
-                            className: 'event-connection-line'
-                        }
-                    );
-                    
-                    line.addTo(this.map);
-                    this.connectionLines.push(line);
-                }
-            }
-        }
-    }
 
-    initializeFilters() {
-        // Quick filters
-        document.querySelectorAll('.quick-filter-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.quick-filter-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                this.applyQuickFilter(btn.dataset.filter);
-            });
-        });
-        
-        // Category filters with icons
-        const categoryContainer = document.getElementById('categoryFilters');
-        categoryContainer.innerHTML = '';
+        // Add new markers
+        this.filteredEvents.forEach(event => {
+            const importance = event.importance || 5;
+            const size = Math.min(25 + importance * 2, 45);
+            const color = this.getCategoryColor(event.category);
 
-        this.categories.forEach(category => {
-            const checkboxHtml = `
-                <div class="checkbox-item" data-category="${category.name}">
-                    <input type="checkbox" id="cat-${category.name}" value="${category.name}" checked>
-                    <label for="cat-${category.name}">
-                        <span class="category-icon">${category.icon}</span>
-                        ${category.name} (${category.count})
-                    </label>
-                    <div class="category-color" style="background-color: ${category.color}"></div>
+            const html = `
+                <div style="
+                    width: ${size}px;
+                    height: ${size}px;
+                    background: ${color};
+                    border: 2px solid white;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 12px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                    cursor: pointer;
+                ">
+                    ${importance}
                 </div>
             `;
-            categoryContainer.insertAdjacentHTML('beforeend', checkboxHtml);
+
+            const marker = L.marker([event.lat, event.lng], {
+                icon: L.divIcon({
+                    html: html,
+                    iconSize: [size, size],
+                    iconAnchor: [size / 2, size / 2],
+                    popupAnchor: [0, -size / 2]
+                })
+            }).addTo(this.map);
+
+            marker.on('click', () => this.showEventDetails(event));
+            this.markers.push(marker);
         });
 
-        // Region filter
-        const regionSelect = document.getElementById('regionFilter');
-        this.regions.forEach(region => {
-            const option = document.createElement('option');
-            option.value = region;
-            option.textContent = region;
-            regionSelect.appendChild(option);
-        });
-
-        // Set default date range to cover entire dataset
-        const dateFrom = document.getElementById('dateFrom');
-        const dateTo = document.getElementById('dateTo');
-        const validDates = this.events
-            .map(e => new Date(e.date))
-            .filter(d => !isNaN(d));
-        const minDate = validDates.length ? new Date(Math.min(...validDates)) : new Date('1930-01-01');
-        const maxDate = validDates.length ? new Date(Math.max(...validDates)) : new Date('2025-12-31');
-        dateFrom.value = minDate.toISOString().slice(0, 10);
-        dateTo.value = maxDate.toISOString().slice(0, 10);
-
-        // Add event listeners
-        categoryContainer.addEventListener('change', () => this.applyFilters());
-        regionSelect.addEventListener('change', () => this.applyFilters());
-        dateFrom.addEventListener('change', () => this.applyFilters());
-        dateTo.addEventListener('change', () => this.applyFilters());
-
-        // Apply initial filters using the full dataset date range
-        this.applyFilters();
-    }
-    
-    applyQuickFilter(filter) {
-        const now = new Date();
-        let filterFunction;
-        
-        switch(filter) {
-            case 'recent':
-                filterFunction = (event) => {
-                    const eventDate = new Date(event.date);
-                    const daysDiff = (now - eventDate) / (1000 * 60 * 60 * 24);
-                    return daysDiff <= 90; // Last 3 months
-                };
-                break;
-            case 'conflicts':
-                filterFunction = (event) => {
-                    return event.category === 'Війни та конфлікти' || 
-                           event.participants.some(p => ['Росія', 'Україна', 'НАТО'].includes(p));
-                };
-                break;
-            case 'important':
-                filterFunction = (event) => event.importance >= 8;
-                break;
-            default:
-                filterFunction = () => true;
-        }
-        
-        this.filteredEvents = this.events.filter(filterFunction);
-        this.updateDisplay();
-        this.rebuildTimeline();
-    }
-
-    initializeSearch() {
-        const searchInput = document.getElementById('searchInput');
-        const searchSuggestions = document.getElementById('searchSuggestions');
-
-        searchInput.addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase().trim();
-
-            if (query.length < 2) {
-                searchSuggestions.style.display = 'none';
-                searchInput.setAttribute('aria-expanded', 'false');
-                return;
-            }
-
-            const matches = this.events.filter(event => 
-                (event.title && event.title.toLowerCase().includes(query)) ||
-                (event.description && event.description.toLowerCase().includes(query)) ||
-                (event.country && event.country.toLowerCase().includes(query))
-            ).slice(0, 8);
-
-            if (matches.length > 0) {
-                searchSuggestions.innerHTML = matches.map((event, idx) => 
-                    `<div class="search-suggestion" role="option" id="suggestion-${idx}" onclick="app.selectEventAndSearch(${event.id}, '${event.title.replace(/'/g, "&#39;")}')">
-                        ${event.title} (${this.formatDate(event.date)})
-                    </div>`
-                ).join('');
-                searchSuggestions.style.display = 'block';
-                searchInput.setAttribute('aria-expanded', 'true');
-            } else {
-                searchSuggestions.style.display = 'none';
-                searchInput.setAttribute('aria-expanded', 'false');
-            }
-        });
-
-        // Hide suggestions when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!searchInput.contains(e.target) && !searchSuggestions.contains(e.target)) {
-                searchSuggestions.style.display = 'none';
-                searchInput.setAttribute('aria-expanded', 'false');
-            }
-        });
-    }
-
-    selectEventAndSearch(eventId, title) {
-        const input = document.getElementById('searchInput');
-        const suggestions = document.getElementById('searchSuggestions');
-        input.value = title;
-        suggestions.style.display = 'none';
-        input.setAttribute('aria-expanded', 'false');
-        this.selectEvent(eventId);
-    }
-
-    initializeTimeline() {
-        const timeline = document.getElementById('timeline');
-        const scale = document.getElementById('timelineScale');
-
-        // Sort currently visible (filtered) events by date
-        const sortedEvents = [...this.filteredEvents]
-            .filter(e => !isNaN(new Date(e.date)))
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        // Reset container state
-        timeline.innerHTML = '';
-        scale.innerHTML = '';
-
-        if (sortedEvents.length === 0) {
-            this.isReady = false;
-            return;
-        }
-
-        const firstDate = new Date(sortedEvents[0].date);
-        const lastDate = new Date(sortedEvents[sortedEvents.length - 1].date);
-        const minYear = firstDate.getFullYear();
-        const maxYear = lastDate.getFullYear();
-        const yearRange = Math.max(0, maxYear - minYear);
-
-        // Calculate positions for all events first
-        const eventPositions = sortedEvents.map((event, idx) => {
-            const eventDate = new Date(event.date);
-            const eventYear = eventDate.getFullYear();
-
-            // Handle short or zero ranges gracefully
-            let position;
-            if (yearRange === 0) {
-                const denom = Math.max(sortedEvents.length - 1, 1);
-                position = (idx / denom) * 100;
-            } else {
-                position = ((eventYear - minYear) / yearRange) * 100;
-            }
-
-            const size = Math.max(8, Math.min(18, (Number(event.importance) || 5) * 1.2));
-            
-            return {
-                event,
-                position,
-                size,
-                row: 0 // Will be calculated for collision detection
-            };
-        });
-
-        // Collision detection and vertical stacking
-        // Group events that are within a certain threshold (2% of timeline width)
-        const COLLISION_THRESHOLD = 2; // percentage
-        
-        for (let i = 0; i < eventPositions.length; i++) {
-            const current = eventPositions[i];
-            let maxRowBelow = -1;
-            
-            // Check all previous events for collisions
-            for (let j = 0; j < i; j++) {
-                const other = eventPositions[j];
-                const distance = Math.abs(current.position - other.position);
-                
-                // If events overlap or are very close
-                if (distance < COLLISION_THRESHOLD) {
-                    maxRowBelow = Math.max(maxRowBelow, other.row);
-                }
-            }
-            
-            // Place current event in the next available row
-            current.row = maxRowBelow + 1;
-        }
-
-        // Calculate the maximum number of rows needed
-        const maxRows = Math.max(...eventPositions.map(ep => ep.row), 0) + 1;
-        
-        // Adjust timeline height if needed (with a reasonable max)
-        const baseHeight = 60;
-        const rowHeight = 20;
-        const calculatedHeight = Math.min(baseHeight + (maxRows - 1) * rowHeight, 120);
-        // Set height on the timeline element
-        timeline.style.height = `${calculatedHeight}px`;
-        timeline.style.minHeight = `${calculatedHeight}px`;
-
-        // Add events to timeline with collision-aware positioning
-        eventPositions.forEach(({ event, position, size, row }) => {
-            const eventDate = new Date(event.date);
-            const eventYear = eventDate.getFullYear();
-            
-            const category = this.categories.find(cat => cat.name === event.category);
-            const color = category ? category.color : '#333';
-
-            const eventElement = document.createElement('div');
-            eventElement.className = 'timeline-event';
-            eventElement.style.left = `${position}%`;
-            eventElement.style.backgroundColor = color;
-            eventElement.dataset.eventId = event.id;
-            eventElement.style.width = `${size}px`;
-            eventElement.style.height = `${size}px`;
-            
-            // Apply vertical offset based on row
-            // Center events when there are multiple rows
-            const verticalOffset = row * rowHeight - ((maxRows - 1) * rowHeight) / 2;
-            // Use CSS variable or direct positioning without conflicting with transform
-            // We need to override the default 50% transform with an absolute position
-            eventElement.style.top = `${50 + (verticalOffset / calculatedHeight * 100)}%`;
-            eventElement.style.transform = 'translate(-50%, -50%)';
-
-            const tooltip = document.createElement('div');
-            tooltip.className = 'timeline-tooltip';
-            tooltip.textContent = `${event.title} (${eventYear}) • ${event.region}`;
-            eventElement.appendChild(tooltip);
-
-            // Adjust tooltip position for edge events
-            if (position < 15) {
-                tooltip.style.left = '0';
-                tooltip.style.transform = 'translateX(0)';
-            } else if (position > 85) {
-                tooltip.style.left = 'auto';
-                tooltip.style.right = '0';
-                tooltip.style.transform = 'translateX(0)';
-            }
-
-            eventElement.addEventListener('click', () => {
-                this.selectEvent(event.id);
-            });
-
-            timeline.appendChild(eventElement);
-        });
-
-        // ===== RESPONSIVE TIMELINE YEAR DISPLAY =====
-        // This section implements a dynamic, importance-based year display system:
-        // - Desktop: Shows up to 20 most important years
-        // - Mobile: Shows up to 7 most important years
-        // - Importance is determined by the number of events in each year
-        // - First and last years are always displayed for context
-        // - Collision detection prevents overlapping labels
-        
-        // Calculate year importance based on event counts
-        const yearEventCounts = {};
-        sortedEvents.forEach(event => {
-            const eventYear = new Date(event.date).getFullYear();
-            yearEventCounts[eventYear] = (yearEventCounts[eventYear] || 0) + 1;
-        });
-        
-        // Create array of years with their importance (event count)
-        const allYears = [];
-        for (let year = minYear; year <= maxYear; year++) {
-            allYears.push({
-                year: year,
-                eventCount: yearEventCounts[year] || 0,
-                position: yearRange === 0 ? 50 : ((year - minYear) / yearRange) * 100
-            });
-        }
-        
-        // Sort years by importance (event count descending), then by year
-        const sortedYears = [...allYears].sort((a, b) => {
-            if (b.eventCount !== a.eventCount) {
-                return b.eventCount - a.eventCount; // Most events first
-            }
-            return a.year - b.year; // Same count: chronological order
-        });
-        
-        // Determine max years based on screen size
-        const isMobile = window.innerWidth <= 768;
-        const maxYearsToDisplay = isMobile ? 7 : 20; // Mobile: 7 years, Desktop: 20 years
-        
-        // Select top N most important years
-        let yearsToDisplay = sortedYears.slice(0, Math.min(maxYearsToDisplay, sortedYears.length));
-        
-        // Always include first and last year if not already included
-        const firstYearObj = allYears.find(y => y.year === minYear);
-        const lastYearObj = allYears.find(y => y.year === maxYear);
-        
-        if (!yearsToDisplay.some(y => y.year === minYear) && firstYearObj) {
-            yearsToDisplay.push(firstYearObj);
-        }
-        if (!yearsToDisplay.some(y => y.year === maxYear) && lastYearObj && yearRange > 0) {
-            yearsToDisplay.push(lastYearObj);
-        }
-        
-        // Remove duplicates and sort by position for rendering
-        const uniqueYears = [];
-        const seenYears = new Set();
-        yearsToDisplay.forEach(yearObj => {
-            if (!seenYears.has(yearObj.year)) {
-                seenYears.add(yearObj.year);
-                uniqueYears.push(yearObj);
-            }
-        });
-        
-        // Sort by position for proper left-to-right ordering
-        uniqueYears.sort((a, b) => a.position - b.position);
-        
-        // Add year markers with collision detection
-        // Increased spacing to prevent overlap: mobile needs more space due to smaller screen
-        const YEAR_LABEL_MIN_SPACING = isMobile ? 15 : 6; // More spacing on mobile (increased from 12/5)
-        const addedYears = [];
-        
-        uniqueYears.forEach(({ year, position, eventCount }) => {
-            // Check if this year would collide with any already added years
-            const wouldCollide = addedYears.some(addedYear => {
-                return Math.abs(addedYear.position - position) < YEAR_LABEL_MIN_SPACING;
-            });
-            
-            // Always add first and last year, skip others if they would collide
-            const isEdgeYear = year === minYear || year === maxYear;
-            if (!wouldCollide || isEdgeYear) {
-                // If it's an edge year that would collide, remove the colliding year
-                if (isEdgeYear && wouldCollide) {
-                    const collidingIndex = addedYears.findIndex(addedYear => 
-                        Math.abs(addedYear.position - position) < YEAR_LABEL_MIN_SPACING
-                    );
-                    if (collidingIndex !== -1) {
-                        const collidingElement = addedYears[collidingIndex].element;
-                        if (collidingElement && collidingElement.parentNode) {
-                            collidingElement.parentNode.removeChild(collidingElement);
-                        }
-                        addedYears.splice(collidingIndex, 1);
-                    }
-                }
-                
-                const yearElement = document.createElement('div');
-                yearElement.className = 'timeline-year';
-                yearElement.style.left = `${position}%`;
-                yearElement.textContent = year;
-                
-                // Add visual emphasis for years with many events
-                if (eventCount >= 5) {
-                    yearElement.style.fontWeight = '700'; // Extra bold for important years
-                    yearElement.style.color = 'var(--color-primary)';
-                    yearElement.style.borderColor = 'var(--color-primary)';
-                    yearElement.style.borderWidth = '2px';
-                    yearElement.setAttribute('data-importance', 'high');
-                } else if (eventCount >= 2) {
-                    yearElement.style.fontWeight = '600'; // Semi-bold for moderate years
-                    yearElement.setAttribute('data-importance', 'medium');
-                } else {
-                    yearElement.setAttribute('data-importance', 'low');
-                }
-                
-                // Mark edge years for reference
-                if (year === minYear || year === maxYear) {
-                    yearElement.setAttribute('data-edge', 'true');
-                }
-                
-                scale.appendChild(yearElement);
-                
-                addedYears.push({ year, position, element: yearElement, eventCount });
-            }
-        });
-
-        // Ensure timeline playhead exists and is appended to the timeline
-        let playhead = document.getElementById('timelinePlayhead');
-        if (!playhead) {
-            playhead = document.createElement('div');
-            playhead.id = 'timelinePlayhead';
-            playhead.className = 'timeline-playhead';
-        }
-        // Re-append to ensure it's within the freshly rebuilt timeline
-        timeline.appendChild(playhead);
-        this.isReady = true;
-    }
-
-    rebuildTimeline() {
-        this.initializeTimeline();
-    }
-
-    initializeEventHandlers() {
-        // Clear filters button
-        document.getElementById('clearFilters').addEventListener('click', () => {
-            this.clearFilters();
-        });
-
-        // Import/Discovery controls
-        const scanBtn = document.getElementById('scanSourcesBtn');
-        const importBtn = document.getElementById('importBtn');
-        const clearBtn = document.getElementById('clearImportBtn');
-        const importFileInput = document.getElementById('importFile');
-
-        if (scanBtn) {
-            scanBtn.addEventListener('click', () => this.handleScanButton());
-        }
-        
-        // External API buttons
-        const fetchExternalBtn = document.getElementById('fetchExternalBtn');
-        if (fetchExternalBtn) {
-            fetchExternalBtn.addEventListener('click', () => this.fetchExternalData());
-        }
-        
-        const testNewsAPIBtn = document.getElementById('testNewsAPI');
-        if (testNewsAPIBtn) {
-            testNewsAPIBtn.addEventListener('click', () => this.testNewsAPI());
-        }
-        
-        if (importBtn) {
-            importBtn.addEventListener('click', () => this.importBufferedEvents());
-        }
-        if (clearBtn) {
-            clearBtn.addEventListener('click', () => this.clearImportPreview());
-        }
-        if (importFileInput) {
-            importFileInput.addEventListener('change', (e) => this.handleImportFile(e));
-        }
-
-        // Import UI controls and behaviors
-        this.setupImportUi();
-
-        // Enhanced map controls
-        document.getElementById('resetView').addEventListener('click', () => {
-            this.cameraController.resetView();
-        });
-        
-        document.getElementById('fullscreen').addEventListener('click', () => {
-            this.toggleFullscreen();
-        });
-        
-        document.getElementById('layersToggle').addEventListener('click', () => {
-            this.toggleLayers();
-        });
-        
-        document.getElementById('heatmapToggle').addEventListener('click', () => {
-            this.toggleHeatmap();
-        });
-        
-        document.getElementById('connectionsToggle').addEventListener('click', () => {
-            this.toggleConnections();
-        });
-        
-        document.getElementById('shareMap').addEventListener('click', () => {
-            this.shareCurrentView();
-        });
-
-        document.getElementById('exportData').addEventListener('click', () => {
-            this.showExportDialog();
-        });
-
-        // Right sidebar toggle on larger screens too
-        const rightToggle = document.getElementById('rightSidebarToggle');
-        if (rightToggle) {
-            rightToggle.addEventListener('click', () => this.toggleRightSidebar());
-        }
-
-        // Enhanced timeline controls
-        document.getElementById('timelinePlay').addEventListener('click', () => {
-            this.hideTimelineReadyOverlay();
-            this.playTimelineAnimation();
-        });
-
-        document.getElementById('timelinePause').addEventListener('click', () => {
-            this.pauseTimelineAnimation();
-        });
-
-        document.getElementById('timelineReset').addEventListener('click', () => {
-            this.resetTimelineAnimation();
-        });
-        
-        // Speed control
-        document.getElementById('playbackSpeed').addEventListener('change', (e) => {
-            this.playbackSpeed = parseFloat(e.target.value);
-        });
-        
-        // Progress bar interaction
-        const progressBar = document.getElementById('timelineProgressBar');
-        progressBar.addEventListener('click', (e) => {
-            this.seekToProgress(e);
-        });
-
-        // Ready overlay explicit play
-        const readyBtn = document.getElementById('timelineReadyPlayBtn');
-        if (readyBtn) {
-            readyBtn.addEventListener('click', () => {
-                this.hideTimelineReadyOverlay();
-                this.playTimelineAnimation();
-            });
+        // Fit bounds if events exist
+        if (this.filteredEvents.length > 0) {
+            const group = new L.featureGroup(this.markers);
+            this.map.fitBounds(group.getBounds().pad(0.1));
         }
     }
 
-    setupImportUi() {
-        const importFormat = document.getElementById('importFormat');
-        const dateFormat = document.getElementById('dateFormat');
-        const dedupMode = document.getElementById('dedupMode');
-        const importFileInput = document.getElementById('importFile');
-        const importModeRadios = Array.from(document.querySelectorAll('input[name="importMode"]'));
-
-        if (importFormat) {
-            importFormat.addEventListener('change', (e) => {
-                this.importSettings.format = e.target.value || 'auto';
-                if (importFileInput) {
-                    const fmt = this.importSettings.format;
-                    importFileInput.setAttribute('accept', fmt === 'csv' ? '.csv' : (fmt === 'json' ? '.json' : '.csv,.json'));
-                }
-            });
-        }
-
-        if (dateFormat) {
-            dateFormat.addEventListener('change', (e) => {
-                this.importSettings.dateFormat = e.target.value || 'auto';
-            });
-        }
-
-        if (dedupMode) {
-            dedupMode.addEventListener('change', (e) => {
-                this.importSettings.dedupMode = e.target.value || 'auto';
-            });
-        }
-
-        if (importModeRadios && importModeRadios.length) {
-            importModeRadios.forEach(r => r.addEventListener('change', (e) => {
-                if (e.target.checked) this.importSettings.importMode = e.target.value;
-            }));
-        }
-
-        // Initialize mapping listeners (will be populated after CSV is selected)
-        const mappingIds = ['map-title','map-date','map-lat','map-lng','map-description','map-category','map-region','map-country','map-importance','map-sources'];
-        mappingIds.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.addEventListener('change', () => {
-                    const key = id.replace('map-','');
-                    this.importSettings.fieldMapping[key] = el.value || '';
-                });
-            }
-        });
+    /**
+     * Reset map view to default
+     */
+    resetMapView() {
+        this.map.setView([48.3794, 31.1656], 4);
     }
 
-    setupFieldMappingForCsv(csvText) {
-        const headers = this.extractCsvHeaders(csvText);
-        if (!headers || !headers.length) return;
-        this.refreshFieldMappingOptions(headers);
-        // Preselect guesses
-        const guess = this.guessMappingFromHeaders(headers);
-        this.importSettings.fieldMapping = { ...guess };
-        Object.entries(guess).forEach(([key, header]) => {
-            const el = document.getElementById(`map-${key}`);
-            if (el && header) el.value = header;
-        });
-    }
-
-    extractCsvHeaders(text) {
-        const firstLine = (text.split(/\r?\n/).find(Boolean) || '').trim();
-        if (!firstLine) return [];
-        const headers = this.splitCsvLine(firstLine).map(h => (h || '').trim());
-        return headers;
-    }
-
-    refreshFieldMappingOptions(headers) {
-        const mappingIds = ['map-title','map-date','map-lat','map-lng','map-description','map-category','map-region','map-country','map-importance','map-sources'];
-        mappingIds.forEach(id => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            el.innerHTML = '';
-            const frag = document.createDocumentFragment();
-            const empty = document.createElement('option');
-            empty.value = '';
-            empty.textContent = '—';
-            frag.appendChild(empty);
-            headers.forEach(h => {
-                const opt = document.createElement('option');
-                opt.value = h;
-                opt.textContent = h;
-                frag.appendChild(opt);
-            });
-            el.appendChild(frag);
-        });
-    }
-
-    guessMappingFromHeaders(headers) {
-        const lc = headers.map(h => h.toLowerCase());
-        const pick = (...candidates) => {
-            for (const c of candidates) {
-                const idx = lc.indexOf(c);
-                if (idx !== -1) return headers[idx];
-            }
-            return '';
-        };
-        return {
-            title: pick('title','name','headline'),
-            date: pick('date','published','publishedat','pubdate','updated','time'),
-            lat: pick('lat','latitude','y'),
-            lng: pick('lng','longitude','lon','x'),
-            description: pick('description','summary','content','desc'),
-            category: pick('category','type','topic'),
-            region: pick('region','area'),
-            country: pick('country','nation','state'),
-            importance: pick('importance','priority','score','rank'),
-            sources: pick('sources','link','url')
-        };
-    }
-
-    applyFieldMappingToObject(obj, mapping) {
-        if (!mapping) return obj;
-        const out = { ...obj };
-        const entries = Object.entries(mapping).filter(([, src]) => src);
-        const targetToDefault = {
-            title: '', date: '', lat: '', lng: '', description: '', category: '', region: '', country: '', importance: '', sources: ''
-        };
-        const mapped = { ...targetToDefault };
-        for (const [target, src] of entries) {
-            mapped[target] = obj[src];
-        }
-        // Preserve unknown fields as-is but prefer mapped values for known targets
-        return { ...obj, ...mapped };
-    }
-
-    parseDateByFormat(input, format) {
-        try {
-            if (!input) return '';
-            const s = String(input).trim();
-            const pad = (n) => n.toString().padStart(2, '0');
-            if (format === 'YYYY-MM-DD') {
-                const m = s.match(/^(\d{4})[-\/.](\d{2})[-\/.](\d{2})$/);
-                if (!m) return '';
-                return `${m[1]}-${m[2]}-${m[3]}`;
-            }
-            if (format === 'DD/MM/YYYY') {
-                const m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);
-                if (!m) return '';
-                const dd = pad(parseInt(m[1]));
-                const mm = pad(parseInt(m[2]));
-                const yyyy = m[3];
-                return `${yyyy}-${mm}-${dd}`;
-            }
-            if (format === 'MM/DD/YYYY') {
-                const m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);
-                if (!m) return '';
-                const mm = pad(parseInt(m[1]));
-                const dd = pad(parseInt(m[2]));
-                const yyyy = m[3];
-                return `${yyyy}-${mm}-${dd}`;
-            }
-            if (format === 'YYYY-MM-DDTHH:mm:ssZ') {
-                const d = new Date(s);
-                if (isNaN(d.getTime())) return '';
-                return d.toISOString().slice(0,10);
-            }
-        } catch (_) {}
-        return '';
-    }
-
-    computeEventDedupKeyByMode(mode, event) {
-        const m = (mode || 'auto').toLowerCase();
-        if (m === 'off') {
-            return `no:${event.id}:${Math.random().toString(36).slice(2)}`;
-        }
-        if (m === 'title_date_coords') {
-            const title = (event.title || '').toLowerCase().replace(/\s+/g, ' ').trim();
-            const date = event.date || '';
-            const lat = Number.isFinite(event.lat) ? event.lat.toFixed(3) : 'x';
-            const lng = Number.isFinite(event.lng) ? event.lng.toFixed(3) : 'x';
-            return `tdl:${title}|${date}|${lat}|${lng}`;
-        }
-        // auto
-        return this.computeEventDedupKey(event);
-    }
-
-    showValidation(message) {
-        const el = document.getElementById('importValidation');
-        if (el) el.textContent = message || '';
-    }
-
-    initializeCharts() {
-        const isDark = this.theme === 'dark';
-        const textColor = isDark ? '#f5f5f5' : '#13343b';
-        const gridColor = isDark ? 'rgba(119, 124, 124, 0.3)' : 'rgba(94, 82, 64, 0.2)';
-        const backgroundColor = isDark ? 'rgba(38, 40, 40, 0.8)' : 'rgba(255, 255, 253, 0.8)';
-
-        // Category distribution chart
-        const categoryCtx = document.getElementById('categoryChart').getContext('2d');
-        this.charts.category = new Chart(categoryCtx, {
-            type: 'doughnut',
-            data: {
-                labels: this.categories.map(cat => cat.name),
-                datasets: [{
-                    data: this.categories.map(cat => cat.count),
-                    backgroundColor: this.categories.map(cat => cat.color),
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'bottom',
-                        labels: {
-                            color: textColor,
-                            usePointStyle: true,
-                            padding: 15
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: backgroundColor,
-                        titleColor: textColor,
-                        bodyColor: textColor,
-                        borderColor: gridColor,
-                        borderWidth: 1
-                    }
-                }
-            }
-        });
-
-        // Timeline distribution chart
-        const timelineCtx = document.getElementById('timelineChart').getContext('2d');
-        const timelineData = this.generateTimelineData();
-
-        this.charts.timeline = new Chart(timelineCtx, {
-            type: 'bar',
-            data: {
-                labels: timelineData.labels,
-                datasets: [{
-                    label: 'Події',
-                    data: timelineData.data,
-                    backgroundColor: isDark ? '#50b8c6' : '#21808d',
-                    borderColor: isDark ? '#32a8b8' : '#21808d',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        labels: {
-                            color: textColor
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: backgroundColor,
-                        titleColor: textColor,
-                        bodyColor: textColor,
-                        borderColor: gridColor,
-                        borderWidth: 1
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: {
-                            color: textColor
-                        },
-                        grid: {
-                            color: gridColor
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            color: textColor,
-                            stepSize: 1
-                        },
-                        grid: {
-                            color: gridColor
-                        }
-                    }
-                }
-            }
-        });
-
-        // Initialize additional analytics charts
-        this.initializeAnalyticsCharts();
-    }
-
-    generateTimelineData() {
-        const monthlyData = {};
-        const currentYear = new Date().getFullYear();
-        
-        // Generate last 12 months
-        for (let i = 11; i >= 0; i--) {
-            const date = new Date();
-            date.setMonth(date.getMonth() - i);
-            const monthKey = date.toISOString().substring(0, 7);
-            monthlyData[monthKey] = 0;
-        }
-
-        // Count events by month
-        this.filteredEvents.forEach(event => {
-            if (event.date) {
-                const monthKey = event.date.substring(0, 7);
-                if (monthlyData.hasOwnProperty(monthKey)) {
-                    monthlyData[monthKey]++;
-                }
-            }
-        });
-
-        return {
-            labels: Object.keys(monthlyData).map(month => {
-                const date = new Date(month + '-01');
-                return date.toLocaleDateString('uk-UA', { month: 'short', year: '2-digit' });
-            }),
-            data: Object.values(monthlyData)
-        };
-    }
-
-    initializeAnalyticsCharts() {
-        // Create additional chart containers if they don't exist
-        this.createAnalyticsContainers();
-        
-        // Region distribution chart
-        this.createRegionChart();
-        
-        // Importance distribution chart
-        this.createImportanceChart();
-        
-        // Channel distribution chart
-        this.createChannelChart();
-    }
-
-    createAnalyticsContainers() {
-        const statsContainer = document.querySelector('.stats-container');
-        if (!statsContainer) return;
-
-        // Add new chart containers
-        const additionalCharts = `
-            <div class="analytics-section">
-                <h4 class="analytics-title">Розподіл по регіонах</h4>
-                <canvas id="regionChart" class="chart-canvas"></canvas>
-            </div>
-            <div class="analytics-section">
-                <h4 class="analytics-title">Рівень важливості</h4>
-                <canvas id="importanceChart" class="chart-canvas"></canvas>
-            </div>
-            <div class="analytics-section">
-                <h4 class="analytics-title">Джерела контенту</h4>
-                <canvas id="channelChart" class="chart-canvas"></canvas>
-            </div>
-        `;
-        
-        statsContainer.insertAdjacentHTML('beforeend', additionalCharts);
-    }
-
-    createRegionChart() {
-        const regionCtx = document.getElementById('regionChart');
-        if (!regionCtx) return;
-
-        const regionStats = this.getRegionStats();
-        const isDark = this.theme === 'dark';
-        const textColor = isDark ? '#f5f5f5' : '#13343b';
-        const gridColor = isDark ? 'rgba(119, 124, 124, 0.3)' : 'rgba(94, 82, 64, 0.2)';
-
-        this.charts.region = new Chart(regionCtx.getContext('2d'), {
-            type: 'horizontalBar',
-            data: {
-                labels: Object.keys(regionStats),
-                datasets: [{
-                    label: 'Кількість подій',
-                    data: Object.values(regionStats),
-                    backgroundColor: isDark ? '#50b8c6' : '#21808d',
-                    borderColor: isDark ? '#32a8b8' : '#21808d',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: isDark ? 'rgba(38, 40, 40, 0.9)' : 'rgba(255, 255, 253, 0.9)',
-                        titleColor: textColor,
-                        bodyColor: textColor
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: {
-                            color: textColor
-                        },
-                        grid: {
-                            color: gridColor
-                        }
-                    },
-                    y: {
-                        ticks: {
-                            color: textColor
-                        },
-                        grid: {
-                            color: gridColor
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    createImportanceChart() {
-        const importanceCtx = document.getElementById('importanceChart');
-        if (!importanceCtx) return;
-
-        const importanceStats = this.getImportanceStats();
-        const isDark = this.theme === 'dark';
-        const textColor = isDark ? '#f5f5f5' : '#13343b';
-
-        this.charts.importance = new Chart(importanceCtx.getContext('2d'), {
-            type: 'pie',
-            data: {
-                labels: ['Високий (8-10)', 'Середній (5-7)', 'Низький (1-4)'],
-                datasets: [{
-                    data: [importanceStats.high, importanceStats.medium, importanceStats.low],
-                    backgroundColor: isDark ? ['#e74c3c', '#f39c12', '#27ae60'] : ['#c0392b', '#e67e22', '#229954'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'bottom',
-                        labels: {
-                            color: textColor,
-                            usePointStyle: true,
-                            padding: 10
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: isDark ? 'rgba(38, 40, 40, 0.9)' : 'rgba(255, 255, 253, 0.9)',
-                        titleColor: textColor,
-                        bodyColor: textColor
-                    }
-                }
-            }
-        });
-    }
-
-    createChannelChart() {
-        const channelCtx = document.getElementById('channelChart');
-        if (!channelCtx) return;
-
-        const channelStats = this.getChannelStats();
-        const isDark = this.theme === 'dark';
-        const textColor = isDark ? '#f5f5f5' : '#13343b';
-        const gridColor = isDark ? 'rgba(119, 124, 124, 0.3)' : 'rgba(94, 82, 64, 0.2)';
-
-        this.charts.channel = new Chart(channelCtx.getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: Object.keys(channelStats),
-                datasets: [{
-                    label: 'Кількість подій',
-                    data: Object.values(channelStats),
-                    borderColor: isDark ? '#50b8c6' : '#21808d',
-                    backgroundColor: isDark ? 'rgba(80, 184, 198, 0.1)' : 'rgba(33, 128, 141, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: isDark ? 'rgba(38, 40, 40, 0.9)' : 'rgba(255, 255, 253, 0.9)',
-                        titleColor: textColor,
-                        bodyColor: textColor
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: {
-                            color: textColor,
-                            maxRotation: 45
-                        },
-                        grid: {
-                            color: gridColor
-                        }
-                    },
-                    y: {
-                        ticks: {
-                            color: textColor
-                        },
-                        grid: {
-                            color: gridColor
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    refreshCharts() {
-        // Recompute category counts
-        this.categories.forEach(category => {
-            category.count = this.filteredEvents.filter(event => event.category === category.name).length;
-        });
-
-        // Update category chart
-        if (this.charts.category) {
-            this.charts.category.data.datasets[0].data = this.categories.map(cat => cat.count);
-            this.charts.category.update();
-        }
-
-        // Update timeline chart
-        if (this.charts.timeline) {
-            const timelineData = this.generateTimelineData();
-            this.charts.timeline.data.labels = timelineData.labels;
-            this.charts.timeline.data.datasets[0].data = timelineData.data;
-            this.charts.timeline.update();
-        }
-
-        // Update region chart
-        if (this.charts.region) {
-            const regionStats = this.getRegionStats();
-            this.charts.region.data.labels = Object.keys(regionStats);
-            this.charts.region.data.datasets[0].data = Object.values(regionStats);
-            this.charts.region.update();
-        }
-
-        // Update importance chart
-        if (this.charts.importance) {
-            const importanceStats = this.getImportanceStats();
-            this.charts.importance.data.datasets[0].data = [importanceStats.high, importanceStats.medium, importanceStats.low];
-            this.charts.importance.update();
-        }
-
-        // Update channel chart
-        if (this.charts.channel) {
-            const channelStats = this.getChannelStats();
-            this.charts.channel.data.labels = Object.keys(channelStats);
-            this.charts.channel.data.datasets[0].data = Object.values(channelStats);
-            this.charts.channel.update();
-        }
-    }
-
-    applyFilters() {
-        const selectedCategories = Array.from(
-            document.querySelectorAll('#categoryFilters input[type="checkbox"]:checked')
-        ).map(checkbox => checkbox.value);
-
-        const selectedRegion = document.getElementById('regionFilter').value;
-        const dateFrom = new Date(document.getElementById('dateFrom').value);
-        const dateTo = new Date(document.getElementById('dateTo').value);
-
-        this.filteredEvents = this.events.filter(event => {
-            const eventDate = new Date(event.date);
-            
-            const categoryMatch = selectedCategories.includes(event.category);
-            const regionMatch = !selectedRegion || event.region === selectedRegion;
-            const dateMatch = eventDate >= dateFrom && eventDate <= dateTo;
-
-            return categoryMatch && regionMatch && dateMatch;
-        });
-
-        this.updateDisplay();
-        this.rebuildTimeline();
-    }
-
-    clearFilters() {
-        // Reset category checkboxes
-        document.querySelectorAll('#categoryFilters input[type="checkbox"]').forEach(checkbox => {
-            checkbox.checked = true;
-        });
-
-        // Reset region filter
-        document.getElementById('regionFilter').value = '';
-
-        // Reset date range
-        document.getElementById('dateFrom').value = '1930-01-01';
-        document.getElementById('dateTo').value = '2025-12-31';
-
-        this.applyFilters();
-    }
-
-    updateDisplay() {
-        // Update map markers
-        this.addMarkersToMap();
-
-        // Update statistics
-        document.getElementById('totalEvents').textContent = `Всього подій: ${this.events.length}`;
-        document.getElementById('filteredEvents').textContent = `Відфільтровано: ${this.filteredEvents.length}`;
-
-        // Update charts after data changes
-        this.refreshCharts();
-    }
-
-    selectEvent(eventId) {
-        const event = this.events.find(e => e.id === eventId);
-        if (!event) return;
-
+    /**
+     * Show event details in side panel
+     */
+    showEventDetails(event) {
         this.selectedEvent = event;
-
-        // Update timeline active state
-        document.querySelectorAll('.timeline-event').forEach(el => {
-            el.classList.remove('active');
-        });
-        const timelineEvent = document.querySelector(`[data-event-id="${eventId}"]`);
-        if (timelineEvent) {
-            timelineEvent.classList.add('active');
-        }
-
-        // Smart camera transition to event
-        this.cameraController.focusOnEvent(event);
-        
-        // Highlight marker
-        this.highlightMarker(event);
-
-        // Update details panel
-        this.displayEventDetails(event);
-        
-        // Close mobile menu if open
-        if (this.isMobile && this.sidebarVisible) {
-            this.toggleMobileMenu();
-        }
-
-        // Ensure right sidebar is visible when an event is selected
-        this.toggleRightSidebar(true);
-    }
-    
-    highlightMarker(event) {
-        // Reset all markers
-        this.markers.forEach(marker => {
-            marker.getElement()?.classList.remove('highlight');
-        });
-        
-        // Find and highlight selected marker
-        const selectedMarker = this.markers.find(m => 
-            m.eventData && m.eventData.id === event.id
-        );
-        
-        if (selectedMarker) {
-            selectedMarker.getElement()?.classList.add('highlight');
-            setTimeout(() => {
-                selectedMarker.getElement()?.classList.remove('highlight');
-            }, 2000);
-        }
-    }
-
-    displayEventDetails(event) {
-        const detailsContainer = document.getElementById('eventDetails');
-        const category = this.categories.find(cat => cat.name === event.category);
-        
-        detailsContainer.innerHTML = `
-            <div class="event-content">
-                <h3 class="event-title">${event.title}</h3>
-                <div class="event-date">${this.formatDate(event.date)}</div>
-                <div class="event-category" style="background-color: ${category?.color || '#333'}; color: white;">
-                    ${event.category}
-                </div>
-                <p class="event-description">${event.description}</p>
+        const html = `
+            <div class="event-details-content">
+                <h3 class="event-title">${this.escapeHtml(event.title)}</h3>
                 
-                <div class="event-section">
-                    <div class="event-section-title">Учасники:</div>
-                    <ul class="event-list">
-                        ${event.participants.map(p => `<li>${p}</li>`).join('')}
-                    </ul>
-                </div>
-                
-                <div class="event-section">
-                    <div class="event-section-title">Вплив:</div>
-                    <p>${event.impact}</p>
-                </div>
-                
-                <div class="event-section">
-                    <div class="event-section-title">Джерела:</div>
-                    <div class="event-sources">
-                        ${event.sources.map(source => `<a href="#" class="source-link" target="_blank">${source}</a>`).join('')}
+                <div class="event-meta">
+                    <div class="meta-item">
+                        <span class="meta-label">📅 Дата</span>
+                        <span class="meta-value">${this.formatDate(event.date)}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">🗺️ Регіон</span>
+                        <span class="meta-value">${event.region}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">📂 Категорія</span>
+                        <span class="meta-value">${event.category}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">⭐ Важливість</span>
+                        <span class="meta-value">${event.importance || 'N/A'}</span>
                     </div>
                 </div>
+
+                <div class="event-description">
+                    <span class="event-description-label">📺 Канал</span>
+                    <span class="event-description-text">${event.channel_name}</span>
+                </div>
+
+                ${event.description ? `
+                    <div class="event-description">
+                        <span class="event-description-label">📝 Опис</span>
+                        <span class="event-description-text">${this.escapeHtml(event.description.substring(0, 300))}</span>
+                    </div>
+                ` : ''}
+
+                <div class="event-links">
+                    ${event.source_url ? `
+                        <a href="${event.source_url}" target="_blank" rel="noopener noreferrer" class="event-link">
+                            🔗 Переглянути на YouTube
+                        </a>
+                    ` : ''}
+                    ${event.url ? `
+                        <a href="${event.url}" target="_blank" rel="noopener noreferrer" class="event-link">
+                            🔗 Переглянути джерело
+                        </a>
+                    ` : ''}
+                </div>
             </div>
         `;
+
+        this.uiElements.eventDetails.innerHTML = html;
+        this.uiElements.eventPanel.classList.add('active');
+
+        // On mobile, close control panel
+        if (window.innerWidth < 1024) {
+            this.uiElements.controlPanel.classList.remove('active');
+        }
     }
 
-    formatDate(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('uk-UA', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
+    /**
+     * Get color for category
+     */
+    getCategoryColor(category) {
+        const colors = {
+            'Geopolitics/News/Analysis': '#3498db',
+            'Війни та конфлікти': '#e74c3c',
+            'Політичні зміни': '#f39c12',
+            'Економічні зміни': '#27ae60',
+            'Технологічні зміни': '#9b59b6',
+            'Політичні системи': '#1abc9c',
+            'Союзи та договори': '#34495e',
+            'Тероризм': '#c0392b',
+            'Глобальні кризи': '#d35400',
+            'Інфраструктурні проекти': '#2980b9',
+            'Культурні зміни': '#16a085',
+            'Військові аналізи': '#8e44ad',
+            'Соціально-економічні моделі': '#2ecc71',
+            'Економічні моделі': '#27ae60',
+            'Кліматичні зміни': '#3498db',
+            'Кібербезпека': '#e67e22',
+            'Космічні програми': '#2c3e50',
+            'Біотехнології': '#1abc9c'
+        };
+        return colors[category] || '#3498db';
+    }
+
+    /**
+     * Update analytics charts
+     */
+    updateCharts() {
+        this.updateCategoryChart();
+        this.updateRegionChart();
+        this.updateTimelineChart();
+        this.updateImportanceChart();
+    }
+
+    /**
+     * Update category distribution chart
+     */
+    updateCategoryChart() {
+        const ctx = document.getElementById('categories-chart');
+        if (!ctx) return;
+
+        const categoryData = {};
+        this.filteredEvents.forEach(event => {
+            const cat = event.category || 'Невизначена';
+            categoryData[cat] = (categoryData[cat] || 0) + 1;
         });
-    }
 
-    exportToCSV() {
-        const headers = ['ID', 'Назва', 'Канал', 'Дата', 'Категорія', 'Регіон', 'Країна', 'lat', 'lng', 'Опис', 'Учасники', 'Вплив', 'Джерела'];
-        const csvContent = [
-            headers.join(','),
-            ...this.filteredEvents.map(event => [
-                event.id,
-                `"${event.title}"`,
-                `"${event.channel || ''}"`,
-                event.date,
-                `"${event.category}"`,
-                `"${event.region}"`,
-                `"${event.country}"`,
-                event.lat,
-                event.lng,
-                `"${event.description}"`,
-                `"${event.participants.join('; ')}"`,
-                `"${event.impact}"`,
-                `"${(event.sources || []).join('; ')}"`
-            ].join(','))
-        ].join('\n');
+        const labels = Object.keys(categoryData).slice(0, 10);
+        const data = labels.map(label => categoryData[label]);
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'geopolitical_events.csv');
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
+        if (this.charts.categories) this.charts.categories.destroy();
 
-    // ===================== IMPORT / DISCOVERY =====================
-    setImportStatus(text, progress = null) {
-        const status = document.getElementById('importStatusText');
-        const fill = document.getElementById('importProgressFill');
-        if (status) status.textContent = text;
-        if (fill && progress !== null) fill.style.width = `${Math.max(0, Math.min(100, progress))}%`;
-    }
-
-    clearImportPreview() {
-        this.importBuffer = [];
-        const list = document.getElementById('importPreviewList');
-        const importBtn = document.getElementById('importBtn');
-        if (list) list.innerHTML = '';
-        if (importBtn) importBtn.disabled = true;
-        this.setImportStatus('Очищено', 0);
-    }
-
-    // External API methods
-    async fetchExternalData() {
-        try {
-            this.showToast('Завантаження зовнішніх даних...');
-            
-            const query = document.getElementById('newsApiQuery')?.value || 'geopolitics';
-            const externalEvents = await this.fetchExternalEvents(query);
-            
-            // Add to import buffer
-            this.importBuffer = [...this.importBuffer, ...externalEvents];
-            this.updateImportPreview();
-            
-            this.showToast(`Завантажено ${externalEvents.length} подій з зовнішніх джерел`);
-        } catch (error) {
-            console.error('Failed to fetch external data:', error);
-            this.showToast('Помилка завантаження зовнішніх даних', 'error');
-        }
-    }
-
-    async testNewsAPI() {
-        const apiKey = document.getElementById('newsApiKey')?.value;
-        if (!apiKey) {
-            this.showToast('Введіть API ключ NewsAPI', 'error');
-            return;
-        }
-        
-        try {
-            this.showToast('Тестування NewsAPI...');
-            
-            // Store API key
-            localStorage.setItem('api_key_newsAPI', apiKey);
-            
-            // Reinitialize API manager with new key
-            await this.apiManager.initializeServices({ newsAPI: apiKey });
-            
-            // Test the API
-            const testEvents = await this.fetchNewsEvents('test');
-            
-            this.showToast(`NewsAPI працює! Знайдено ${testEvents.length} тестових подій`);
-        } catch (error) {
-            console.error('NewsAPI test failed:', error);
-            this.showToast('NewsAPI тест не пройшов: ' + error.message, 'error');
-        }
-    }
-
-    toggleHistoricalAPI(enabled) {
-        this.config = this.config || {};
-        this.config.historicalEvents = { enabled };
-        this.showToast(`Історичні події ${enabled ? 'увімкнено' : 'вимкнено'}`);
-    }
-
-    toggleTodayEvents(enabled) {
-        this.config = this.config || {};
-        this.config.todayEvents = { enabled };
-        this.showToast(`Події цього дня ${enabled ? 'увімкнено' : 'вимкнено'}`);
-    }
-
-    toggleCountryData(enabled) {
-        this.config = this.config || {};
-        this.config.countryData = { enabled };
-        this.showToast(`Дані про країни ${enabled ? 'увімкнено' : 'вимкнено'}`);
-    }
-
-    toggleGeopoliticalData(enabled) {
-        this.config = this.config || {};
-        this.config.geopoliticalData = { enabled };
-        this.showToast(`Геополітичні дані ${enabled ? 'увімкнено' : 'вимкнено'}`);
-    }
-
-    updateImportPreview() {
-        const list = document.getElementById('importPreviewList');
-        const importBtn = document.getElementById('importBtn');
-        
-        if (!list) return;
-        
-        if (this.importBuffer.length === 0) {
-            list.innerHTML = '<div class="no-events">Немає подій для перегляду</div>';
-            if (importBtn) importBtn.disabled = true;
-            return;
-        }
-        
-        list.innerHTML = this.importBuffer.map(event => `
-            <div class="import-preview-item">
-                <div class="event-title">${event.title}</div>
-                <div class="event-meta">
-                    <span class="event-date">${new Date(event.date).toLocaleDateString()}</span>
-                    <span class="event-category">${event.category}</span>
-                    <span class="event-region">${event.region}</span>
-                    <span class="event-importance">⭐ ${event.importance}</span>
-                </div>
-                <div class="event-description">${event.description.substring(0, 100)}...</div>
-            </div>
-        `).join('');
-        
-        if (importBtn) importBtn.disabled = false;
-        this.setImportStatus(`Готово до імпорту: ${this.importBuffer.length} подій`, 100);
-    }
-
-    appendToImportPreview(events) {
-        const list = document.getElementById('importPreviewList');
-        if (!list) return;
-        const fragment = document.createDocumentFragment();
-        events.forEach(ev => {
-            const item = document.createElement('div');
-            item.className = 'import-preview-item';
-            const dateStr = this.formatDate(ev.date);
-            item.innerHTML = `
-                <div>
-                    <strong>${ev.title}</strong>
-                    <div class="meta">${dateStr} • ${ev.region || ''} • ${ev.country || ''}</div>
-                </div>
-                <div>${ev.category || ''}</div>
-            `;
-            fragment.appendChild(item);
-        });
-        list.appendChild(fragment);
-    }
-
-    handleImportFile(e) {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            try {
-                const content = reader.result;
-                let parsed = [];
-                const fmtPref = (this.importSettings.format || 'auto').toLowerCase();
-                const isJson = fmtPref === 'json' || file.name.toLowerCase().endsWith('.json');
-                if (isJson) {
-                    const data = JSON.parse(content);
-                    parsed = Array.isArray(data) ? data : (data.events || []);
-                } else {
-                    // CSV
-                    this.setupFieldMappingForCsv(content);
-                    parsed = this.parseCsv(content);
-                    // Apply field mapping and date format if provided
-                    const mapping = this.importSettings.fieldMapping || {};
-                    const dateFmt = this.importSettings.dateFormat || 'auto';
-                    parsed = parsed.map(obj => {
-                        const mapped = this.applyFieldMappingToObject(obj, mapping);
-                        if (dateFmt && dateFmt !== 'auto' && mapped.date) {
-                            const d = this.parseDateByFormat(mapped.date, dateFmt);
-                            if (d) mapped.date = d;
+        this.charts.categories = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: [
+                        '#3498db', '#e74c3c', '#f39c12', '#27ae60', '#9b59b6',
+                        '#1abc9c', '#34495e', '#c0392b', '#d35400', '#2980b9'
+                    ],
+                    borderColor: '#ffffff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: { size: 10 },
+                            color: this.getTextColor()
                         }
-                        return mapped;
-                    });
-                }
-
-                // Normalize and validate
-                const normalized = this.normalizeAndValidateBatch(parsed);
-                // Preserve original string IDs for stronger deduplication if present
-                normalized.forEach((ev, idx) => {
-                    const rawId = parsed[idx]?.id;
-                    if (rawId && typeof rawId === 'string' && !Number.isInteger(Number(rawId))) {
-                        ev._originalId = String(rawId);
-                    }
-                });
-
-                // Deduplicate within the imported set
-                const seen = new Set();
-                const dedupMode = this.importSettings.dedupMode || 'auto';
-                const unique = [];
-                for (const ev of normalized) {
-                    const key = this.computeEventDedupKeyByMode(dedupMode, ev);
-                    if (!seen.has(key)) {
-                        seen.add(key);
-                        unique.push(ev);
                     }
                 }
-
-                // Remove items already present in the app (by chosen dedup mode)
-                const existingKeys = new Set(this.events.map(ev => this.computeEventDedupKeyByMode(dedupMode, ev)));
-                const toBuffer = unique.filter(ev => !existingKeys.has(this.computeEventDedupKeyByMode(dedupMode, ev)));
-
-                const invalidCount = Math.max(0, parsed.length - normalized.length);
-                this.showValidation(invalidCount ? `Валідно: ${normalized.length}. Пропущено: ${invalidCount}.` : '');
-
-                this.importBuffer.push(...toBuffer);
-                this.appendToImportPreview(toBuffer);
-                document.getElementById('importBtn').disabled = this.importBuffer.length === 0;
-                this.setImportStatus(`Завантажено з файлу: ${toBuffer.length}`, 30);
-            } catch (err) {
-                console.error('Import file parse error', err);
-                this.showValidation('Помилка читання або парсингу файлу');
-                this.showToast('Помилка читання файлу імпорту');
             }
-        };
-        reader.readAsText(file);
-    }
-
-    parseCsv(text) {
-        const lines = text.split(/\r?\n/).filter(Boolean);
-        if (lines.length <= 1) return [];
-        const headers = lines[0].split(',').map(h => h.trim());
-        const rows = lines.slice(1).map(line => this.splitCsvLine(line));
-        return rows.map(cols => {
-            const obj = {};
-            headers.forEach((h, i) => obj[h] = cols[i]);
-            // Normalize some common header variants inline for CSV convenience
-            if (obj.lat === undefined && obj.latitude !== undefined) obj.lat = obj.latitude;
-            if (obj.lng === undefined && (obj.longitude !== undefined || obj.lon !== undefined)) obj.lng = obj.longitude ?? obj.lon;
-            return obj;
         });
     }
 
-    splitCsvLine(line) {
-        const result = [];
-        let current = '';
-        let inQuotes = false;
-        for (let i = 0; i < line.length; i++) {
-            const ch = line[i];
-            if (ch === '"') {
-                inQuotes = !inQuotes;
-            } else if (ch === ',' && !inQuotes) {
-                result.push(current);
-                current = '';
-            } else {
-                current += ch;
-            }
-        }
-        result.push(current);
-        return result.map(s => s.replace(/^\"|\"$/g, ''));
-    }
+    /**
+     * Update region distribution chart
+     */
+    updateRegionChart() {
+        const ctx = document.getElementById('regions-chart');
+        if (!ctx) return;
 
-    normalizeAndValidateBatch(rawItems) {
-        const out = [];
-        for (const raw of rawItems) {
-            const normalized = this.normalizeEvent(raw);
-            if (normalized && this.validateEvent(normalized)) {
-                out.push(normalized);
-            }
-        }
-        return out;
-    }
-
-    normalizeEvent(raw) {
-        // Map incoming fields to internal schema
-        const toNumber = (v) => {
-            const num = typeof v === 'string' ? parseFloat(v) : v;
-            return isFinite(num) ? num : 0;
-        };
-        const toNumericId = (v) => {
-            // Preserve numeric IDs; convert prefixed IDs to a stable hash-like number space via incrementing counter
-            if (v === undefined || v === null || v === '') return this.nextId++;
-            const asNum = Number(v);
-            if (Number.isInteger(asNum)) return asNum;
-            // Non-numeric id: keep in sources and still give numeric id for app usage
-            return this.nextId++;
-        };
-        const ensureArray = (v) => Array.isArray(v) ? v : (typeof v === 'string' && v.startsWith('[') ? JSON.parse(v.replace(/'/g, '"')) : (v ? [String(v)] : []));
-        const dateRaw = raw.date || raw.publishedAt || raw.pubDate || raw.updated || '';
-        const normalizedDate = this.normalizeEventDate(dateRaw);
-
-        // Normalize region/category labels and compute importance with fallbacks
-        const normalizedRegion = this.normalizeRegionLabel(raw.region || '');
-        const normalizedCategory = this.normalizeCategoryLabel(raw.category || raw.topic);
-        let importanceValue = Number.parseInt(raw.importance);
-        if (!Number.isFinite(importanceValue)) {
-            const conf = Number.parseFloat(raw.confidence);
-            if (Number.isFinite(conf)) {
-                importanceValue = Math.round(conf * 10);
-            }
-        }
-        if (!Number.isFinite(importanceValue)) {
-            importanceValue = 5;
-        }
-        const event = {
-            id: toNumericId(raw.id),
-            title: (raw.title || raw.headline || 'Без назви').toString().trim(),
-            channel: raw.channel || raw.source || raw.channel_name || '',
-            date: normalizedDate || new Date().toISOString().slice(0,10),
-            category: normalizedCategory || 'Політичні зміни',
-            region: normalizedRegion || '',
-            country: raw.country || '',
-            lat: toNumber(raw.lat ?? raw.latitude),
-            lng: toNumber(raw.lng ?? raw.longitude),
-            description: raw.description || raw.summary || raw.content || '',
-            participants: ensureArray(raw.participants),
-            impact: raw.impact || '',
-            importance: Math.max(1, Math.min(10, importanceValue)),
-            sources: ensureArray(raw.sources || raw.link || raw.url)
-        };
-        return event;
-    }
-
-    validateEvent(event) {
-        // Basic required fields
-        if (!event.title || !event.date) return false;
-        const time = Date.parse(event.date);
-        if (isNaN(time)) return false;
-        if (typeof event.lat !== 'number' || typeof event.lng !== 'number') return false;
-        if (event.lat < -90 || event.lat > 90 || event.lng < -180 || event.lng > 180) return false;
-        // Category whitelist: ensure it exists or default
-        const category = this.categories.find(c => c.name === event.category);
-        if (!category) {
-            // Fallback to a default category
-            event.category = 'Політичні зміни';
-        }
-        // Region fallback
-        if (!event.region) {
-            event.region = 'Глобально';
-        }
-        if (!event.country) {
-            event.country = 'Світ';
-        }
-        if (!event.importance || isNaN(event.importance)) {
-            event.importance = 5;
-        }
-        if (!event.participants) event.participants = [];
-        // Deduplicate participants and trim
-        event.participants = Array.from(new Set(event.participants.map(p => String(p).trim()).filter(Boolean)));
-        if (!event.sources) event.sources = [];
-        // Ensure sources are strings and valid-ish URLs if present
-        event.sources = event.sources.map(s => String(s).trim()).filter(Boolean);
-        // Enforce consistent country casing and trimming
-        event.country = String(event.country).trim();
-        event.region = String(event.region).trim();
-        event.category = String(event.category).trim();
-        // Round coordinates to 6 decimals to avoid floating jitter
-        if (Number.isFinite(event.lat)) event.lat = Math.round(event.lat * 1e6) / 1e6;
-        if (Number.isFinite(event.lng)) event.lng = Math.round(event.lng * 1e6) / 1e6;
-        return true;
-    }
-
-    normalizeEventDate(input) {
-        if (!input) return '';
-        // Respect explicit date format if chosen
-        const fmt = this.importSettings?.dateFormat || 'auto';
-        if (fmt && fmt !== 'auto') {
-            const d = this.parseDateByFormat(String(input), fmt);
-            if (d) return d;
-        }
-        // Fallback: Attempt to parse various formats and normalize to YYYY-MM-DD
-        const parsed = new Date(input);
-        if (isNaN(parsed.getTime())) return '';
-        const iso = parsed.toISOString();
-        return iso.slice(0, 10);
-    }
-
-    normalizeRegionLabel(input) {
-        const value = String(input || '').trim();
-        if (!value) return value;
-        const low = value.toLowerCase();
-        if (/(africa).*(europe)|(europe).*(africa)/.test(low)) {
-            return 'Африка/Європа';
-        }
-        const mapping = new Map([
-            ['europe', 'Європа'],
-            ['asia', 'Азія'],
-            ['middle east', 'Близький Схід'],
-            ['north america', 'Північна Америка'],
-            ['eurasia', 'Євразія'],
-            ['global', 'Глобально'],
-            ['world', 'Глобально'],
-            ['ukraine', 'Європа'],
-        ]);
-        return mapping.get(low) || value;
-    }
-
-    normalizeCategoryLabel(input) {
-        const value = String(input || '').trim();
-        if (!value) return value;
-        const low = value.toLowerCase();
-        const mapping = new Map([
-            ['global crises', 'Глобальні кризи'],
-            ['wars and conflicts', 'Війни та конфлікти'],
-            ['political changes', 'Політичні зміни'],
-            ['economic changes', 'Економічні зміни'],
-            ['technological changes', 'Технологічні зміни'],
-        ]);
-        return mapping.get(low) || value;
-    }
-
-    computeEventDedupKey(event) {
-        // Prefer stable link if available
-        const link = Array.isArray(event.sources) && event.sources.length ? event.sources[0] : '';
-        if (link && /^https?:\/\//i.test(link)) {
-            return `link:${link}`;
-        }
-        // If original string id present in sources, use it to strengthen dedup
-        const originalId = (event._originalId && typeof event._originalId === 'string') ? event._originalId : '';
-        const title = (event.title || '').toLowerCase().replace(/\s+/g, ' ').trim();
-        const date = event.date || '';
-        const lat = Number.isFinite(event.lat) ? event.lat.toFixed(3) : 'x';
-        const lng = Number.isFinite(event.lng) ? event.lng.toFixed(3) : 'x';
-        return originalId ? `oid:${originalId}` : `tdl:${title}|${date}|${lat}|${lng}`;
-    }
-
-    async scanSources() {
-        // Backward-compatible manual scan using the new SourceScanner
-        const sources = this.prepareSourcesFromUI();
-        if (!this.scanner) this.scanner = new SourceScanner(this);
-        this.scanner.setSources(sources);
-        this.setImportStatus('Сканування джерел...', 5);
-        const results = await this.scanner.scanOnce({ updateUi: true });
-        // Start auto-refresh after a manual scan if there are sources
-        if (sources.length) {
-            this.scanner.startAutoRefresh();
-            this.updateScanButtonUi(true);
-        }
-        return results;
-    }
-
-    prepareSourcesFromUI() {
-        const rssTextarea = document.getElementById('rssUrls');
-        const newsApiKey = document.getElementById('newsApiKey')?.value?.trim();
-        const newsApiQuery = document.getElementById('newsApiQuery')?.value?.trim() || 'geopolitics';
-        const govJsonUrl = document.getElementById('govJsonUrl')?.value?.trim();
-        const corsProxy = document.getElementById('corsProxyUrl')?.value?.trim();
-
-        const rssUrls = (rssTextarea?.value || '')
-            .split(/\n|[,;]/)
-            .map(u => u.trim())
-            .filter(Boolean);
-
-        const sources = [];
-        rssUrls.forEach((url, idx) => {
-            sources.push({
-                id: `rss:${idx}:${url}`,
-                type: 'rss',
-                url,
-                priority: 2,
-                intervalMs: 15 * 60 * 1000,
-                corsProxy
-            });
+        const regionData = {};
+        this.filteredEvents.forEach(event => {
+            const reg = event.region || 'Невизначений';
+            regionData[reg] = (regionData[reg] || 0) + 1;
         });
-        if (govJsonUrl) {
-            sources.push({
-                id: `json:${govJsonUrl}`,
-                type: 'json',
-                url: govJsonUrl,
-                priority: 1,
-                intervalMs: 20 * 60 * 1000,
-                corsProxy
-            });
-        }
-        // Always include bundled local CSV resource if available
-        sources.push({
-            id: 'csv:local:ukraine_channels_events.csv',
-            type: 'csv',
-            url: window.location.origin + window.location.pathname.replace(/[^/]*$/, '') + 'ukraine_channels_events.csv',
-            priority: 1,
-            intervalMs: 60 * 60 * 1000,
-            corsProxy
+
+        const labels = Object.keys(regionData);
+        const data = labels.map(label => regionData[label]);
+
+        if (this.charts.regions) this.charts.regions.destroy();
+
+        this.charts.regions = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Кількість подій',
+                    data: data,
+                    backgroundColor: '#3498db',
+                    borderColor: '#2980b9',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                indexAxis: 'y',
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: {
+                            color: this.getGridColor()
+                        },
+                        ticks: {
+                            color: this.getTextColor()
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: this.getGridColor()
+                        },
+                        ticks: {
+                            color: this.getTextColor()
+                        }
+                    }
+                }
+            }
         });
-        if (newsApiKey) {
-            sources.push({
-                id: `newsapi:${newsApiQuery}`,
-                type: 'newsapi',
-                url: 'https://newsapi.org/v2/everything',
-                priority: 3,
-                intervalMs: 30 * 60 * 1000,
-                corsProxy,
-                params: { apiKey: newsApiKey, query: newsApiQuery }
-            });
-        }
-        return sources;
     }
 
-    handleScanButton() {
-        const isActive = this.scanner && this.scanner.isAutoRefreshing;
-        if (isActive) {
-            this.scanner.stopAutoRefresh();
-            this.updateScanButtonUi(false);
-            this.showToast('Автооновлення зупинено');
+    /**
+     * Update timeline chart (events per month)
+     */
+    updateTimelineChart() {
+        const ctx = document.getElementById('timeline-chart');
+        if (!ctx) return;
+
+        const monthData = {};
+        this.filteredEvents.forEach(event => {
+            const date = new Date(event.date);
+            const month = date.toISOString().substring(0, 7);
+            monthData[month] = (monthData[month] || 0) + 1;
+        });
+
+        const labels = Object.keys(monthData).sort();
+        const data = labels.map(label => monthData[label]);
+
+        if (this.charts.timeline) this.charts.timeline.destroy();
+
+        this.charts.timeline = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'События',
+                    data: data,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#3498db',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: this.getGridColor()
+                        },
+                        ticks: {
+                            color: this.getTextColor()
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: this.getGridColor()
+                        },
+                        ticks: {
+                            color: this.getTextColor()
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Update importance distribution chart
+     */
+    updateImportanceChart() {
+        const ctx = document.getElementById('importance-chart');
+        if (!ctx) return;
+
+        const importanceData = {
+            'Критична (8-10)': 0,
+            'Висока (6-7)': 0,
+            'Середня (4-5)': 0,
+            'Низька (1-3)': 0
+        };
+
+        this.filteredEvents.forEach(event => {
+            const imp = event.importance || 5;
+            if (imp >= 8) importanceData['Критична (8-10)']++;
+            else if (imp >= 6) importanceData['Висока (6-7)']++;
+            else if (imp >= 4) importanceData['Середня (4-5)']++;
+            else importanceData['Низька (1-3)']++;
+        });
+
+        const labels = Object.keys(importanceData);
+        const data = labels.map(label => importanceData[label]);
+
+        if (this.charts.importance) this.charts.importance.destroy();
+
+        this.charts.importance = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: [
+                        '#e74c3c', '#f39c12', '#f1c40f', '#27ae60'
+                    ],
+                    borderColor: '#ffffff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: { size: 10 },
+                            color: this.getTextColor()
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Update timeline progress and display
+     */
+    updateTimeline() {
+        if (this.filteredEvents.length === 0) {
+            this.uiElements.currentDate.textContent = '--';
+            this.uiElements.totalDate.textContent = '--';
             return;
         }
-        // Trigger a manual scan, then auto-refresh will be enabled inside
-        this.scanSources();
+
+        const dates = this.filteredEvents.map(e => new Date(e.date)).sort((a, b) => a - b);
+        this.uiElements.totalDate.textContent = this.formatDate(dates[dates.length - 1]);
     }
 
-    updateScanButtonUi(isActive) {
-        const scanBtn = document.getElementById('scanSourcesBtn');
-        if (!scanBtn) return;
-        if (isActive) {
-            scanBtn.classList.add('active');
-            scanBtn.textContent = 'Зупинити автооновлення';
-        } else {
-            scanBtn.classList.remove('active');
-            scanBtn.textContent = 'Сканувати джерела';
-        }
+    /**
+     * Handle timeline slider interaction
+     */
+    handleTimelineInteraction(e) {
+        const rect = this.uiElements.timelineSlider.parentElement.getBoundingClientRect();
+        const x = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+        const percentage = (x - rect.left) / rect.width;
+        this.playbackIndex = Math.floor(percentage * this.filteredEvents.length);
+        this.updatePlaybackUI();
     }
 
-    async fetchWithCors(url, corsProxy, options = {}) {
-        const finalUrl = corsProxy ? `${corsProxy.replace(/\/$/, '')}/${encodeURIComponent(url)}` : url;
-        const res = await fetch(finalUrl, options);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res;
-    }
-
-    async fetchRss(url, corsProxy) {
-        const res = await this.fetchWithCors(url, corsProxy);
-        const text = await res.text();
-        const items = this.parseRss(text);
-        return items.map(item => ({
-            title: item.title,
-            description: item.description,
-            date: item.pubDate || item.published,
-            sources: [item.link],
-            // location/category inference is out of scope; leave defaults
-        }));
-    }
-
-    parseRss(xmlText) {
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(xmlText, 'text/xml');
-        const entries = [];
-        const itemNodes = [...xml.querySelectorAll('item')];
-        if (itemNodes.length) {
-            itemNodes.forEach(n => entries.push({
-                title: n.querySelector('title')?.textContent || '',
-                description: n.querySelector('description')?.textContent || '',
-                link: n.querySelector('link')?.textContent || '',
-                pubDate: n.querySelector('pubDate')?.textContent || ''
-            }));
-        } else {
-            // Atom
-            const atomEntries = [...xml.querySelectorAll('entry')];
-            atomEntries.forEach(n => entries.push({
-                title: n.querySelector('title')?.textContent || '',
-                description: n.querySelector('summary')?.textContent || n.querySelector('content')?.textContent || '',
-                link: n.querySelector('link')?.getAttribute('href') || '',
-                published: n.querySelector('published')?.textContent || n.querySelector('updated')?.textContent || ''
-            }));
-        }
-        return entries;
-    }
-
-    async fetchNewsApi(apiKey, query, corsProxy) {
-        const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&pageSize=100`;
-        const res = await this.fetchWithCors(url, corsProxy, { headers: { 'X-Api-Key': apiKey } }).catch(async () => {
-            // If proxy route with headers fails, try direct
-            const r = await fetch(url, { headers: { 'X-Api-Key': apiKey } });
-            if (!r.ok) throw new Error('NewsAPI failed');
-            return r;
-        });
-        const json = await res.json();
-        if (!json.articles) return [];
-        return json.articles.map(a => ({
-            title: a.title,
-            description: a.description || a.content || '',
-            date: a.publishedAt,
-            sources: [a.url],
-            country: a.source?.name || ''
-        }));
-    }
-
-    async fetchGovJson(url, corsProxy) {
-        const res = await this.fetchWithCors(url, corsProxy).catch(() => fetch(url));
-        const json = await res.json();
-        return Array.isArray(json) ? json : (json.events || []);
-    }
-
-    importBufferedEvents() {
-        if (!this.importBuffer.length) {
-            this.showToast('Немає подій для імпорту');
-            return;
-        }
-        const total = this.importBuffer.length;
-        let imported = 0;
-        const batchSize = 50; // batch import
-        const doBatch = () => {
-            const batch = this.importBuffer.splice(0, batchSize);
-            // Apply replace or append on the first batch
-            if (imported === 0 && (this.importSettings.importMode || 'append') === 'replace') {
-                this.events = [];
-            }
-            batch.forEach(ev => this.events.push(ev));
-            imported += batch.length;
-            this.filteredEvents = [...this.events];
-            this.updateDisplay();
-            this.rebuildTimeline();
-            this.cameraController.calculateOptimalBounds();
-            const progress = Math.round((imported / total) * 100);
-            this.setImportStatus(`Імпортовано ${imported}/${total}`, progress);
-            if (this.importBuffer.length) {
-                setTimeout(doBatch, 50);
-            } else {
-                document.getElementById('importBtn').disabled = true;
-                this.showToast('Імпорт завершено');
-            }
-        };
-        doBatch();
-    }
-
-    playTimelineAnimation() {
-        if (this.isPlaying) return;
-        // ensure timeline is prepared
-        if (!this.isReady) {
-            this.showTimelineReadyOverlay('Підготовка…');
+    /**
+     * Start playback
+     */
+    startPlayback() {
+        if (this.filteredEvents.length === 0) {
+            this.showNotification('Немає событий для відтворення', 'warning');
             return;
         }
 
         this.isPlaying = true;
-        this.hideTimelineReadyOverlay();
-        this.playbackEvents = [...this.filteredEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
-        this.currentPlaybackIndex = 0;
-        
-        // Update UI
-        this.updatePlaybackUI();
-        
-        // Start playback
-        try {
-            this.continuePlayback();
-        } catch (err) {
-            this._telemetryError('play:start', err);
-            this.pauseTimelineAnimation();
-        }
-    }
-    
-    continuePlayback() {
-        if (!this.isPlaying || this.currentPlaybackIndex >= this.playbackEvents.length) {
-            this.pauseTimelineAnimation();
-            return;
-        }
-        
-        const currentEvent = this.playbackEvents[this.currentPlaybackIndex];
-        
-        // Update timeline playhead
-        this.updateTimelinePlayhead();
-        
-        // Update progress
-        this.updateProgress();
-        
-        // Select current event with smooth transition
-        this.selectEvent(currentEvent.id);
-        
-        // Mark timeline event as playing
-        const timelineEvent = document.querySelector(`[data-event-id="${currentEvent.id}"]`);
-        if (timelineEvent) {
-            timelineEvent.classList.add('playing');
-        }
-        
-        this.currentPlaybackIndex++;
-        
-        // Schedule next event based on speed
-        const baseDelay = 2000; // 2 seconds base
-        const delay = baseDelay / this.playbackSpeed;
-        
-        this.timelineAnimation = setTimeout(() => {
-            try {
-                this.continuePlayback();
-            } catch (err) {
-                this._telemetryError('play:tick', err);
-                this.pauseTimelineAnimation();
+        this.uiElements.playBtn.style.display = 'none';
+        this.uiElements.pauseBtn.style.display = 'flex';
+
+        this.playbackInterval = setInterval(() => {
+            this.playbackIndex++;
+            if (this.playbackIndex >= this.filteredEvents.length) {
+                this.pausePlayback();
+                return;
             }
-        }, delay);
+            this.updatePlaybackUI();
+        }, 500 / this.playbackSpeed);
     }
-    
-    updateTimelinePlayhead() {
-        const playhead = document.getElementById('timelinePlayhead');
-        if (!playhead || this.playbackEvents.length === 0) return;
-        
-        const progress = this.currentPlaybackIndex / this.playbackEvents.length;
-        const timelineEl = document.getElementById('timeline');
-        const timelineWidth = timelineEl.offsetWidth;
-        playhead.style.left = `${Math.max(0, Math.min(1, progress)) * timelineWidth}px`;
-        playhead.classList.add('active');
-    }
-    
-    updateProgress() {
-        const progressFill = document.getElementById('timelineProgressFill');
-        const progressHandle = document.getElementById('timelineProgressHandle');
-        
-        if (progressFill && this.playbackEvents.length > 0) {
-            const progress = (this.currentPlaybackIndex / this.playbackEvents.length) * 100;
-            progressFill.style.width = `${progress}%`;
-            progressHandle.style.left = `${progress}%`;
-        }
-    }
-    
-    updatePlaybackUI() {
-        const indicator = document.getElementById('playbackIndicator');
-        if (this.isPlaying) {
-            indicator.classList.add('active');
-            indicator.querySelector('span:last-child').textContent = `Playback ${this.playbackSpeed}x`;
-        } else {
-            indicator.classList.remove('active');
-        }
-    }
-    
-    seekToProgress(e) {
-        if (!this.playbackEvents.length) return;
-        
-        const rect = e.currentTarget.getBoundingClientRect();
-        const progress = (e.clientX - rect.left) / rect.width;
-        const targetIndex = Math.floor(progress * this.playbackEvents.length);
-        
-        this.currentPlaybackIndex = Math.max(0, Math.min(targetIndex, this.playbackEvents.length - 1));
-        this.updateProgress();
-        this.updateTimelinePlayhead();
-        
-        if (this.currentPlaybackIndex < this.playbackEvents.length) {
-            this.selectEvent(this.playbackEvents[this.currentPlaybackIndex].id);
+
+    /**
+     * Pause playback
+     */
+    pausePlayback() {
+        this.isPlaying = false;
+        this.uiElements.playBtn.style.display = 'flex';
+        this.uiElements.pauseBtn.style.display = 'none';
+        if (this.playbackInterval) {
+            clearInterval(this.playbackInterval);
+            this.playbackInterval = null;
         }
     }
 
-    pauseTimelineAnimation() {
-        this.isPlaying = false;
-        
-        if (this.timelineAnimation) {
-            clearTimeout(this.timelineAnimation);
-            this.timelineAnimation = null;
-        }
-        
-        // Remove playing class from all events
-        document.querySelectorAll('.timeline-event').forEach(el => {
-            el.classList.remove('playing');
-        });
-        
+    /**
+     * Reset playback
+     */
+    resetPlayback() {
+        this.pausePlayback();
+        this.playbackIndex = 0;
         this.updatePlaybackUI();
     }
 
-    resetTimelineAnimation() {
-        this.pauseTimelineAnimation();
-        this.currentPlaybackIndex = 0;
-        
-        // Reset UI elements
-        document.querySelectorAll('.timeline-event').forEach(el => {
-            el.classList.remove('active', 'playing');
-        });
-        
-        const playhead = document.getElementById('timelinePlayhead');
-        if (playhead) {
-            playhead.classList.remove('active');
-            playhead.style.left = '0px';
-        }
-        document.getElementById('timelineProgressFill').style.width = '0%';
-        document.getElementById('timelineProgressHandle').style.left = '0%';
-        
-        this.selectedEvent = null;
-        document.getElementById('eventDetails').innerHTML = `
-            <div class="no-selection">
-                <p>Оберіть подію на карті або в часовій шкалі для перегляду деталей</p>
-            </div>
-        `;
-        
-        // Reset camera view
-        this.cameraController.resetView();
-    }
+    /**
+     * Update playback UI
+     */
+    updatePlaybackUI() {
+        const progress = (this.playbackIndex / this.filteredEvents.length) * 100;
+        this.uiElements.timelineProgress.style.width = progress + '%';
+        this.uiElements.timelineSlider.style.left = progress + '%';
+        this.uiElements.timelineSlider.setAttribute('aria-valuenow', Math.round(progress));
 
-    showTimelineReadyOverlay(text = 'Підготовка відтворення…') {
-        const overlay = document.getElementById('timelineReadyOverlay');
-        const textEl = document.getElementById('timelineReadyText');
-        if (!overlay) return;
-        if (textEl) textEl.textContent = text;
-        overlay.classList.add('visible');
-        overlay.setAttribute('aria-hidden', 'false');
-    }
-
-    hideTimelineReadyOverlay() {
-        const overlay = document.getElementById('timelineReadyOverlay');
-        if (!overlay) return;
-        overlay.classList.remove('visible');
-        overlay.setAttribute('aria-hidden', 'true');
-    }
-
-    // Data Export Functionality
-    exportData(format = 'json', includeFiltered = true) {
-        const dataToExport = includeFiltered ? this.filteredEvents : this.events;
-        
-        switch (format.toLowerCase()) {
-            case 'csv':
-                this.exportToCSV(dataToExport);
-                break;
-            case 'json':
-                this.exportToJSON(dataToExport);
-                break;
-            case 'pdf':
-                this.exportToPDF(dataToExport);
-                break;
-            default:
-                console.error('Unsupported export format:', format);
+        if (this.playbackIndex < this.filteredEvents.length) {
+            const event = this.filteredEvents[this.playbackIndex];
+            this.uiElements.currentDate.textContent = this.formatDate(event.date);
+            this.showEventDetails(event);
         }
     }
 
-    exportToCSV(data) {
-        if (!data || data.length === 0) {
-            alert('Немає даних для експорту');
+    /**
+     * Export filtered events to CSV
+     */
+    exportToCSV() {
+        if (this.filteredEvents.length === 0) {
+            this.showNotification('Немає даних для експорту', 'warning');
             return;
         }
 
-        const headers = [
-            'ID', 'Назва', 'Канал', 'Дата', 'Категорія', 'Регіон', 'Країна',
-            'Широта', 'Довгота', 'Опис', 'Учасники', 'Вплив', 'Важливість', 'Джерела'
-        ];
+        const headers = ['ID', 'Назва', 'Дата', 'Категорія', 'Регіон', 'Канал', 'Важливість', 'Посилання'];
+        const rows = this.filteredEvents.map(e => [
+            e.id,
+            e.title,
+            this.formatDate(e.date),
+            e.category,
+            e.region,
+            e.channel_name,
+            e.importance || '',
+            e.source_url || ''
+        ]);
 
-        const csvContent = [
+        const csv = [
             headers.join(','),
-            ...data.map(event => [
-                event.id,
-                `"${(event.title || '').replace(/"/g, '""')}"`,
-                `"${(event.channel || '').replace(/"/g, '""')}"`,
-                event.date || '',
-                `"${(event.category || '').replace(/"/g, '""')}"`,
-                `"${(event.region || '').replace(/"/g, '""')}"`,
-                `"${(event.country || '').replace(/"/g, '""')}"`,
-                event.lat || '',
-                event.lng || '',
-                `"${(event.description || '').replace(/"/g, '""')}"`,
-                `"${(Array.isArray(event.participants) ? event.participants.join('; ') : '').replace(/"/g, '""')}"`,
-                `"${(event.impact || '').replace(/"/g, '""')}"`,
-                event.importance || '',
-                `"${(Array.isArray(event.sources) ? event.sources.join('; ') : '').replace(/"/g, '""')}"`
-            ].join(','))
+            ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
         ].join('\n');
 
-        this.downloadFile(csvContent, `geopolitical-events-${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+        this.downloadFile(csv, 'events.csv', 'text/csv');
+        this.showNotification('Дані експортовані у CSV', 'success');
     }
 
-    exportToJSON(data) {
-        if (!data || data.length === 0) {
-            alert('Немає даних для експорту');
+    /**
+     * Export filtered events to JSON
+     */
+    exportToJSON() {
+        if (this.filteredEvents.length === 0) {
+            this.showNotification('Немає даних для експорту', 'warning');
             return;
         }
 
-        const exportData = {
-            metadata: {
-                exportDate: new Date().toISOString(),
-                totalEvents: data.length,
-                appVersion: '1.0.0',
-                theme: this.theme,
-                filters: this.getCurrentFilters()
-            },
-            events: data
-        };
-
-        const jsonContent = JSON.stringify(exportData, null, 2);
-        this.downloadFile(jsonContent, `geopolitical-events-${new Date().toISOString().split('T')[0]}.json`, 'application/json');
+        const json = JSON.stringify(this.filteredEvents, null, 2);
+        this.downloadFile(json, 'events.json', 'application/json');
+        this.showNotification('Дані експортовані у JSON', 'success');
     }
 
-    exportToPDF(data) {
-        if (!data || data.length === 0) {
-            alert('Немає даних для експорту');
-            return;
-        }
-
-        // Create a simple HTML table for PDF generation
-        const htmlContent = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>Геополітичні Події - Експорт</title>
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 20px; }
-                    h1 { color: #2c3e50; text-align: center; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                    th { background-color: #f2f2f2; font-weight: bold; }
-                    .meta { margin-bottom: 20px; font-size: 14px; color: #666; }
-                </style>
-            </head>
-            <body>
-                <h1>Геополітичні Події</h1>
-                <div class="meta">
-                    <p><strong>Дата експорту:</strong> ${new Date().toLocaleDateString('uk-UA')}</p>
-                    <p><strong>Кількість подій:</strong> ${data.length}</p>
-                    <p><strong>Тема:</strong> ${this.theme === 'dark' ? 'Темна' : 'Світла'}</p>
-                </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Назва</th>
-                            <th>Дата</th>
-                            <th>Категорія</th>
-                            <th>Регіон</th>
-                            <th>Важливість</th>
-                            <th>Опис</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.map(event => `
-                            <tr>
-                                <td>${event.id}</td>
-                                <td>${event.title || ''}</td>
-                                <td>${event.date || ''}</td>
-                                <td>${event.category || ''}</td>
-                                <td>${event.region || ''}</td>
-                                <td>${event.importance || ''}</td>
-                                <td>${(event.description || '').substring(0, 100)}${(event.description || '').length > 100 ? '...' : ''}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </body>
-            </html>
-        `;
-
-        // Open in new window for printing
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
-    }
-
+    /**
+     * Download file helper
+     */
     downloadFile(content, filename, mimeType) {
         const blob = new Blob([content], { type: mimeType });
         const url = URL.createObjectURL(blob);
@@ -3128,920 +1028,96 @@ class GeopoliticalApp {
         URL.revokeObjectURL(url);
     }
 
-    getCurrentFilters() {
-        return {
-            categories: Array.from(document.querySelectorAll('#categoryFilters input:checked')).map(cb => cb.value),
-            dateFrom: document.getElementById('dateFrom')?.value || '',
-            dateTo: document.getElementById('dateTo')?.value || '',
-            region: document.getElementById('regionFilter')?.value || '',
-            searchQuery: document.getElementById('searchInput')?.value || ''
-        };
+    /**
+     * Toggle dark/light theme
+     */
+    toggleTheme() {
+        const isDark = document.body.classList.toggle('dark-theme');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        this.updateThemeIcon();
     }
 
-    // Enhanced Analytics and Statistics
-    generateAnalytics() {
-        const analytics = {
-            totalEvents: this.events.length,
-            filteredEvents: this.filteredEvents.length,
-            categories: this.getCategoryStats(),
-            regions: this.getRegionStats(),
-            timeline: this.getTimelineStats(),
-            importance: this.getImportanceStats(),
-            channels: this.getChannelStats()
-        };
-        return analytics;
-    }
-
-    getCategoryStats() {
-        const stats = {};
-        this.filteredEvents.forEach(event => {
-            const category = event.category || 'Невизначено';
-            stats[category] = (stats[category] || 0) + 1;
-        });
-        return stats;
-    }
-
-    getRegionStats() {
-        const stats = {};
-        this.filteredEvents.forEach(event => {
-            const region = event.region || 'Невизначено';
-            stats[region] = (stats[region] || 0) + 1;
-        });
-        return stats;
-    }
-
-    getTimelineStats() {
-        const monthlyStats = {};
-        this.filteredEvents.forEach(event => {
-            if (event.date) {
-                const month = event.date.substring(0, 7); // YYYY-MM
-                monthlyStats[month] = (monthlyStats[month] || 0) + 1;
-            }
-        });
-        return monthlyStats;
-    }
-
-    getImportanceStats() {
-        const stats = { high: 0, medium: 0, low: 0 };
-        this.filteredEvents.forEach(event => {
-            const importance = event.importance || 0;
-            if (importance >= 8) stats.high++;
-            else if (importance >= 5) stats.medium++;
-            else stats.low++;
-        });
-        return stats;
-    }
-
-    getChannelStats() {
-        const stats = {};
-        this.filteredEvents.forEach(event => {
-            const channel = event.channel || 'Невизначено';
-            stats[channel] = (stats[channel] || 0) + 1;
-        });
-        return stats;
-    }
-
-    // Export Dialog
-    showExportDialog() {
-        const dialog = this.createExportDialog();
-        document.body.appendChild(dialog);
-        
-        // Show dialog with animation
-        setTimeout(() => {
-            dialog.classList.add('visible');
-        }, 10);
-    }
-
-    createExportDialog() {
-        const dialog = document.createElement('div');
-        dialog.className = 'export-dialog-overlay';
-        dialog.innerHTML = `
-            <div class="export-dialog">
-                <div class="export-dialog-header">
-                    <h3>Експорт даних</h3>
-                    <button class="export-dialog-close" aria-label="Закрити">
-                        <i data-lucide="x"></i>
-                    </button>
-                </div>
-                <div class="export-dialog-content">
-                    <div class="export-options">
-                        <div class="export-option">
-                            <label>
-                                <input type="radio" name="exportFormat" value="json" checked>
-                                <span class="export-option-label">
-                                    <i data-lucide="file-text"></i>
-                                    <div>
-                                        <strong>JSON</strong>
-                                        <small>Повні дані з метаданими</small>
-                                    </div>
-                                </span>
-                            </label>
-                        </div>
-                        <div class="export-option">
-                            <label>
-                                <input type="radio" name="exportFormat" value="csv">
-                                <span class="export-option-label">
-                                    <i data-lucide="file-spreadsheet"></i>
-                                    <div>
-                                        <strong>CSV</strong>
-                                        <small>Таблиця для Excel/Google Sheets</small>
-                                    </div>
-                                </span>
-                            </label>
-                        </div>
-                        <div class="export-option">
-                            <label>
-                                <input type="radio" name="exportFormat" value="pdf">
-                                <span class="export-option-label">
-                                    <i data-lucide="file-text"></i>
-                                    <div>
-                                        <strong>PDF</strong>
-                                        <small>Друкований звіт</small>
-                                    </div>
-                                </span>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="export-settings">
-                        <label class="export-setting">
-                            <input type="checkbox" id="includeFiltered" checked>
-                            <span>Експортувати тільки відфільтровані події</span>
-                        </label>
-                        <div class="export-stats">
-                            <div class="stat-item">
-                                <span class="stat-label">Всього подій:</span>
-                                <span class="stat-value">${this.events.length}</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Відфільтровано:</span>
-                                <span class="stat-value">${this.filteredEvents.length}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="export-dialog-footer">
-                    <button class="btn btn--outline export-cancel">Скасувати</button>
-                    <button class="btn btn--primary export-confirm">Експортувати</button>
-                </div>
-            </div>
-        `;
-
-        // Add event listeners
-        dialog.querySelector('.export-dialog-close').addEventListener('click', () => {
-            this.closeExportDialog(dialog);
-        });
-
-        dialog.querySelector('.export-cancel').addEventListener('click', () => {
-            this.closeExportDialog(dialog);
-        });
-
-        dialog.querySelector('.export-confirm').addEventListener('click', () => {
-            const format = dialog.querySelector('input[name="exportFormat"]:checked').value;
-            const includeFiltered = dialog.querySelector('#includeFiltered').checked;
-            this.exportData(format, includeFiltered);
-            this.closeExportDialog(dialog);
-        });
-
-        // Close on overlay click
-        dialog.addEventListener('click', (e) => {
-            if (e.target === dialog) {
-                this.closeExportDialog(dialog);
-            }
-        });
-
-        // Re-render icons
-        if (window.lucide?.createIcons) {
-            window.lucide.createIcons();
+    /**
+     * Load saved theme
+     */
+    loadTheme() {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        if (savedTheme === 'dark') {
+            document.body.classList.add('dark-theme');
         }
-
-        return dialog;
+        this.updateThemeIcon();
     }
 
-    closeExportDialog(dialog) {
-        dialog.classList.remove('visible');
+    /**
+     * Update theme icon
+     */
+    updateThemeIcon() {
+        const isDark = document.body.classList.contains('dark-theme');
+        this.uiElements.themeToggle.innerHTML = `<span>${isDark ? '☀️' : '🌙'}</span>`;
+    }
+
+    /**
+     * Show/hide loading spinner
+     */
+    showLoading(show) {
+        this.uiElements.loadingSpinner.style.display = show ? 'block' : 'none';
+    }
+
+    /**
+     * Show notification toast
+     */
+    showNotification(message, type = 'info') {
+        this.uiElements.notificationToast.textContent = message;
+        this.uiElements.notificationToast.className = `notification-toast ${type}`;
+        this.uiElements.notificationToast.style.display = 'block';
+
         setTimeout(() => {
-            if (dialog.parentNode) {
-                dialog.parentNode.removeChild(dialog);
-            }
-        }, 300);
+            this.uiElements.notificationToast.style.display = 'none';
+        }, 4000);
+    }
+
+    /**
+     * Format date for display
+     */
+    formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('uk-UA', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    }
+
+    /**
+     * Escape HTML for safe display
+     */
+    escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    /**
+     * Get text color based on theme
+     */
+    getTextColor() {
+        return document.body.classList.contains('dark-theme') ? '#f5f5f5' : '#1a1a2e';
+    }
+
+    /**
+     * Get grid color based on theme
+     */
+    getGridColor() {
+        return document.body.classList.contains('dark-theme') ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
     }
 }
 
-// Enhanced Classes for Mobile and Smart Camera
-class TouchHandler {
-    constructor(app) {
-        this.app = app;
-        this.touchStart = null;
-        this.touchEnd = null;
-    }
-    
-    initialize() {
-        const mapElement = document.getElementById('map');
-        
-        mapElement.addEventListener('touchstart', (e) => {
-            this.touchStart = {
-                x: e.touches[0].clientX,
-                y: e.touches[0].clientY,
-                time: Date.now()
-            };
-        });
-        
-        mapElement.addEventListener('touchend', (e) => {
-            if (!this.touchStart) return;
-            
-            this.touchEnd = {
-                x: e.changedTouches[0].clientX,
-                y: e.changedTouches[0].clientY,
-                time: Date.now()
-            };
-            
-            this.handleSwipe();
-        });
-        
-        // Handle pinch zoom
-        let initialDistance = null;
-        mapElement.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 2) {
-                initialDistance = this.getDistance(e.touches[0], e.touches[1]);
-            }
-        });
-        
-        mapElement.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 2 && initialDistance) {
-                const currentDistance = this.getDistance(e.touches[0], e.touches[1]);
-                const scaleFactor = currentDistance / initialDistance;
-                
-                if (scaleFactor > 1.2) {
-                    this.app.map.zoomIn();
-                    initialDistance = currentDistance;
-                } else if (scaleFactor < 0.8) {
-                    this.app.map.zoomOut();
-                    initialDistance = currentDistance;
-                }
-            }
-        });
-    }
-    
-    getDistance(touch1, touch2) {
-        return Math.sqrt(
-            Math.pow(touch2.clientX - touch1.clientX, 2) +
-            Math.pow(touch2.clientY - touch1.clientY, 2)
-        );
-    }
-    
-    handleSwipe() {
-        if (!this.touchStart || !this.touchEnd) return;
-        
-        const deltaX = this.touchEnd.x - this.touchStart.x;
-        const deltaY = this.touchEnd.y - this.touchStart.y;
-        const deltaTime = this.touchEnd.time - this.touchStart.time;
-        
-        // Check for swipe (minimum distance and maximum time)
-        if (Math.abs(deltaX) > 50 && deltaTime < 300) {
-            if (deltaX > 0) {
-                // Swipe right - previous event
-                this.app.navigateToEvent('previous');
-            } else {
-                // Swipe left - next event
-                this.app.navigateToEvent('next');
-            }
-        }
-    }
-}
-
-class SmartCameraController {
-    constructor(app) {
-        this.app = app;
-        this.isTransitioning = false;
-    }
-    
-    initialize() {
-        // Setup camera bounds based on events
-        this.calculateOptimalBounds();
-    }
-    
-    calculateOptimalBounds() {
-        if (this.app.filteredEvents.length === 0) return;
-        
-        const lats = this.app.filteredEvents.map(e => e.lat).filter(lat => lat !== 0);
-        const lngs = this.app.filteredEvents.map(e => e.lng).filter(lng => lng !== 0);
-        
-        if (lats.length === 0 || lngs.length === 0) return;
-        
-        this.bounds = {
-            north: Math.max(...lats),
-            south: Math.min(...lats),
-            east: Math.max(...lngs),
-            west: Math.min(...lngs)
-        };
-    }
-    
-    focusOnEvent(event, zoom = null) {
-        if (this.isTransitioning) return;
-        this.isTransitioning = true;
-        
-        const targetZoom = zoom || this.calculateOptimalZoom(event);
-        const center = [event.lat, event.lng];
-        
-        // Smooth fly to animation
-        this.app.map.flyTo(center, targetZoom, {
-            animate: true,
-            duration: 1.2,
-            easeLinearity: 0.1
-        });
-        
-        setTimeout(() => {
-            this.isTransitioning = false;
-        }, 1200);
-    }
-    
-    calculateOptimalZoom(event) {
-        // Calculate zoom based on event importance and region
-        const baseZoom = this.app.isMobile ? 4 : 6;
-        const importanceBonus = Math.floor(event.importance / 3);
-        
-        // Regional zoom adjustments
-        const regionZooms = {
-            'Європа': 5,
-            'Азія': 4,
-            'Близький Схід': 6,
-            'Глобально': 2
-        };
-        
-        const regionZoom = regionZooms[event.region] || baseZoom;
-        return Math.min(10, regionZoom + importanceBonus);
-    }
-    
-    fitAllEvents() {
-        if (!this.bounds || this.app.filteredEvents.length === 0) return;
-        
-        const paddingOptions = {
-            padding: this.app.isMobile ? [20, 20] : [50, 50],
-            animate: true,
-            duration: 1
-        };
-        
-        const boundingBox = [
-            [this.bounds.south, this.bounds.west],
-            [this.bounds.north, this.bounds.east]
-        ];
-        
-        this.app.map.fitBounds(boundingBox, paddingOptions);
-    }
-    
-    resetView() {
-        if (this.app.filteredEvents.length > 1) {
-            this.fitAllEvents();
-        } else {
-            this.app.map.flyTo([50, 10], 3, {
-                animate: true,
-                duration: 1
-            });
-        }
-    }
-}
-
-// Source Scanner: multi-source ingestion with normalization, dedup, and auto-refresh
-class SourceScanner {
-    constructor(app) {
-        this.app = app;
-        this.sources = [];
-        this.isAutoRefreshing = false;
-        this.refreshTimer = null;
-        this.sourceStateById = new Map(); // id -> { lastRun, nextRun, errorCount }
-        this.isScanInFlight = false;
-    }
-
-    setSources(sources) {
-        const normalized = (sources || []).map(src => ({
-            id: src.id || `${src.type}:${src.url}`,
-            type: (src.type || 'json').toLowerCase(),
-            url: src.url,
-            priority: Number.isFinite(src.priority) ? src.priority : 5,
-            intervalMs: Number.isFinite(src.intervalMs) ? src.intervalMs : 30 * 60 * 1000,
-            corsProxy: src.corsProxy || '',
-            params: src.params || {}
-        })).filter(s => !!s.url);
-        this.sources = normalized;
-        // Initialize per-source state
-        normalized.forEach(s => {
-            if (!this.sourceStateById.has(s.id)) {
-                this.sourceStateById.set(s.id, { lastRun: 0, nextRun: Date.now(), errorCount: 0 });
-            }
-        });
-    }
-
-    async scanOnce({ updateUi = false } = {}) {
-        if (!this.sources.length) {
-            if (updateUi) this.app.setImportStatus('Немає джерел для сканування', 0);
-            return [];
-        }
-        if (this.isScanInFlight) {
-            return [];
-        }
-        this.isScanInFlight = true;
-        try {
-            const total = this.sources.length;
-            let completed = 0;
-            const allRawItems = [];
-
-            // Fetch all sources in parallel but track progress per-settlement
-            const results = await Promise.allSettled(this.sources.map(async (src) => {
-                const state = this.sourceStateById.get(src.id) || { errorCount: 0 };
-                try {
-                    const items = await this.fetchSource(src);
-                    allRawItems.push(...items.map(i => ({ item: i, _srcId: src.id })));
-                    state.errorCount = 0;
-                    state.lastRun = Date.now();
-                    state.nextRun = state.lastRun + src.intervalMs;
-                    this.sourceStateById.set(src.id, state);
-                } catch (err) {
-                    state.errorCount = (state.errorCount || 0) + 1;
-                    const backoff = Math.min(2 ** state.errorCount, 32);
-                    const base = Math.max(5 * 60 * 1000, src.intervalMs);
-                    state.lastRun = Date.now();
-                    state.nextRun = state.lastRun + backoff * base;
-                    this.sourceStateById.set(src.id, state);
-                    console.warn('Source scan failed', src.id, err);
-                } finally {
-                    completed += 1;
-                    if (updateUi) {
-                        const progress = Math.round((completed / total) * 70) + 10; // 10-80%
-                        this.app.setImportStatus(`Сканування: ${completed}/${total}`, progress);
-                    }
-                }
-            }));
-
-            // Normalize and validate
-            const normalized = this.app.normalizeAndValidateBatch(allRawItems.map(r => r.item));
-            // Deduplicate across sources with priority rules
-            const byKey = new Map();
-            const getPriority = (srcId) => this.sources.find(s => s.id === srcId)?.priority ?? 5;
-            for (const raw of allRawItems) {
-                const event = this.app.normalizeEvent(raw.item);
-                if (!event || !this.app.validateEvent(event)) continue;
-                const key = this.app.computeEventDedupKey(event);
-                const existing = byKey.get(key);
-                const srcPriority = getPriority(raw._srcId);
-                if (!existing || srcPriority < existing.priority) {
-                    byKey.set(key, { event, priority: srcPriority });
-                }
-            }
-
-            // Remove events already present in the app by dedup key
-            const existingKeys = new Set(this.app.events.map(ev => this.app.computeEventDedupKey(ev)));
-            const uniqueEvents = [];
-            for (const [key, { event }] of byKey.entries()) {
-                if (!existingKeys.has(key)) uniqueEvents.push(event);
-            }
-
-            // Update UI preview buffer
-            if (updateUi) {
-                this.app.clearImportPreview();
-                this.app.importBuffer = uniqueEvents;
-                this.app.appendToImportPreview(uniqueEvents);
-                const importBtn = document.getElementById('importBtn');
-                if (importBtn) importBtn.disabled = this.app.importBuffer.length === 0;
-                this.app.setImportStatus(`Знайдено: ${uniqueEvents.length}`, uniqueEvents.length ? 90 : 30);
-            }
-
-            return uniqueEvents;
-        } finally {
-            this.isScanInFlight = false;
-        }
-    }
-
-    startAutoRefresh() {
-        if (this.isAutoRefreshing) return;
-        this.isAutoRefreshing = true;
-        // Align next runs to now
-        const now = Date.now();
-        for (const [id, state] of this.sourceStateById.entries()) {
-            if (!state.nextRun || state.nextRun < now) {
-                state.nextRun = now + 1000;
-                this.sourceStateById.set(id, state);
-            }
-        }
-        // Poller tick
-        const tick = async () => {
-            if (!this.isAutoRefreshing) return;
-            const dueSources = this.sources.filter(s => {
-                const st = this.sourceStateById.get(s.id);
-                return st && st.nextRun && st.nextRun <= Date.now();
-            });
-            if (dueSources.length) {
-                // Temporarily narrow to due sources
-                const all = this.sources;
-                try {
-                    this.sources = dueSources;
-                    await this.scanOnce({ updateUi: true });
-                } finally {
-                    this.sources = all;
-                }
-            }
-            this.refreshTimer = setTimeout(tick, 15 * 1000);
-        };
-        this.refreshTimer = setTimeout(tick, 1500);
-    }
-
-    stopAutoRefresh() {
-        this.isAutoRefreshing = false;
-        if (this.refreshTimer) {
-            clearTimeout(this.refreshTimer);
-            this.refreshTimer = null;
-        }
-    }
-
-    async fetchSource(src) {
-        switch (src.type) {
-            case 'rss':
-                return await this.app.fetchRss(src.url, src.corsProxy);
-            case 'json':
-                return await this.fetchGenericJson(src);
-            case 'csv':
-                return await this.fetchGenericCsv(src);
-            case 'xml':
-                return await this.fetchGenericXml(src);
-            case 'newsapi':
-                return await this.fetchNewsApiWrapper(src);
-            default:
-                // Try JSON, then RSS, then XML
-                try { return await this.fetchGenericJson(src); } catch(_) {}
-                try { return await this.app.fetchRss(src.url, src.corsProxy); } catch(_) {}
-                return await this.fetchGenericXml(src);
-        }
-    }
-
-    async fetchGenericJson(src) {
-        const res = await this.app.fetchWithCors(src.url, src.corsProxy).catch(() => fetch(src.url));
-        const json = await res.json();
-        if (Array.isArray(json)) return json;
-        if (json && Array.isArray(json.events)) return json.events;
-        if (json && json.data && Array.isArray(json.data)) return json.data;
-        return [];
-    }
-
-    async fetchGenericCsv(src) {
-        const res = await this.app.fetchWithCors(src.url, src.corsProxy).catch(() => fetch(src.url));
-        const text = await res.text();
-        return this.app.parseCsv(text);
-    }
-
-    async fetchGenericXml(src) {
-        const res = await this.app.fetchWithCors(src.url, src.corsProxy).catch(() => fetch(src.url));
-        const text = await res.text();
-        return this.parseGenericXmlEvents(text, src.url);
-    }
-
-    async fetchNewsApiWrapper(src) {
-        const { apiKey, query } = src.params || {};
-        if (!apiKey) return [];
-        return await this.app.fetchNewsApi(apiKey, query || 'geopolitics', src.corsProxy);
-    }
-
-    parseGenericXmlEvents(xmlText, baseLink) {
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(xmlText, 'text/xml');
-        const out = [];
-        const eventNodes = [...xml.querySelectorAll('event')];
-        if (eventNodes.length) {
-            eventNodes.forEach(n => {
-                out.push({
-                    title: n.querySelector('title, name')?.textContent || '',
-                    description: n.querySelector('description, summary, details')?.textContent || '',
-                    date: n.querySelector('date, published, updated')?.textContent || '',
-                    category: n.querySelector('category, type, topic')?.textContent || '',
-                    region: n.querySelector('region')?.textContent || '',
-                    country: n.querySelector('country')?.textContent || '',
-                    lat: n.querySelector('lat, latitude')?.textContent,
-                    lng: n.querySelector('lng, longitude, lon')?.textContent,
-                    participants: (n.querySelector('participants')?.textContent || '').split(/[,;|]/),
-                    importance: n.querySelector('importance, score')?.textContent,
-                    sources: [n.querySelector('link, url, href')?.textContent || baseLink || '']
-                });
-            });
-            return out;
-        }
-        // Fallback to RSS/Atom-like nodes
-        const rssItems = this.app.parseRss(xmlText) || [];
-        return rssItems.map(i => ({
-            title: i.title,
-            description: i.description,
-            date: i.pubDate || i.published,
-            sources: [i.link]
-        }));
-    }
-}
-
-// Enhanced App Methods
-GeopoliticalApp.prototype.setupEventListeners = function() {
-    // Window resize handler with debouncing for timeline updates
-    let resizeTimeout;
-    let previousIsMobile = this.isMobile;
-    
-    window.addEventListener('resize', () => {
-        const newIsMobile = window.innerWidth <= 768;
-        this.isMobile = newIsMobile;
-        
-        if (this.map) {
-            this.map.invalidateSize();
-        }
-        this.positionZoomLabel();
-        
-        // Rebuild timeline when crossing mobile/desktop breakpoint
-        if (previousIsMobile !== newIsMobile) {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                this.rebuildTimeline();
-                previousIsMobile = newIsMobile;
-            }, 300); // Debounce for 300ms
-        }
-    });
-    
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && this.sidebarVisible) {
-            this.toggleMobileMenu();
-        }
-        if (e.key === ' ' && e.target.tagName !== 'INPUT') {
-            e.preventDefault();
-            this.isPlaying ? this.pauseTimelineAnimation() : this.playTimelineAnimation();
-        }
-        if (e.key === 'ArrowLeft') {
-            this.navigateToEvent('previous');
-        }
-        if (e.key === 'ArrowRight') {
-            this.navigateToEvent('next');
-        }
-    });
-};
-
-GeopoliticalApp.prototype.navigateToEvent = function(direction) {
-    if (!this.selectedEvent) return;
-    
-    const currentIndex = this.filteredEvents.findIndex(e => e.id === this.selectedEvent.id);
-    let newIndex;
-    
-    if (direction === 'next') {
-        newIndex = (currentIndex + 1) % this.filteredEvents.length;
-    } else {
-        newIndex = currentIndex === 0 ? this.filteredEvents.length - 1 : currentIndex - 1;
-    }
-    
-    this.selectEvent(this.filteredEvents[newIndex].id);
-};
-
-GeopoliticalApp.prototype.toggleFullscreen = function() {
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
-    } else {
-        document.exitFullscreen();
-    }
-};
-
-GeopoliticalApp.prototype.toggleLayers = function() {
-    // Toggle between different map themes
-    this.switchTheme(this.theme === 'dark' ? 'light' : 'dark');
-};
-
-GeopoliticalApp.prototype.toggleHeatmap = function() {
-    const button = document.getElementById('heatmapToggle');
-    button.classList.toggle('active');
-    
-    if (button.classList.contains('active')) {
-        // Add heatmap functionality here
-        this.showHeatmap();
-    } else {
-        this.hideHeatmap();
-    }
-};
-
-GeopoliticalApp.prototype.showHeatmap = function() {
-    // Create heatmap data points
-    const heatPoints = this.filteredEvents.map(event => [
-        event.lat, 
-        event.lng, 
-        event.importance * 0.1
-    ]);
-    
-    // This would require a heatmap library like Leaflet.heat
-    // For now, just show enhanced markers
-    this.markers.forEach(marker => {
-        marker.setStyle({
-            radius: marker.options.radius * 1.5,
-            fillOpacity: 0.9
-        });
-    });
-};
-
-GeopoliticalApp.prototype.hideHeatmap = function() {
-    this.markers.forEach(marker => {
-        marker.setStyle({
-            radius: marker.options.radius / 1.5,
-            fillOpacity: 0.8
-        });
-    });
-};
-
-GeopoliticalApp.prototype.toggleConnections = function() {
-    const button = document.getElementById('connectionsToggle');
-    button.classList.toggle('active');
-    
-    if (button.classList.contains('active')) {
-        this.addConnectionLines();
-    } else {
-        this.connectionLines.forEach(line => this.map.removeLayer(line));
-        this.connectionLines = [];
-    }
-};
-
-GeopoliticalApp.prototype.shareCurrentView = function() {
-    const center = this.map.getCenter();
-    const zoom = this.map.getZoom();
-    const selectedEventId = this.selectedEvent ? this.selectedEvent.id : '';
-    
-    const url = `${window.location.origin}${window.location.pathname}?lat=${center.lat}&lng=${center.lng}&zoom=${zoom}&event=${selectedEventId}`;
-    
-    if (navigator.share) {
-        navigator.share({
-            title: 'Геополітичні Події',
-            text: this.selectedEvent ? this.selectedEvent.title : 'Інтерактивна карта геополітичних подій',
-            url: url
-        });
-    } else {
-        navigator.clipboard.writeText(url);
-        // Show toast notification
-        this.showToast('Посилання скопійовано в буфер обміну!');
-    }
-};
-
-GeopoliticalApp.prototype.shareEvent = function(eventId) {
-    const event = this.events.find(e => e.id === eventId);
-    if (!event) return;
-    
-    const url = `${window.location.origin}${window.location.pathname}?event=${eventId}`;
-    
-    if (navigator.share) {
-        navigator.share({
-            title: event.title,
-            text: event.description,
-            url: url
-        });
-    } else {
-        navigator.clipboard.writeText(url);
-        this.showToast('Посилання на подію скопійовано!');
-    }
-};
-
-GeopoliticalApp.prototype.showToast = function(message) {
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.textContent = message;
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: var(--color-surface);
-        color: var(--color-text);
-        padding: 12px 24px;
-        border-radius: 25px;
-        border: 1px solid var(--color-border);
-        z-index: 10000;
-        font-size: 14px;
-        box-shadow: var(--shadow-lg);
-        animation: toastIn 0.3s ease-out;
-    `;
-    
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.style.animation = 'toastOut 0.3s ease-in';
-        setTimeout(() => {
-            document.body.removeChild(toast);
-        }, 300);
-    }, 3000);
-};
-
-GeopoliticalApp.prototype.tryBootstrapLocalResources = function() {
-    const sources = [
-        { type: 'csv', url: 'ukraine_channels_events.csv' },
-        { type: 'csv', url: 'data/new_events.csv', headerIfMissing: 'event_id,title,date,date_precision,location,region,category,source_video,transcript_snippet,confidence,provenance,extraction_method,dupe_flag' },
-        { type: 'json', url: 'data/events_summary.json', jsonSelector: 'sample_new_events' }
-    ];
-
-    const fetchOne = async (src) => {
-        try {
-            const res = await fetch(src.url);
-            if (!res.ok) return [];
-            if (src.type === 'csv') {
-                let text = await res.text();
-                const firstLine = (text.split(/\r?\n/).find(Boolean) || '');
-                const hasHeader = /(^|,)(id|event_id)(,|$)/i.test(firstLine) && /(^|,)(title)(,|$)/i.test(firstLine);
-                if (!hasHeader && src.headerIfMissing) {
-                    text = src.headerIfMissing + '\n' + text;
-                }
-                const rawRows = this.parseCsv(text);
-                const normalized = this.normalizeAndValidateBatch(rawRows);
-                // Preserve original string IDs if present for deduplication strength
-                normalized.forEach((ev, idx) => {
-                    const rid = rawRows[idx]?.id;
-                    if (rid && typeof rid === 'string' && !Number.isInteger(Number(rid))) {
-                        ev._originalId = String(rid);
-                    }
-                });
-                return normalized;
-            }
-            if (src.type === 'json') {
-                const json = await res.json();
-                let arr = [];
-                if (Array.isArray(json)) arr = json;
-                else if (Array.isArray(json.events)) arr = json.events;
-                else if (Array.isArray(json[src.jsonSelector])) {
-                    arr = json[src.jsonSelector].map(item => ({
-                        id: item.id,
-                        title: item.title,
-                        date: item.date,
-                        category: this.normalizeCategoryLabel(item.category || ''),
-                        region: this.normalizeRegionLabel(item.region || ''),
-                        country: item.place || '',
-                        description: item.description || '',
-                        importance: item.importance,
-                        sources: [item.url].filter(Boolean)
-                    }));
-                }
-                return this.normalizeAndValidateBatch(arr);
-            }
-            return [];
-        } catch (_) {
-            return [];
-        }
-    };
-
-    Promise.all(sources.map(fetchOne))
-        .then(lists => {
-            const allNew = lists.flat();
-            if (!allNew.length) return;
-
-            // Deduplicate within new items
-            const seen = new Set();
-            const uniqueNew = [];
-            for (const ev of allNew) {
-                const key = this.computeEventDedupKey(ev);
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    uniqueNew.push(ev);
-                }
-            }
-
-            // Remove items already present in the app
-            const existingKeys = new Set(this.events.map(ev => this.computeEventDedupKey(ev)));
-            const toAdd = uniqueNew.filter(ev => !existingKeys.has(this.computeEventDedupKey(ev)));
-            if (!toAdd.length) return;
-
-            this.events.push(...toAdd);
-            this.filteredEvents = [...this.events];
-            // Recompute category counts
-            this.categories.forEach(category => {
-                category.count = this.events.filter(event => event.category === category.name).length;
-            });
-            // Refresh UI
-            this.updateDisplay();
-            this.rebuildTimeline();
-            if (this.cameraController) this.cameraController.calculateOptimalBounds();
-            this.showToast(`Імпортовано локальних подій: ${toAdd.length}`);
-        })
-        .catch(() => {});
-};
-
-// Safe wrapper to avoid blocking startup; with error telemetry
-GeopoliticalApp.prototype.tryBootstrapLocalResourcesSafe = function() {
-    try {
-        this.tryBootstrapLocalResources();
-    } catch (err) {
-        this._telemetryError('bootstrap:local', err);
-    }
-};
-
-// Initialize app when DOM is loaded
-let app;
+// Initialize application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    app = new GeopoliticalApp();
+    window.app = new CivilizationSphere();
 });
-
-// Add CSS animations for toast
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes toastIn {
-        from { opacity: 0; transform: translateX(-50%) translateY(20px); }
-        to { opacity: 1; transform: translateX(-50%) translateY(0); }
-    }
-    @keyframes toastOut {
-        from { opacity: 1; transform: translateX(-50%) translateY(0); }
-        to { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-    }
-`;
-document.head.appendChild(style);
-
-// Global function for popup buttons
-window.app = app;
