@@ -371,9 +371,27 @@
     <div class="loading-overlay" id="loading">
         <div class="loading-spinner">
             <div class="spinner"></div>
-            <p>Завантаження даних...</p>
+            <p id="loading-text">Завантаження даних...</p>
         </div>
     </div>
+
+    <!-- Emergency fallback to hide loading after 15 seconds -->
+    <script>
+        // Safety mechanism: hide loading overlay after 15 seconds if still visible
+        setTimeout(function() {
+            const loading = document.getElementById('loading');
+            const loadingText = document.getElementById('loading-text');
+            if (loading && loading.style.display !== 'none') {
+                console.error('Loading took too long - forcing hide');
+                loadingText.textContent = 'Помилка завантаження. Оновіть сторінку.';
+                loadingText.style.color = '#ef4444';
+                setTimeout(function() {
+                    loading.style.display = 'none';
+                    alert('Помилка завантаження застосунку. Перевірте консоль браузера (F12) для деталей.');
+                }, 3000);
+            }
+        }, 15000);
+    </script>
 
     <!-- Toast Notifications -->
     <div class="toast-container" id="toast-container"></div>

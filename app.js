@@ -61,9 +61,17 @@ class CivilizationSphere {
             this.cacheUIElements();
             this.setupEventListeners();
             this.loadTheme();
+            
+            console.log('Loading data...');
             await this.loadData();
+            console.log('Data loaded:', this.events.length, 'events');
+            
+            console.log('Initializing map...');
             this.initializeMap();
+            
+            console.log('Updating UI...');
             this.updateUI();
+            
             this.showToast('Додаток успішно завантажено', 'success');
             this.showLoading(false);
         } catch (error) {
@@ -226,16 +234,43 @@ class CivilizationSphere {
      */
     async loadData() {
         try {
-            const response = await fetch('data/events.json');
-            if (!response.ok) throw new Error('Failed to load events data');
+            console.log('Fetching data/events.json...');
             
+            // Add timeout to prevent infinite loading
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            
+            const response = await fetch('data/events.json', {
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            console.log('Parsing JSON...');
             this.events = await response.json();
+            
+            if (!Array.isArray(this.events) || this.events.length === 0) {
+                throw new Error('No events found in data file');
+            }
+            
+            console.log('Enhancing event data...');
             this.enhanceEventData();
+            
+            console.log('Initializing filter UI...');
             this.initializeFilterUI();
+            
             this.filteredEvents = [...this.events];
             
             return this.events;
         } catch (error) {
+            if (error.name === 'AbortError') {
+                console.error('Data loading timeout after 10 seconds');
+                throw new Error('Тайм-аут завантаження даних. Перевірте інтернет-з\'єднання.');
+            }
             console.error('Data loading error:', error);
             throw error;
         }
