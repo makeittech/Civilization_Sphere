@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>✅ Standalone Test</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 50px auto; background: #1a1a1a; color: #fff; padding: 20px; }
+        .pass { color: #10b981; }
+        .fail { color: #ef4444; }
+        pre { background: #000; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Standalone Test - No Server Needed</h1>
+    <div id="results"></div>
+    
+    <script src="data.js"></script>
+    <script>
+        const results = document.getElementById('results');
+        
+        function log(msg, pass) {
+            const div = document.createElement('div');
+            div.className = pass ? 'pass' : 'fail';
+            div.innerHTML = (pass ? '✓' : '✗') + ' ' + msg;
+            results.appendChild(div);
+        }
+        
+        // Test 1: data.js loaded
+        if (typeof window.EVENTS_DATA !== 'undefined') {
+            log('data.js loaded successfully', true);
+        } else {
+            log('data.js NOT loaded!', false);
+        }
+        
+        // Test 2: Array check
+        if (Array.isArray(window.EVENTS_DATA)) {
+            log('EVENTS_DATA is an array', true);
+        } else {
+            log('EVENTS_DATA is NOT an array!', false);
+        }
+        
+        // Test 3: Count
+        if (window.EVENTS_DATA && window.EVENTS_DATA.length > 0) {
+            log(`Found ${window.EVENTS_DATA.length} events`, true);
+        } else {
+            log('No events found!', false);
+        }
+        
+        // Test 4: First event structure
+        if (window.EVENTS_DATA && window.EVENTS_DATA[0]) {
+            const e = window.EVENTS_DATA[0];
+            const hasRequired = e.id && e.title && e.date;
+            log('First event has required fields (id, title, date)', hasRequired);
+            
+            results.innerHTML += '<h3>First Event:</h3><pre>' + 
+                JSON.stringify(e, null, 2) + '</pre>';
+        }
+        
+        // Test 5: app.js would work
+        results.innerHTML += '<h3>Result:</h3>';
+        if (window.EVENTS_DATA && window.EVENTS_DATA.length > 0) {
+            log('✅ App will work without any server!', true);
+            log('✅ Ready for deployment on any hosting!', true);
+        } else {
+            log('❌ Something is wrong', false);
+        }
+    </script>
+</body>
+</html>

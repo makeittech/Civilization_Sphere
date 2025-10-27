@@ -234,29 +234,39 @@ class CivilizationSphere {
      */
     async loadData() {
         try {
-            console.log('Fetching data/events.json...');
+            console.log('Loading data...');
             
-            // Add timeout to prevent infinite loading
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-            
-            const response = await fetch('data/events.json', {
-                signal: controller.signal
-            });
-            
-            clearTimeout(timeoutId);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            // Check if data is embedded (from data.js)
+            if (window.EVENTS_DATA && Array.isArray(window.EVENTS_DATA)) {
+                console.log('Using embedded data from data.js');
+                this.events = window.EVENTS_DATA;
+            } else {
+                // Fallback: try to fetch from JSON file
+                console.log('Fetching data/events.json...');
+                
+                // Add timeout to prevent infinite loading
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                
+                const response = await fetch('data/events.json', {
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                console.log('Parsing JSON...');
+                this.events = await response.json();
             }
-            
-            console.log('Parsing JSON...');
-            this.events = await response.json();
             
             if (!Array.isArray(this.events) || this.events.length === 0) {
-                throw new Error('No events found in data file');
+                throw new Error('No events found in data');
             }
             
+            console.log('Data loaded:', this.events.length, 'events');
             console.log('Enhancing event data...');
             this.enhanceEventData();
             
