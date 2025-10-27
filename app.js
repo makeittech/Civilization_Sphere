@@ -1,32 +1,40 @@
 /* ============================================================================
-   CIVILIZATION SPHERE - MODERN APPLICATION
+   CIVILIZATION SPHERE - ADVANCED APPLICATION
    ============================================================================
-   A comprehensive geopolitical events visualization platform with:
-   - Interactive Leaflet.js map with event markers
-   - Timeline with playback and speed controls
-   - Advanced filtering (categories, regions, dates, channels)
+   Modern geopolitical events visualization platform with:
+   - Leaflet.js map with marker clustering
+   - Real-time filtering and search
+   - Timeline playback with smooth animations
+   - Chart.js analytics with interactive visualizations
+   - Dark/light theme with smooth transitions
    - Mobile-optimized responsive design
-   - Dark/light theme switching
-   - Real-time analytics using Chart.js
-   - Data export functionality
+   - Data export (CSV/JSON)
    ============================================================================ */
 
 'use strict';
 
 class CivilizationSphere {
     constructor() {
+        // Data
         this.events = [];
         this.filteredEvents = [];
         this.selectedEvent = null;
+        
+        // Map
         this.map = null;
         this.markers = [];
+        this.markerClusterGroup = null;
+        
+        // Charts
         this.charts = {};
+        
+        // Timeline
         this.isPlaying = false;
         this.playbackIndex = 0;
         this.playbackSpeed = 1;
         this.playbackInterval = null;
-
-        // Filter state
+        
+        // Filters
         this.filters = {
             search: '',
             quickFilter: 'all',
@@ -36,14 +44,14 @@ class CivilizationSphere {
             dateFrom: null,
             dateTo: null
         };
-
-        // UI Elements cache
-        this.uiElements = {};
-
+        
+        // UI Elements
+        this.ui = {};
+        
         // Initialize
         this.init();
     }
-
+    
     /**
      * Initialize the application
      */
@@ -51,334 +59,297 @@ class CivilizationSphere {
         try {
             this.showLoading(true);
             this.cacheUIElements();
-            this.loadTheme();
             this.setupEventListeners();
+            this.loadTheme();
             await this.loadData();
             this.initializeMap();
             this.updateUI();
-            this.showNotification('Додаток успішно завантажений', 'success');
+            this.showToast('Додаток успішно завантажено', 'success');
             this.showLoading(false);
         } catch (error) {
             console.error('Initialization error:', error);
-            this.showNotification('Помилка при завантаженні: ' + error.message, 'error');
+            this.showToast('Помилка завантаження: ' + error.message, 'error');
             this.showLoading(false);
         }
     }
-
+    
     /**
-     * Cache frequently used UI elements
+     * Cache UI elements for better performance
      */
     cacheUIElements() {
-        this.uiElements = {
-            // Control Panel
+        this.ui = {
+            // Sidebars
+            filtersSidebar: document.getElementById('filters-sidebar'),
+            detailsSidebar: document.getElementById('details-sidebar'),
+            closeFilters: document.getElementById('close-filters'),
+            closeDetails: document.getElementById('close-details'),
+            mobileFiltersToggle: document.getElementById('mobile-filters-toggle'),
+            
+            // Search & Filters
             searchInput: document.getElementById('search-input'),
-            quickFilterBtns: document.querySelectorAll('.quick-filter-btn'),
-            categoriesContainer: document.getElementById('categories-container'),
-            regionsContainer: document.getElementById('regions-container'),
-            channelsContainer: document.getElementById('channels-container'),
+            quickFilters: document.querySelectorAll('.quick-filter'),
+            categoriesList: document.getElementById('categories-list'),
+            regionsList: document.getElementById('regions-list'),
+            channelsList: document.getElementById('channels-list'),
             dateFrom: document.getElementById('date-from'),
             dateTo: document.getElementById('date-to'),
+            
+            // Map
+            mapContainer: document.getElementById('map'),
+            zoomIn: document.getElementById('zoom-in'),
+            zoomOut: document.getElementById('zoom-out'),
+            resetView: document.getElementById('reset-view'),
             
             // Timeline
             playBtn: document.getElementById('play-btn'),
             pauseBtn: document.getElementById('pause-btn'),
-            resetTimelineBtn: document.getElementById('reset-timeline-btn'),
+            resetBtn: document.getElementById('reset-btn'),
             speedSelect: document.getElementById('speed-select'),
-            timelineSlider: document.getElementById('timeline-slider'),
+            timelineTrack: document.querySelector('.timeline-track'),
             timelineProgress: document.getElementById('timeline-progress'),
+            timelineHandle: document.getElementById('timeline-handle'),
             currentDate: document.getElementById('current-date'),
-            totalDate: document.getElementById('total-date'),
+            endDate: document.getElementById('end-date'),
             
-            // Map
-            mapContainer: document.getElementById('map'),
-            zoomInBtn: document.getElementById('zoom-in-btn'),
-            zoomOutBtn: document.getElementById('zoom-out-btn'),
-            resetViewBtn: document.getElementById('reset-view-btn'),
+            // Export
+            exportCsv: document.getElementById('export-csv'),
+            exportJson: document.getElementById('export-json'),
             
-            // Event Details
-            eventDetails: document.getElementById('event-details'),
-            eventPanel: document.querySelector('.event-panel'),
-            eventPanelClose: document.getElementById('event-panel-close'),
-            
-            // Control Panel
-            controlPanel: document.querySelector('.control-panel'),
-            panelClose: document.getElementById('panel-close-btn'),
-            
-            // Export buttons
-            exportCsvBtn: document.getElementById('export-csv-btn'),
-            exportJsonBtn: document.getElementById('export-json-btn'),
-            
-            // Statistics
+            // Stats
             totalEvents: document.getElementById('total-events'),
             visibleEvents: document.getElementById('visible-events'),
             regionCount: document.getElementById('region-count'),
             channelCount: document.getElementById('channel-count'),
             
-            // Theme & Navigation
+            // Event Details
+            eventDetails: document.getElementById('event-details'),
+            
+            // Theme & Help
             themeToggle: document.getElementById('theme-toggle'),
             helpBtn: document.getElementById('help-btn'),
             helpModal: document.getElementById('help-modal'),
-            helpModalClose: document.getElementById('help-modal-close'),
+            closeHelpModal: document.getElementById('close-help-modal'),
             
-            // Mobile
-            mobileMenuToggle: document.getElementById('mobile-menu-toggle'),
-            
-            // Notifications
-            loadingSpinner: document.getElementById('loading-spinner'),
-            notificationToast: document.getElementById('notification-toast')
+            // Loading & Toast
+            loading: document.getElementById('loading'),
+            toastContainer: document.getElementById('toast-container')
         };
     }
-
+    
     /**
-     * Setup event listeners for all interactive elements
+     * Setup event listeners
      */
     setupEventListeners() {
         // Search
-        this.uiElements.searchInput.addEventListener('input', (e) => {
-            this.filters.search = e.target.value.toLowerCase();
+        this.ui.searchInput.addEventListener('input', () => {
+            this.filters.search = this.ui.searchInput.value.toLowerCase();
             this.applyFilters();
         });
-
-        // Quick filters
-        this.uiElements.quickFilterBtns.forEach(btn => {
+        
+        // Quick Filters
+        this.ui.quickFilters.forEach(btn => {
             btn.addEventListener('click', () => {
-                this.uiElements.quickFilterBtns.forEach(b => b.classList.remove('active'));
+                this.ui.quickFilters.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 this.filters.quickFilter = btn.dataset.filter;
                 this.applyFilters();
             });
         });
-
-        // Date filters
-        this.uiElements.dateFrom.addEventListener('change', () => {
-            this.filters.dateFrom = this.uiElements.dateFrom.value;
+        
+        // Date Filters
+        this.ui.dateFrom.addEventListener('change', () => {
+            this.filters.dateFrom = this.ui.dateFrom.value;
             this.applyFilters();
         });
-
-        this.uiElements.dateTo.addEventListener('change', () => {
-            this.filters.dateTo = this.uiElements.dateTo.value;
+        
+        this.ui.dateTo.addEventListener('change', () => {
+            this.filters.dateTo = this.ui.dateTo.value;
             this.applyFilters();
         });
-
-        // Timeline controls
-        this.uiElements.playBtn.addEventListener('click', () => this.startPlayback());
-        this.uiElements.pauseBtn.addEventListener('click', () => this.pausePlayback());
-        this.uiElements.resetTimelineBtn.addEventListener('click', () => this.resetPlayback());
-        this.uiElements.speedSelect.addEventListener('change', (e) => {
+        
+        // Map Controls
+        this.ui.zoomIn.addEventListener('click', () => this.map.zoomIn());
+        this.ui.zoomOut.addEventListener('click', () => this.map.zoomOut());
+        this.ui.resetView.addEventListener('click', () => this.resetMapView());
+        
+        // Timeline Controls
+        this.ui.playBtn.addEventListener('click', () => this.startPlayback());
+        this.ui.pauseBtn.addEventListener('click', () => this.pausePlayback());
+        this.ui.resetBtn.addEventListener('click', () => this.resetPlayback());
+        this.ui.speedSelect.addEventListener('change', (e) => {
             this.playbackSpeed = parseFloat(e.target.value);
         });
-
-        this.uiElements.timelineSlider.addEventListener('mousedown', (e) => {
-            this.pausePlayback();
-            this.handleTimelineInteraction(e);
+        
+        // Timeline interaction
+        this.ui.timelineTrack.addEventListener('click', (e) => this.handleTimelineClick(e));
+        this.ui.timelineHandle.addEventListener('mousedown', (e) => this.startTimelineDrag(e));
+        this.ui.timelineHandle.addEventListener('touchstart', (e) => this.startTimelineDrag(e));
+        
+        // Export
+        this.ui.exportCsv.addEventListener('click', () => this.exportToCSV());
+        this.ui.exportJson.addEventListener('click', () => this.exportToJSON());
+        
+        // Sidebars
+        this.ui.closeFilters?.addEventListener('click', () => {
+            this.ui.filtersSidebar.classList.remove('active');
         });
-
-        this.uiElements.timelineSlider.addEventListener('touchstart', (e) => {
-            this.pausePlayback();
-            this.handleTimelineInteraction(e);
+        
+        this.ui.closeDetails.addEventListener('click', () => {
+            this.ui.detailsSidebar.classList.remove('active');
         });
-
-        // Map controls
-        this.uiElements.zoomInBtn.addEventListener('click', () => this.map.zoomIn());
-        this.uiElements.zoomOutBtn.addEventListener('click', () => this.map.zoomOut());
-        this.uiElements.resetViewBtn.addEventListener('click', () => this.resetMapView());
-
-        // Export buttons
-        this.uiElements.exportCsvBtn.addEventListener('click', () => this.exportToCSV());
-        this.uiElements.exportJsonBtn.addEventListener('click', () => this.exportToJSON());
-
-        // Event panel close
-        this.uiElements.eventPanelClose.addEventListener('click', () => {
-            this.uiElements.eventPanel.classList.remove('active');
+        
+        this.ui.mobileFiltersToggle?.addEventListener('click', () => {
+            this.ui.filtersSidebar.classList.toggle('active');
         });
-
-        // Control panel close
-        this.uiElements.panelClose.addEventListener('click', () => {
-            this.uiElements.controlPanel.classList.remove('active');
+        
+        // Theme Toggle
+        this.ui.themeToggle.addEventListener('click', () => this.toggleTheme());
+        
+        // Help Modal
+        this.ui.helpBtn.addEventListener('click', () => {
+            this.ui.helpModal.style.display = 'flex';
         });
-
-        // Theme toggle
-        this.uiElements.themeToggle.addEventListener('click', () => this.toggleTheme());
-
-        // Help modal
-        this.uiElements.helpBtn.addEventListener('click', () => {
-            this.uiElements.helpModal.style.display = 'flex';
+        
+        this.ui.closeHelpModal.addEventListener('click', () => {
+            this.ui.helpModal.style.display = 'none';
         });
-
-        this.uiElements.helpModalClose.addEventListener('click', () => {
-            this.uiElements.helpModal.style.display = 'none';
-        });
-
-        this.uiElements.helpModal.addEventListener('click', (e) => {
-            if (e.target === this.uiElements.helpModal) {
-                this.uiElements.helpModal.style.display = 'none';
-            }
-        });
-
-        // Mobile menu
-        if (this.uiElements.mobileMenuToggle) {
-            this.uiElements.mobileMenuToggle.addEventListener('click', () => {
-                this.uiElements.mobileMenuToggle.classList.toggle('active');
-                this.uiElements.controlPanel.classList.toggle('active');
-            });
-        }
-
-        // Close mobile menu on filter change
-        document.addEventListener('click', (e) => {
-            if (this.uiElements.mobileMenuToggle && !e.target.closest('.mobile-menu-toggle') &&
-                !e.target.closest('.control-panel')) {
-                this.uiElements.mobileMenuToggle.classList.remove('active');
-                this.uiElements.controlPanel.classList.remove('active');
+        
+        this.ui.helpModal.addEventListener('click', (e) => {
+            if (e.target === this.ui.helpModal) {
+                this.ui.helpModal.style.display = 'none';
             }
         });
     }
-
+    
     /**
-     * Load events data from data/events.json
+     * Load events data
      */
     async loadData() {
         try {
             const response = await fetch('data/events.json');
             if (!response.ok) throw new Error('Failed to load events data');
+            
             this.events = await response.json();
-
-            // Enhance events with geographic data
             this.enhanceEventData();
-
-            // Initialize filter UI
             this.initializeFilterUI();
-
             this.filteredEvents = [...this.events];
+            
             return this.events;
         } catch (error) {
             console.error('Data loading error:', error);
-            this.showNotification('Не вдалося завантажити дані', 'error');
             throw error;
         }
     }
-
+    
     /**
-     * Enhance event data with geographic coordinates
+     * Enhance event data with coordinates and defaults
      */
     enhanceEventData() {
         const regionCoordinates = {
             'Ukraine': [48.3794, 31.1656],
-            'Europe': [54.5973, 15.2551],
+            'Europe': [54.5260, 15.2551],
+            'Європа': [54.5260, 15.2551],
             'Asia': [34.0479, 100.6197],
-            'Middle East': [25.3548, 55.3643],
-            'Africa': [-8.7832, 34.5085],
-            'North America': [45.7128, -74.0060],
-            'South America': [-15.7975, -52.4894],
-            'Oceania': [-23.6345, 133.8807],
-            'Global': [20.0, 0.0],
-            'Європа': [54.5973, 15.2551],
             'Азія': [34.0479, 100.6197],
-            'Близький Схід': [25.3548, 55.3643],
+            'Middle East': [29.2985, 47.9248],
+            'Близький Схід': [29.2985, 47.9248],
+            'Africa': [-8.7832, 34.5085],
             'Африка': [-8.7832, 34.5085],
-            'Північна Америка': [45.7128, -74.0060],
-            'Південна Америка': [-15.7975, -52.4894],
-            'Океанія': [-23.6345, 133.8807],
+            'North America': [54.5260, -105.2551],
+            'Північна Америка': [54.5260, -105.2551],
+            'South America': [-8.7832, -55.4915],
+            'Південна Америка': [-8.7832, -55.4915],
+            'Oceania': [-22.7359, 140.0188],
+            'Океанія': [-22.7359, 140.0188],
+            'Global': [20.0, 0.0],
             'Глобально': [20.0, 0.0]
         };
-
+        
         this.events.forEach(event => {
             if (!event.lat || !event.lng) {
                 const coords = regionCoordinates[event.region] || regionCoordinates['Ukraine'];
-                event.lat = coords[0] + (Math.random() - 0.5) * 2;
-                event.lng = coords[1] + (Math.random() - 0.5) * 2;
+                event.lat = coords[0] + (Math.random() - 0.5) * 3;
+                event.lng = coords[1] + (Math.random() - 0.5) * 3;
             }
             event.importance = event.importance || 5;
             event.date = event.date || new Date().toISOString();
         });
-
+        
         // Sort by date
         this.events.sort((a, b) => new Date(a.date) - new Date(b.date));
     }
-
+    
     /**
-     * Initialize filter UI elements
+     * Initialize filter UI
      */
     initializeFilterUI() {
-        // Get unique values
-        const categories = [...new Set(this.events.map(e => e.category).filter(Boolean))];
-        const regions = [...new Set(this.events.map(e => e.region).filter(Boolean))];
-        const channels = [...new Set(this.events.map(e => e.channel_name).filter(Boolean))];
-
+        const categories = [...new Set(this.events.map(e => e.category).filter(Boolean))].sort();
+        const regions = [...new Set(this.events.map(e => e.region).filter(Boolean))].sort();
+        const channels = [...new Set(this.events.map(e => e.channel_name).filter(Boolean))].sort();
+        
         // Populate categories
-        this.uiElements.categoriesContainer.innerHTML = categories
-            .sort()
-            .map(cat => `
-                <div class="filter-checkbox">
-                    <input type="checkbox" id="cat-${cat}" value="${cat}" class="category-filter">
-                    <label for="cat-${cat}">${cat}</label>
-                </div>
-            `)
-            .join('');
-
+        this.ui.categoriesList.innerHTML = categories.map(cat => `
+            <div class="filter-item">
+                <input type="checkbox" id="cat-${this.sanitizeId(cat)}" value="${cat}" class="category-filter">
+                <label for="cat-${this.sanitizeId(cat)}">${this.escapeHtml(cat)}</label>
+            </div>
+        `).join('');
+        
         // Populate regions
-        this.uiElements.regionsContainer.innerHTML = regions
-            .sort()
-            .map(reg => `
-                <div class="filter-checkbox">
-                    <input type="checkbox" id="reg-${reg}" value="${reg}" class="region-filter">
-                    <label for="reg-${reg}">${reg}</label>
-                </div>
-            `)
-            .join('');
-
-        // Populate channels
-        this.uiElements.channelsContainer.innerHTML = channels
-            .sort()
-            .map(ch => `
-                <div class="filter-checkbox">
-                    <input type="checkbox" id="ch-${ch}" value="${ch}" class="channel-filter">
-                    <label for="ch-${ch}">${ch}</label>
-                </div>
-            `)
-            .join('');
-
-        // Add event listeners to checkboxes
+        this.ui.regionsList.innerHTML = regions.map(reg => `
+            <div class="filter-item">
+                <input type="checkbox" id="reg-${this.sanitizeId(reg)}" value="${reg}" class="region-filter">
+                <label for="reg-${this.sanitizeId(reg)}">${this.escapeHtml(reg)}</label>
+            </div>
+        `).join('');
+        
+        // Populate channels (limit to top 20)
+        this.ui.channelsList.innerHTML = channels.slice(0, 20).map(ch => `
+            <div class="filter-item">
+                <input type="checkbox" id="ch-${this.sanitizeId(ch)}" value="${ch}" class="channel-filter">
+                <label for="ch-${this.sanitizeId(ch)}">${this.escapeHtml(ch)}</label>
+            </div>
+        `).join('');
+        
+        // Add event listeners
         document.querySelectorAll('.category-filter').forEach(cb => {
             cb.addEventListener('change', () => {
                 this.filters.categories = new Set(
-                    Array.from(document.querySelectorAll('.category-filter:checked'))
-                        .map(el => el.value)
+                    Array.from(document.querySelectorAll('.category-filter:checked')).map(el => el.value)
                 );
                 this.applyFilters();
             });
         });
-
+        
         document.querySelectorAll('.region-filter').forEach(cb => {
             cb.addEventListener('change', () => {
                 this.filters.regions = new Set(
-                    Array.from(document.querySelectorAll('.region-filter:checked'))
-                        .map(el => el.value)
+                    Array.from(document.querySelectorAll('.region-filter:checked')).map(el => el.value)
                 );
                 this.applyFilters();
             });
         });
-
+        
         document.querySelectorAll('.channel-filter').forEach(cb => {
             cb.addEventListener('change', () => {
                 this.filters.channels = new Set(
-                    Array.from(document.querySelectorAll('.channel-filter:checked'))
-                        .map(el => el.value)
+                    Array.from(document.querySelectorAll('.channel-filter:checked')).map(el => el.value)
                 );
                 this.applyFilters();
             });
         });
-
-        // Set date limits
+        
+        // Set date range limits
         if (this.events.length > 0) {
             const dates = this.events.map(e => new Date(e.date));
-            const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
-            const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
-
-            this.uiElements.dateFrom.min = minDate.toISOString().split('T')[0];
-            this.uiElements.dateTo.max = maxDate.toISOString().split('T')[0];
+            const minDate = new Date(Math.min(...dates));
+            const maxDate = new Date(Math.max(...dates));
+            
+            this.ui.dateFrom.min = this.formatDateInput(minDate);
+            this.ui.dateTo.max = this.formatDateInput(maxDate);
         }
     }
-
+    
     /**
      * Apply all active filters
      */
@@ -386,298 +357,301 @@ class CivilizationSphere {
         this.filteredEvents = this.events.filter(event => {
             // Search filter
             if (this.filters.search) {
-                const searchLower = this.filters.search.toLowerCase();
-                const matches = (event.title?.toLowerCase().includes(searchLower)) ||
-                               (event.description?.toLowerCase().includes(searchLower)) ||
-                               (event.channel_name?.toLowerCase().includes(searchLower));
+                const searchText = this.filters.search.toLowerCase();
+                const matches = (event.title?.toLowerCase().includes(searchText)) ||
+                               (event.description?.toLowerCase().includes(searchText)) ||
+                               (event.channel_name?.toLowerCase().includes(searchText)) ||
+                               (event.category?.toLowerCase().includes(searchText));
                 if (!matches) return false;
             }
-
-            // Quick filters
+            
+            // Quick filter
             if (this.filters.quickFilter !== 'all') {
-                const today = new Date();
                 const eventDate = new Date(event.date);
+                const now = new Date();
+                
                 switch (this.filters.quickFilter) {
                     case 'recent':
-                        const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
                         if (eventDate < sevenDaysAgo) return false;
                         break;
                     case 'important':
-                        if ((event.importance || 0) < 7) return false;
+                        if ((event.importance || 0) < 8) return false;
                         break;
                     case 'conflicts':
-                        const conflictKeywords = ['war', 'conflict', 'конфлікт', 'війна'];
-                        const isConflict = conflictKeywords.some(kw =>
+                        const conflictKeywords = ['war', 'conflict', 'війна', 'конфлікт', 'battle', 'бій'];
+                        const hasConflict = conflictKeywords.some(kw => 
                             event.title?.toLowerCase().includes(kw) ||
                             event.category?.toLowerCase().includes(kw)
                         );
-                        if (!isConflict) return false;
+                        if (!hasConflict) return false;
                         break;
                 }
             }
-
+            
             // Category filter
-            if (this.filters.categories.size > 0) {
-                if (!this.filters.categories.has(event.category)) return false;
+            if (this.filters.categories.size > 0 && !this.filters.categories.has(event.category)) {
+                return false;
             }
-
+            
             // Region filter
-            if (this.filters.regions.size > 0) {
-                if (!this.filters.regions.has(event.region)) return false;
+            if (this.filters.regions.size > 0 && !this.filters.regions.has(event.region)) {
+                return false;
             }
-
+            
             // Channel filter
-            if (this.filters.channels.size > 0) {
-                if (!this.filters.channels.has(event.channel_name)) return false;
+            if (this.filters.channels.size > 0 && !this.filters.channels.has(event.channel_name)) {
+                return false;
             }
-
+            
             // Date range filter
             if (this.filters.dateFrom) {
                 if (new Date(event.date) < new Date(this.filters.dateFrom)) return false;
             }
             if (this.filters.dateTo) {
-                if (new Date(event.date) > new Date(this.filters.dateTo + 'T23:59:59')) return false;
+                const endDate = new Date(this.filters.dateTo);
+                endDate.setHours(23, 59, 59, 999);
+                if (new Date(event.date) > endDate) return false;
             }
-
+            
             return true;
         });
-
+        
         this.updateUI();
     }
-
+    
     /**
-     * Update UI with filtered data
+     * Update all UI components
      */
     updateUI() {
         this.updateStatistics();
         this.updateMap();
         this.updateCharts();
-        this.updateTimeline();
+        this.updateTimelineInfo();
     }
-
+    
     /**
      * Update statistics display
      */
     updateStatistics() {
         const uniqueRegions = new Set(this.filteredEvents.map(e => e.region)).size;
         const uniqueChannels = new Set(this.filteredEvents.map(e => e.channel_name)).size;
-
-        this.uiElements.totalEvents.textContent = this.events.length;
-        this.uiElements.visibleEvents.textContent = this.filteredEvents.length;
-        this.uiElements.regionCount.textContent = uniqueRegions;
-        this.uiElements.channelCount.textContent = uniqueChannels;
+        
+        this.ui.totalEvents.textContent = this.events.length.toLocaleString();
+        this.ui.visibleEvents.textContent = this.filteredEvents.length.toLocaleString();
+        this.ui.regionCount.textContent = uniqueRegions;
+        this.ui.channelCount.textContent = uniqueChannels;
     }
-
+    
     /**
      * Initialize Leaflet map
      */
     initializeMap() {
         // Create map
-        this.map = L.map('map').setView([48.3794, 31.1656], 4);
-
+        this.map = L.map('map', {
+            center: [48.3794, 31.1656],
+            zoom: 5,
+            zoomControl: false
+        });
+        
         // Add tile layer
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
-            maxZoom: 18,
-            className: 'map-tiles'
+            maxZoom: 18
         }).addTo(this.map);
-
-        // Add events to map
+        
+        // Create marker cluster group
+        this.markerClusterGroup = L.markerClusterGroup({
+            maxClusterRadius: 50,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true
+        });
+        
+        this.map.addLayer(this.markerClusterGroup);
         this.updateMap();
     }
-
+    
     /**
-     * Update map with filtered events
+     * Update map markers
      */
     updateMap() {
-        // Remove existing markers
-        this.markers.forEach(marker => this.map.removeLayer(marker));
+        if (!this.map || !this.markerClusterGroup) return;
+        
+        // Clear existing markers
+        this.markerClusterGroup.clearLayers();
         this.markers = [];
-
+        
         // Add new markers
         this.filteredEvents.forEach(event => {
             const importance = event.importance || 5;
-            const size = Math.min(25 + importance * 2, 45);
             const color = this.getCategoryColor(event.category);
-
-            const html = `
-                <div style="
+            const size = Math.max(20, Math.min(importance * 4, 50));
+            
+            const icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div class="custom-marker" style="
+                    background: ${color};
                     width: ${size}px;
                     height: ${size}px;
-                    background: ${color};
-                    border: 2px solid white;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-weight: bold;
-                    font-size: 12px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                    cursor: pointer;
-                ">
-                    ${importance}
-                </div>
-            `;
-
-            const marker = L.marker([event.lat, event.lng], {
-                icon: L.divIcon({
-                    html: html,
-                    iconSize: [size, size],
-                    iconAnchor: [size / 2, size / 2],
-                    popupAnchor: [0, -size / 2]
-                })
-            }).addTo(this.map);
-
+                    font-size: ${size * 0.3}px;
+                ">${importance}</div>`,
+                iconSize: [size, size],
+                iconAnchor: [size / 2, size / 2]
+            });
+            
+            const marker = L.marker([event.lat, event.lng], { icon });
+            
             marker.on('click', () => this.showEventDetails(event));
+            
             this.markers.push(marker);
+            this.markerClusterGroup.addLayer(marker);
         });
-
-        // Fit bounds if events exist
+        
+        // Fit bounds if markers exist
         if (this.filteredEvents.length > 0) {
-            const group = new L.featureGroup(this.markers);
-            this.map.fitBounds(group.getBounds().pad(0.1));
+            try {
+                this.map.fitBounds(this.markerClusterGroup.getBounds().pad(0.1));
+            } catch (e) {
+                // Fallback if bounds are invalid
+                this.map.setView([48.3794, 31.1656], 5);
+            }
         }
     }
-
+    
     /**
-     * Reset map view to default
+     * Reset map view
      */
     resetMapView() {
-        this.map.setView([48.3794, 31.1656], 4);
+        this.map.setView([48.3794, 31.1656], 5);
     }
-
+    
     /**
-     * Show event details in side panel
+     * Show event details
      */
     showEventDetails(event) {
         this.selectedEvent = event;
+        
         const html = `
-            <div class="event-details-content">
+            <div class="event-content">
                 <h3 class="event-title">${this.escapeHtml(event.title)}</h3>
                 
                 <div class="event-meta">
-                    <div class="meta-item">
-                        <span class="meta-label">📅 Дата</span>
-                        <span class="meta-value">${this.formatDate(event.date)}</span>
+                    <div class="meta-row">
+                        <div class="meta-label">📅 Дата</div>
+                        <div class="meta-value">${this.formatDate(event.date)}</div>
                     </div>
-                    <div class="meta-item">
-                        <span class="meta-label">🗺️ Регіон</span>
-                        <span class="meta-value">${event.region}</span>
+                    <div class="meta-row">
+                        <div class="meta-label">🗺️ Регіон</div>
+                        <div class="meta-value">${this.escapeHtml(event.region)}</div>
                     </div>
-                    <div class="meta-item">
-                        <span class="meta-label">📂 Категорія</span>
-                        <span class="meta-value">${event.category}</span>
+                    <div class="meta-row">
+                        <div class="meta-label">📂 Категорія</div>
+                        <div class="meta-value">${this.escapeHtml(event.category)}</div>
                     </div>
-                    <div class="meta-item">
-                        <span class="meta-label">⭐ Важливість</span>
-                        <span class="meta-value">${event.importance || 'N/A'}</span>
+                    <div class="meta-row">
+                        <div class="meta-label">⭐ Важливість</div>
+                        <div class="meta-value">${event.importance || 'N/A'} / 10</div>
+                    </div>
+                    <div class="meta-row">
+                        <div class="meta-label">📺 Канал</div>
+                        <div class="meta-value">${this.escapeHtml(event.channel_name)}</div>
                     </div>
                 </div>
-
-                <div class="event-description">
-                    <span class="event-description-label">📺 Канал</span>
-                    <span class="event-description-text">${event.channel_name}</span>
-                </div>
-
+                
                 ${event.description ? `
                     <div class="event-description">
-                        <span class="event-description-label">📝 Опис</span>
-                        <span class="event-description-text">${this.escapeHtml(event.description.substring(0, 300))}</span>
+                        ${this.escapeHtml(event.description.substring(0, 300))}${event.description.length > 300 ? '...' : ''}
                     </div>
                 ` : ''}
-
+                
                 <div class="event-links">
                     ${event.source_url ? `
                         <a href="${event.source_url}" target="_blank" rel="noopener noreferrer" class="event-link">
-                            🔗 Переглянути на YouTube
-                        </a>
-                    ` : ''}
-                    ${event.url ? `
-                        <a href="${event.url}" target="_blank" rel="noopener noreferrer" class="event-link">
-                            🔗 Переглянути джерело
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                <polyline points="15 3 21 3 21 9"/>
+                                <line x1="10" y1="14" x2="21" y2="3"/>
+                            </svg>
+                            Переглянути джерело
                         </a>
                     ` : ''}
                 </div>
             </div>
         `;
-
-        this.uiElements.eventDetails.innerHTML = html;
-        this.uiElements.eventPanel.classList.add('active');
-
-        // On mobile, close control panel
-        if (window.innerWidth < 1024) {
-            this.uiElements.controlPanel.classList.remove('active');
-        }
+        
+        this.ui.eventDetails.innerHTML = html;
+        this.ui.detailsSidebar.classList.add('active');
     }
-
+    
     /**
-     * Get color for category
+     * Get category color
      */
     getCategoryColor(category) {
         const colors = {
-            'Geopolitics/News/Analysis': '#3498db',
-            'Війни та конфлікти': '#e74c3c',
-            'Політичні зміни': '#f39c12',
-            'Економічні зміни': '#27ae60',
-            'Технологічні зміни': '#9b59b6',
-            'Політичні системи': '#1abc9c',
-            'Союзи та договори': '#34495e',
-            'Тероризм': '#c0392b',
-            'Глобальні кризи': '#d35400',
-            'Інфраструктурні проекти': '#2980b9',
-            'Культурні зміни': '#16a085',
-            'Військові аналізи': '#8e44ad',
-            'Соціально-економічні моделі': '#2ecc71',
-            'Економічні моделі': '#27ae60',
-            'Кліматичні зміни': '#3498db',
-            'Кібербезпека': '#e67e22',
-            'Космічні програми': '#2c3e50',
-            'Біотехнології': '#1abc9c'
+            'Geopolitics/News/Analysis': '#3b82f6',
+            'Війни та конфлікти': '#ef4444',
+            'Політичні зміни': '#f59e0b',
+            'Економічні зміни': '#10b981',
+            'Технологічні зміни': '#8b5cf6',
+            'Політичні системи': '#06b6d4',
+            'Союзи та договори': '#6366f1',
+            'Тероризм': '#dc2626',
+            'Глобальні кризи': '#ea580c',
+            'Інфраструктурні проекти': '#0284c7',
+            'Культурні зміни': '#14b8a6',
+            'Військові аналізи': '#7c3aed',
+            'Соціально-економічні моделі': '#059669',
+            'Економічні моделі': '#10b981',
+            'Кліматичні зміни': '#0ea5e9',
+            'Кібербезпека': '#f97316',
+            'Космічні програми': '#6366f1',
+            'Біотехнології': '#14b8a6'
         };
-        return colors[category] || '#3498db';
+        return colors[category] || '#6366f1';
     }
-
+    
     /**
      * Update analytics charts
      */
     updateCharts() {
         this.updateCategoryChart();
         this.updateRegionChart();
-        this.updateTimelineChart();
+        this.updateTimeChart();
         this.updateImportanceChart();
     }
-
+    
     /**
      * Update category distribution chart
      */
     updateCategoryChart() {
-        const ctx = document.getElementById('categories-chart');
+        const ctx = document.getElementById('category-chart');
         if (!ctx) return;
-
+        
         const categoryData = {};
         this.filteredEvents.forEach(event => {
-            const cat = event.category || 'Невизначена';
+            const cat = event.category || 'Інше';
             categoryData[cat] = (categoryData[cat] || 0) + 1;
         });
-
-        const labels = Object.keys(categoryData).slice(0, 10);
-        const data = labels.map(label => categoryData[label]);
-
-        if (this.charts.categories) this.charts.categories.destroy();
-
-        this.charts.categories = new Chart(ctx, {
+        
+        const sorted = Object.entries(categoryData)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 8);
+        
+        const labels = sorted.map(([label]) => label.length > 25 ? label.substring(0, 25) + '...' : label);
+        const data = sorted.map(([, value]) => value);
+        const colors = sorted.map(([label]) => this.getCategoryColor(label));
+        
+        if (this.charts.category) this.charts.category.destroy();
+        
+        this.charts.category = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: labels,
+                labels,
                 datasets: [{
-                    data: data,
-                    backgroundColor: [
-                        '#3498db', '#e74c3c', '#f39c12', '#27ae60', '#9b59b6',
-                        '#1abc9c', '#34495e', '#c0392b', '#d35400', '#2980b9'
-                    ],
-                    borderColor: '#ffffff',
-                    borderWidth: 2
+                    data,
+                    backgroundColor: colors,
+                    borderWidth: 0
                 }]
             },
             options: {
@@ -687,44 +661,43 @@ class CivilizationSphere {
                     legend: {
                         position: 'bottom',
                         labels: {
+                            boxWidth: 12,
                             font: { size: 10 },
-                            color: this.getTextColor()
+                            color: getComputedStyle(document.body).getPropertyValue('--text-primary')
                         }
                     }
                 }
             }
         });
     }
-
+    
     /**
      * Update region distribution chart
      */
     updateRegionChart() {
-        const ctx = document.getElementById('regions-chart');
+        const ctx = document.getElementById('region-chart');
         if (!ctx) return;
-
+        
         const regionData = {};
         this.filteredEvents.forEach(event => {
-            const reg = event.region || 'Невизначений';
+            const reg = event.region || 'Інше';
             regionData[reg] = (regionData[reg] || 0) + 1;
         });
-
+        
         const labels = Object.keys(regionData);
-        const data = labels.map(label => regionData[label]);
-
-        if (this.charts.regions) this.charts.regions.destroy();
-
-        this.charts.regions = new Chart(ctx, {
+        const data = Object.values(regionData);
+        
+        if (this.charts.region) this.charts.region.destroy();
+        
+        this.charts.region = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: labels,
+                labels,
                 datasets: [{
-                    label: 'Кількість подій',
-                    data: data,
-                    backgroundColor: '#3498db',
-                    borderColor: '#2980b9',
-                    borderWidth: 1,
-                    borderRadius: 4
+                    label: 'Події',
+                    data,
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 6
                 }]
             },
             options: {
@@ -732,139 +705,127 @@ class CivilizationSphere {
                 maintainAspectRatio: true,
                 indexAxis: 'y',
                 plugins: {
-                    legend: {
-                        display: false
-                    }
+                    legend: { display: false }
                 },
                 scales: {
                     x: {
                         beginAtZero: true,
-                        grid: {
-                            color: this.getGridColor()
-                        },
                         ticks: {
-                            color: this.getTextColor()
+                            color: getComputedStyle(document.body).getPropertyValue('--text-secondary')
+                        },
+                        grid: {
+                            color: getComputedStyle(document.body).getPropertyValue('--surface-200')
                         }
                     },
                     y: {
-                        grid: {
-                            color: this.getGridColor()
-                        },
                         ticks: {
-                            color: this.getTextColor()
+                            color: getComputedStyle(document.body).getPropertyValue('--text-secondary')
+                        },
+                        grid: {
+                            display: false
                         }
                     }
                 }
             }
         });
     }
-
+    
     /**
-     * Update timeline chart (events per month)
+     * Update time distribution chart
      */
-    updateTimelineChart() {
-        const ctx = document.getElementById('timeline-chart');
+    updateTimeChart() {
+        const ctx = document.getElementById('time-chart');
         if (!ctx) return;
-
+        
         const monthData = {};
         this.filteredEvents.forEach(event => {
-            const date = new Date(event.date);
-            const month = date.toISOString().substring(0, 7);
+            const month = new Date(event.date).toISOString().substring(0, 7);
             monthData[month] = (monthData[month] || 0) + 1;
         });
-
+        
         const labels = Object.keys(monthData).sort();
         const data = labels.map(label => monthData[label]);
-
-        if (this.charts.timeline) this.charts.timeline.destroy();
-
-        this.charts.timeline = new Chart(ctx, {
+        
+        if (this.charts.time) this.charts.time.destroy();
+        
+        this.charts.time = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: labels,
+                labels,
                 datasets: [{
-                    label: 'События',
-                    data: data,
-                    borderColor: '#3498db',
-                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    label: 'Події',
+                    data,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     borderWidth: 2,
                     fill: true,
-                    tension: 0.4,
-                    pointBackgroundColor: '#3498db',
-                    pointBorderColor: '#ffffff',
-                    pointBorderWidth: 2,
-                    pointRadius: 4
+                    tension: 0.4
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
                 plugins: {
-                    legend: {
-                        display: false
-                    }
+                    legend: { display: false }
                 },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        grid: {
-                            color: this.getGridColor()
-                        },
                         ticks: {
-                            color: this.getTextColor()
+                            color: getComputedStyle(document.body).getPropertyValue('--text-secondary')
+                        },
+                        grid: {
+                            color: getComputedStyle(document.body).getPropertyValue('--surface-200')
                         }
                     },
                     x: {
-                        grid: {
-                            color: this.getGridColor()
-                        },
                         ticks: {
-                            color: this.getTextColor()
+                            color: getComputedStyle(document.body).getPropertyValue('--text-secondary')
+                        },
+                        grid: {
+                            display: false
                         }
                     }
                 }
             }
         });
     }
-
+    
     /**
      * Update importance distribution chart
      */
     updateImportanceChart() {
         const ctx = document.getElementById('importance-chart');
         if (!ctx) return;
-
-        const importanceData = {
+        
+        const importanceRanges = {
             'Критична (8-10)': 0,
             'Висока (6-7)': 0,
             'Середня (4-5)': 0,
             'Низька (1-3)': 0
         };
-
+        
         this.filteredEvents.forEach(event => {
             const imp = event.importance || 5;
-            if (imp >= 8) importanceData['Критична (8-10)']++;
-            else if (imp >= 6) importanceData['Висока (6-7)']++;
-            else if (imp >= 4) importanceData['Середня (4-5)']++;
-            else importanceData['Низька (1-3)']++;
+            if (imp >= 8) importanceRanges['Критична (8-10)']++;
+            else if (imp >= 6) importanceRanges['Висока (6-7)']++;
+            else if (imp >= 4) importanceRanges['Середня (4-5)']++;
+            else importanceRanges['Низька (1-3)']++;
         });
-
-        const labels = Object.keys(importanceData);
-        const data = labels.map(label => importanceData[label]);
-
+        
+        const labels = Object.keys(importanceRanges);
+        const data = Object.values(importanceRanges);
+        
         if (this.charts.importance) this.charts.importance.destroy();
-
+        
         this.charts.importance = new Chart(ctx, {
             type: 'pie',
             data: {
-                labels: labels,
+                labels,
                 datasets: [{
-                    data: data,
-                    backgroundColor: [
-                        '#e74c3c', '#f39c12', '#f1c40f', '#27ae60'
-                    ],
-                    borderColor: '#ffffff',
-                    borderWidth: 2
+                    data,
+                    backgroundColor: ['#ef4444', '#f59e0b', '#fbbf24', '#10b981'],
+                    borderWidth: 0
                 }]
             },
             options: {
@@ -874,76 +835,110 @@ class CivilizationSphere {
                     legend: {
                         position: 'bottom',
                         labels: {
+                            boxWidth: 12,
                             font: { size: 10 },
-                            color: this.getTextColor()
+                            color: getComputedStyle(document.body).getPropertyValue('--text-primary')
                         }
                     }
                 }
             }
         });
     }
-
+    
     /**
-     * Update timeline progress and display
+     * Update timeline info
      */
-    updateTimeline() {
-        if (this.filteredEvents.length === 0) {
-            this.uiElements.currentDate.textContent = '--';
-            this.uiElements.totalDate.textContent = '--';
-            return;
+    updateTimelineInfo() {
+        if (this.filteredEvents.length > 0) {
+            const dates = this.filteredEvents.map(e => new Date(e.date)).sort((a, b) => a - b);
+            this.ui.endDate.textContent = this.formatDate(dates[dates.length - 1]);
+        } else {
+            this.ui.currentDate.textContent = '—';
+            this.ui.endDate.textContent = '—';
         }
-
-        const dates = this.filteredEvents.map(e => new Date(e.date)).sort((a, b) => a - b);
-        this.uiElements.totalDate.textContent = this.formatDate(dates[dates.length - 1]);
     }
-
+    
     /**
-     * Handle timeline slider interaction
+     * Handle timeline click
      */
-    handleTimelineInteraction(e) {
-        const rect = this.uiElements.timelineSlider.parentElement.getBoundingClientRect();
-        const x = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
-        const percentage = (x - rect.left) / rect.width;
+    handleTimelineClick(e) {
+        if (this.filteredEvents.length === 0) return;
+        
+        const rect = this.ui.timelineTrack.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const percentage = Math.max(0, Math.min(1, x / rect.width));
+        
         this.playbackIndex = Math.floor(percentage * this.filteredEvents.length);
         this.updatePlaybackUI();
     }
-
+    
+    /**
+     * Start timeline drag
+     */
+    startTimelineDrag(e) {
+        e.preventDefault();
+        this.pausePlayback();
+        
+        const handleMove = (e) => {
+            const rect = this.ui.timelineTrack.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const percentage = Math.max(0, Math.min(1, x / rect.width));
+            
+            this.playbackIndex = Math.floor(percentage * this.filteredEvents.length);
+            this.updatePlaybackUI();
+        };
+        
+        const handleEnd = () => {
+            document.removeEventListener('mousemove', handleMove);
+            document.removeEventListener('touchmove', handleMove);
+            document.removeEventListener('mouseup', handleEnd);
+            document.removeEventListener('touchend', handleEnd);
+        };
+        
+        document.addEventListener('mousemove', handleMove);
+        document.addEventListener('touchmove', handleMove);
+        document.addEventListener('mouseup', handleEnd);
+        document.addEventListener('touchend', handleEnd);
+    }
+    
     /**
      * Start playback
      */
     startPlayback() {
         if (this.filteredEvents.length === 0) {
-            this.showNotification('Немає событий для відтворення', 'warning');
+            this.showToast('Немає подій для відтворення', 'warning');
             return;
         }
-
+        
         this.isPlaying = true;
-        this.uiElements.playBtn.style.display = 'none';
-        this.uiElements.pauseBtn.style.display = 'flex';
-
+        this.ui.playBtn.style.display = 'none';
+        this.ui.pauseBtn.style.display = 'flex';
+        
         this.playbackInterval = setInterval(() => {
             this.playbackIndex++;
             if (this.playbackIndex >= this.filteredEvents.length) {
                 this.pausePlayback();
+                this.playbackIndex = this.filteredEvents.length - 1;
                 return;
             }
             this.updatePlaybackUI();
-        }, 500 / this.playbackSpeed);
+        }, 1000 / this.playbackSpeed);
     }
-
+    
     /**
      * Pause playback
      */
     pausePlayback() {
         this.isPlaying = false;
-        this.uiElements.playBtn.style.display = 'flex';
-        this.uiElements.pauseBtn.style.display = 'none';
+        this.ui.playBtn.style.display = 'flex';
+        this.ui.pauseBtn.style.display = 'none';
+        
         if (this.playbackInterval) {
             clearInterval(this.playbackInterval);
             this.playbackInterval = null;
         }
     }
-
+    
     /**
      * Reset playback
      */
@@ -952,32 +947,33 @@ class CivilizationSphere {
         this.playbackIndex = 0;
         this.updatePlaybackUI();
     }
-
+    
     /**
      * Update playback UI
      */
     updatePlaybackUI() {
-        const progress = (this.playbackIndex / this.filteredEvents.length) * 100;
-        this.uiElements.timelineProgress.style.width = progress + '%';
-        this.uiElements.timelineSlider.style.left = progress + '%';
-        this.uiElements.timelineSlider.setAttribute('aria-valuenow', Math.round(progress));
-
+        if (this.filteredEvents.length === 0) return;
+        
+        const percentage = (this.playbackIndex / Math.max(1, this.filteredEvents.length - 1)) * 100;
+        this.ui.timelineProgress.style.width = percentage + '%';
+        this.ui.timelineHandle.style.left = percentage + '%';
+        
         if (this.playbackIndex < this.filteredEvents.length) {
             const event = this.filteredEvents[this.playbackIndex];
-            this.uiElements.currentDate.textContent = this.formatDate(event.date);
+            this.ui.currentDate.textContent = this.formatDate(event.date);
             this.showEventDetails(event);
         }
     }
-
+    
     /**
-     * Export filtered events to CSV
+     * Export to CSV
      */
     exportToCSV() {
         if (this.filteredEvents.length === 0) {
-            this.showNotification('Немає даних для експорту', 'warning');
+            this.showToast('Немає даних для експорту', 'warning');
             return;
         }
-
+        
         const headers = ['ID', 'Назва', 'Дата', 'Категорія', 'Регіон', 'Канал', 'Важливість', 'Посилання'];
         const rows = this.filteredEvents.map(e => [
             e.id,
@@ -989,32 +985,32 @@ class CivilizationSphere {
             e.importance || '',
             e.source_url || ''
         ]);
-
+        
         const csv = [
             headers.join(','),
             ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
         ].join('\n');
-
-        this.downloadFile(csv, 'events.csv', 'text/csv');
-        this.showNotification('Дані експортовані у CSV', 'success');
+        
+        this.downloadFile(csv, 'civilization-sphere-events.csv', 'text/csv;charset=utf-8;');
+        this.showToast('Дані експортовано у CSV', 'success');
     }
-
+    
     /**
-     * Export filtered events to JSON
+     * Export to JSON
      */
     exportToJSON() {
         if (this.filteredEvents.length === 0) {
-            this.showNotification('Немає даних для експорту', 'warning');
+            this.showToast('Немає даних для експорту', 'warning');
             return;
         }
-
+        
         const json = JSON.stringify(this.filteredEvents, null, 2);
-        this.downloadFile(json, 'events.json', 'application/json');
-        this.showNotification('Дані експортовані у JSON', 'success');
+        this.downloadFile(json, 'civilization-sphere-events.json', 'application/json');
+        this.showToast('Дані експортовано у JSON', 'success');
     }
-
+    
     /**
-     * Download file helper
+     * Download file
      */
     downloadFile(content, filename, mimeType) {
         const blob = new Blob([content], { type: mimeType });
@@ -1027,55 +1023,53 @@ class CivilizationSphere {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     }
-
+    
     /**
-     * Toggle dark/light theme
+     * Toggle theme
      */
     toggleTheme() {
         const isDark = document.body.classList.toggle('dark-theme');
+        document.body.classList.toggle('light-theme', !isDark);
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        this.updateThemeIcon();
+        
+        // Update charts colors
+        this.updateCharts();
     }
-
+    
     /**
      * Load saved theme
      */
     loadTheme() {
         const savedTheme = localStorage.getItem('theme') || 'light';
-        if (savedTheme === 'dark') {
-            document.body.classList.add('dark-theme');
-        }
-        this.updateThemeIcon();
+        document.body.classList.remove('light-theme', 'dark-theme');
+        document.body.classList.add(savedTheme + '-theme');
     }
-
+    
     /**
-     * Update theme icon
-     */
-    updateThemeIcon() {
-        const isDark = document.body.classList.contains('dark-theme');
-        this.uiElements.themeToggle.innerHTML = `<span>${isDark ? '☀️' : '🌙'}</span>`;
-    }
-
-    /**
-     * Show/hide loading spinner
+     * Show loading overlay
      */
     showLoading(show) {
-        this.uiElements.loadingSpinner.style.display = show ? 'block' : 'none';
+        this.ui.loading.style.display = show ? 'flex' : 'none';
     }
-
+    
     /**
-     * Show notification toast
+     * Show toast notification
      */
-    showNotification(message, type = 'info') {
-        this.uiElements.notificationToast.textContent = message;
-        this.uiElements.notificationToast.className = `notification-toast ${type}`;
-        this.uiElements.notificationToast.style.display = 'block';
-
+    showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        
+        this.ui.toastContainer.appendChild(toast);
+        
         setTimeout(() => {
-            this.uiElements.notificationToast.style.display = 'none';
+            toast.style.opacity = '0';
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
         }, 4000);
     }
-
+    
     /**
      * Format date for display
      */
@@ -1087,9 +1081,16 @@ class CivilizationSphere {
             day: 'numeric'
         });
     }
-
+    
     /**
-     * Escape HTML for safe display
+     * Format date for input
+     */
+    formatDateInput(date) {
+        return date.toISOString().split('T')[0];
+    }
+    
+    /**
+     * Escape HTML
      */
     escapeHtml(text) {
         const map = {
@@ -1099,25 +1100,22 @@ class CivilizationSphere {
             '"': '&quot;',
             "'": '&#039;'
         };
-        return text.replace(/[&<>"']/g, m => map[m]);
+        return String(text).replace(/[&<>"']/g, m => map[m]);
     }
-
+    
     /**
-     * Get text color based on theme
+     * Sanitize ID
      */
-    getTextColor() {
-        return document.body.classList.contains('dark-theme') ? '#f5f5f5' : '#1a1a2e';
-    }
-
-    /**
-     * Get grid color based on theme
-     */
-    getGridColor() {
-        return document.body.classList.contains('dark-theme') ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+    sanitizeId(text) {
+        return String(text).replace(/[^a-zA-Z0-9-_]/g, '-');
     }
 }
 
 // Initialize application when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        window.app = new CivilizationSphere();
+    });
+} else {
     window.app = new CivilizationSphere();
-});
+}
