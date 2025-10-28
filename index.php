@@ -1,3 +1,20 @@
+<?php
+/**
+ * Civilization Sphere - PHP Version
+ * Works on any PHP hosting without additional services
+ */
+
+// Load events data
+$eventsFile = 'data/events.json';
+$events = [];
+
+if (file_exists($eventsFile)) {
+    $jsonContent = file_get_contents($eventsFile);
+    $events = json_decode($jsonContent, true);
+}
+
+// Embed data directly in HTML
+?>
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -18,6 +35,13 @@
     
     <!-- Main Styles -->
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Embedded Data from PHP -->
+    <script>
+        // Data loaded server-side by PHP
+        window.EVENTS_DATA = <?php echo json_encode($events); ?>;
+        console.log('✓ Data loaded via PHP:', window.EVENTS_DATA.length, 'events');
+    </script>
 </head>
 <body class="light-theme">
     <!-- Skip to main content for accessibility -->
@@ -35,7 +59,7 @@
                     </svg>
                     <div class="logo-text">
                         <h1>Civilization Sphere</h1>
-                        <p class="subtitle">Геополітична Карта України</p>
+                        <p class="subtitle">Геополітична Карта України (PHP Version)</p>
                     </div>
                 </div>
             </div>
@@ -377,7 +401,6 @@
 
     <!-- Emergency fallback to hide loading after 15 seconds -->
     <script>
-        // Safety mechanism: hide loading overlay after 15 seconds if still visible
         setTimeout(function() {
             const loading = document.getElementById('loading');
             const loadingText = document.getElementById('loading-text');
@@ -463,10 +486,7 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     
-    <!-- Embedded Data (loads before app.js) -->
-    <script src="data.js"></script>
-    
-    <!-- Main Application -->
+    <!-- Main Application (data already embedded above) -->
     <script src="app.js"></script>
 </body>
 </html>
