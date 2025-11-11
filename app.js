@@ -76,8 +76,22 @@ class CivilizationSphere {
             this.showLoading(false);
         } catch (error) {
             console.error('Initialization error:', error);
-            this.showToast('Помилка завантаження: ' + error.message, 'error');
+            console.error('Error stack:', error.stack);
+            const errorMessage = error.message || 'Невідома помилка';
+            this.showToast('Помилка завантаження: ' + errorMessage, 'error');
             this.showLoading(false);
+            
+            // Show error details in console for debugging
+            if (window.console && console.group) {
+                console.group('🚨 Initialization Error Details');
+                console.error('Error:', error);
+                console.error('Events data type:', typeof window.EVENTS_DATA);
+                console.error('Events data is array:', Array.isArray(window.EVENTS_DATA));
+                if (window.EVENTS_DATA) {
+                    console.error('Events data length:', window.EVENTS_DATA.length);
+                }
+                console.groupEnd();
+            }
         }
     }
     
@@ -262,13 +276,26 @@ class CivilizationSphere {
                 this.events = await response.json();
             }
             
-            if (!Array.isArray(this.events) || this.events.length === 0) {
-                throw new Error('No events found in data');
+            if (!Array.isArray(this.events)) {
+                throw new Error('Events data is not an array');
+            }
+            
+            if (this.events.length === 0) {
+                console.warn('No events found in data');
+                this.events = [];
+                this.filteredEvents = [];
+                return this.events;
             }
             
             console.log('Data loaded:', this.events.length, 'events');
             console.log('Enhancing event data...');
-            this.enhanceEventData();
+            
+            try {
+                this.enhanceEventData();
+            } catch (error) {
+                console.error('Error enhancing event data:', error);
+                // Continue with unenhanced data rather than failing completely
+            }
             
             console.log('Initializing filter UI...');
             this.initializeFilterUI();
@@ -311,26 +338,66 @@ class CivilizationSphere {
         };
         
         this.events.forEach(event => {
-            if (!event.lat || !event.lng) {
-                const coords = regionCoordinates[event.region] || regionCoordinates['Ukraine'];
-                event.lat = coords[0] + (Math.random() - 0.5) * 3;
-                event.lng = coords[1] + (Math.random() - 0.5) * 3;
+            // Ensure event has required properties
+            if (!event) return;
+            
+            // Add coordinates if missing
+            if (!event.lat || !event.lng || isNaN(event.lat) || isNaN(event.lng)) {
+                const region = event.region || 'Ukraine';
+                const coords = regionCoordinates[region] || regionCoordinates['Ukraine'];
+                if (coords && Array.isArray(coords) && coords.length >= 2) {
+                    event.lat = coords[0] + (Math.random() - 0.5) * 3;
+                    event.lng = coords[1] + (Math.random() - 0.5) * 3;
+                } else {
+                    // Fallback to Ukraine coordinates
+                    event.lat = 48.3794 + (Math.random() - 0.5) * 3;
+                    event.lng = 31.1656 + (Math.random() - 0.5) * 3;
+                }
             }
-            event.importance = event.importance || 5;
-            event.date = event.date || new Date().toISOString();
+            
+            // Ensure importance is valid
+            event.importance = (typeof event.importance === 'number' && !isNaN(event.importance)) 
+                ? Math.max(1, Math.min(10, event.importance)) 
+                : 5;
+            
+            // Ensure date is valid
+            if (!event.date) {
+                event.date = new Date().toISOString();
+            } else {
+                const date = new Date(event.date);
+                if (isNaN(date.getTime())) {
+                    event.date = new Date().toISOString();
+                }
+            }
         });
         
-        // Sort by date
-        this.events.sort((a, b) => new Date(a.date) - new Date(b.date));
+        // Sort by date with error handling
+        this.events.sort((a, b) => {
+            try {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                if (isNaN(dateA.getTime())) return 1;
+                if (isNaN(dateB.getTime())) return -1;
+                return dateA - dateB;
+            } catch (e) {
+                console.warn('Error sorting events by date:', e);
+                return 0;
+            }
+        });
     }
     
     /**
      * Initialize filter UI
      */
     initializeFilterUI() {
-        const categories = [...new Set(this.events.map(e => e.category).filter(Boolean))].sort();
-        const regions = [...new Set(this.events.map(e => e.region).filter(Boolean))].sort();
-        const channels = [...new Set(this.events.map(e => e.channel_name).filter(Boolean))].sort();
+        if (!this.events || this.events.length === 0) {
+            console.warn('No events available for filter UI initialization');
+            return;
+        }
+        
+        const categories = [...new Set(this.events.map(e => e?.category).filter(Boolean))].sort();
+        const regions = [...new Set(this.events.map(e => e?.region).filter(Boolean))].sort();
+        const channels = [...new Set(this.events.map(e => e?.channel_name).filter(Boolean))].sort();
         
         // Populate categories
         this.ui.categoriesList.innerHTML = categories.map(cat => `
@@ -492,6 +559,19 @@ class CivilizationSphere {
      * Initialize Leaflet map
      */
     initializeMap() {
+        // Check if Leaflet is available
+        if (typeof L === 'undefined') {
+            console.error('Leaflet.js is not loaded');
+            throw new Error('Leaflet.js library is required but not found');
+        }
+        
+        // Check if map container exists
+        const mapContainer = document.getElementById('map');
+        if (!mapContainer) {
+            console.error('Map container element not found');
+            throw new Error('Map container element (#map) not found in DOM');
+        }
+        
         // Create map
         this.map = L.map('map', {
             center: [48.3794, 31.1656],
@@ -505,15 +585,22 @@ class CivilizationSphere {
             maxZoom: 18
         }).addTo(this.map);
         
-        // Create marker cluster group
-        this.markerClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: 50,
-            spiderfyOnMaxZoom: true,
-            showCoverageOnHover: false,
-            zoomToBoundsOnClick: true
-        });
+        // Check if MarkerClusterGroup is available
+        if (typeof L.markerClusterGroup === 'undefined') {
+            console.warn('Leaflet.markercluster is not loaded, using standard markers');
+            // Continue without clustering
+        } else {
+            // Create marker cluster group
+            this.markerClusterGroup = L.markerClusterGroup({
+                maxClusterRadius: 50,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: false,
+                zoomToBoundsOnClick: true
+            });
+            
+            this.map.addLayer(this.markerClusterGroup);
+        }
         
-        this.map.addLayer(this.markerClusterGroup);
         this.updateMap();
     }
     
@@ -521,14 +608,44 @@ class CivilizationSphere {
      * Update map markers
      */
     updateMap() {
-        if (!this.map || !this.markerClusterGroup) return;
+        if (!this.map) {
+            console.warn('Map not initialized, skipping update');
+            return;
+        }
         
         // Clear existing markers
-        this.markerClusterGroup.clearLayers();
+        if (this.markerClusterGroup) {
+            this.markerClusterGroup.clearLayers();
+        } else {
+            // If no cluster group, clear markers manually
+            if (this.markers && this.markers.length > 0) {
+                this.markers.forEach(marker => {
+                    if (marker && this.map.hasLayer(marker)) {
+                        this.map.removeLayer(marker);
+                    }
+                });
+            }
+        }
         this.markers = [];
+        
+        if (!this.filteredEvents || this.filteredEvents.length === 0) {
+            console.warn('No filtered events to display on map');
+            return;
+        }
         
         // Add new markers
         this.filteredEvents.forEach(event => {
+            if (!event) return;
+            
+            // Validate coordinates
+            const lat = parseFloat(event.lat);
+            const lng = parseFloat(event.lng);
+            
+            if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                console.warn('Invalid coordinates for event:', event.id, lat, lng);
+                return;
+            }
+            
             const importance = event.importance || 5;
             const color = this.getCategoryColor(event.category);
             const size = Math.max(20, Math.min(importance * 4, 50));
@@ -545,19 +662,41 @@ class CivilizationSphere {
                 iconAnchor: [size / 2, size / 2]
             });
             
-            const marker = L.marker([event.lat, event.lng], { icon });
+            const marker = L.marker([lat, lng], { icon });
             
             marker.on('click', () => this.showEventDetails(event));
             
             this.markers.push(marker);
-            this.markerClusterGroup.addLayer(marker);
+            
+            if (this.markerClusterGroup) {
+                this.markerClusterGroup.addLayer(marker);
+            } else {
+                marker.addTo(this.map);
+            }
         });
         
         // Fit bounds if markers exist
-        if (this.filteredEvents.length > 0) {
+        if (this.markers.length > 0) {
             try {
-                this.map.fitBounds(this.markerClusterGroup.getBounds().pad(0.1));
+                if (this.markerClusterGroup) {
+                    const bounds = this.markerClusterGroup.getBounds();
+                    if (bounds.isValid()) {
+                        this.map.fitBounds(bounds.pad(0.1));
+                    } else {
+                        this.map.setView([48.3794, 31.1656], 5);
+                    }
+                } else {
+                    // Calculate bounds from individual markers
+                    const group = new L.featureGroup(this.markers);
+                    const bounds = group.getBounds();
+                    if (bounds.isValid()) {
+                        this.map.fitBounds(bounds.pad(0.1));
+                    } else {
+                        this.map.setView([48.3794, 31.1656], 5);
+                    }
+                }
             } catch (e) {
+                console.warn('Error fitting map bounds:', e);
                 // Fallback if bounds are invalid
                 this.map.setView([48.3794, 31.1656], 5);
             }
