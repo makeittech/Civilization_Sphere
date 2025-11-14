@@ -378,20 +378,43 @@
     <!-- Fix browser extension runtime errors -->
     <script>
         // Suppress browser extension runtime.lastError messages
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
+        (function() {
+            // Override console.error to filter extension errors
             const originalError = console.error;
             console.error = function() {
                 const args = Array.from(arguments);
-                const errorMsg = args.join(' ');
+                const errorMsg = String(args[0] || '');
                 // Filter out browser extension runtime errors
                 if (errorMsg.includes('runtime.lastError') || 
                     errorMsg.includes('message channel closed') ||
-                    errorMsg.includes('Extension context invalidated')) {
+                    errorMsg.includes('Extension context invalidated') ||
+                    errorMsg.includes('Unchecked runtime.lastError')) {
                     return; // Suppress these errors
                 }
                 originalError.apply(console, args);
             };
-        }
+            
+            // Handle unhandled promise rejections from extensions
+            window.addEventListener('unhandledrejection', function(event) {
+                const reason = String(event.reason || '');
+                if (reason.includes('runtime.lastError') || 
+                    reason.includes('message channel closed') ||
+                    reason.includes('Extension context invalidated')) {
+                    event.preventDefault(); // Suppress the error
+                }
+            });
+            
+            // Handle general errors from extensions
+            window.addEventListener('error', function(event) {
+                const message = String(event.message || '');
+                if (message.includes('runtime.lastError') || 
+                    message.includes('message channel closed') ||
+                    message.includes('Extension context invalidated')) {
+                    event.preventDefault(); // Suppress the error
+                    return false;
+                }
+            }, true);
+        })();
     </script>
 
     <!-- Emergency fallback to hide loading after 30 seconds -->
