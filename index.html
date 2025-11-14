@@ -456,17 +456,17 @@
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- External Libraries (async for parallel loading) -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
-            crossorigin=""></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+            crossorigin="" defer></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
     
-    <!-- Embedded Data (loads before app.js) -->
-    <script src="data.js"></script>
+    <!-- Embedded Data (must load before app.js) -->
+    <script src="data.js" defer></script>
     
-    <!-- Main Application -->
-    <script src="app.js"></script>
+    <!-- Main Application (deferred to load after DOM and dependencies) -->
+    <script src="app.js" defer></script>
 </body>
 </html>
