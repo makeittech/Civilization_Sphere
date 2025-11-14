@@ -375,51 +375,23 @@
         </div>
     </div>
 
-    <!-- Emergency fallback to hide loading after 20 seconds -->
+    <!-- Emergency fallback to hide loading after 30 seconds -->
     <script>
-        // Safety mechanism: hide loading overlay after 20 seconds if app hasn't loaded
+        // Safety mechanism: silently hide loading overlay after 30 seconds if still visible
         setTimeout(function() {
             const loading = document.getElementById('loading');
-            const loadingText = document.getElementById('loading-text');
             if (!loading) return;
             
             // Check if loading is still visible
             const computedStyle = window.getComputedStyle(loading);
             const isVisible = computedStyle.display !== 'none' && computedStyle.display !== '';
             
-            // Only proceed if loading is visible AND app hasn't loaded
+            // Only hide if still visible - app.js will handle showing errors if needed
             if (isVisible) {
-                // Check if app has successfully loaded
-                const appLoaded = window.app && 
-                                 window.app.events && 
-                                 Array.isArray(window.app.events) && 
-                                 window.app.events.length > 0;
-                
-                if (!appLoaded) {
-                    // App hasn't loaded - show warning and hide after delay
-                    console.warn('Application loading is taking longer than expected');
-                    if (loadingText) {
-                        loadingText.textContent = 'Завантаження триває довше ніж очікувалось...';
-                    }
-                    // Give it 5 more seconds, then hide
-                    setTimeout(function() {
-                        if (loading && window.getComputedStyle(loading).display !== 'none') {
-                            const stillNotLoaded = !window.app || !window.app.events || window.app.events.length === 0;
-                            if (stillNotLoaded) {
-                                console.error('Application failed to load - hiding loading overlay');
-                                if (loadingText) {
-                                    loadingText.textContent = 'Помилка завантаження. Перевірте консоль браузера (F12).';
-                                    loadingText.style.color = '#ef4444';
-                                }
-                                setTimeout(function() {
-                                    if (loading) loading.style.display = 'none';
-                                }, 2000);
-                            }
-                        }
-                    }, 5000);
-                }
+                // Silently hide - app initialization handles its own error reporting
+                loading.style.display = 'none';
             }
-        }, 20000);
+        }, 30000);
     </script>
 
     <!-- Toast Notifications -->
