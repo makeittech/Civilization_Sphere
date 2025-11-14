@@ -381,14 +381,30 @@
         setTimeout(function() {
             const loading = document.getElementById('loading');
             const loadingText = document.getElementById('loading-text');
-            if (loading && loading.style.display !== 'none') {
-                console.error('Loading took too long - forcing hide');
-                loadingText.textContent = 'Помилка завантаження. Оновіть сторінку.';
-                loadingText.style.color = '#ef4444';
-                setTimeout(function() {
-                    loading.style.display = 'none';
-                    alert('Помилка завантаження застосунку. Перевірте консоль браузера (F12) для деталей.');
-                }, 3000);
+            // Check if app has loaded successfully
+            if (loading && (loading.style.display === 'flex' || (loading.style.display === '' && window.getComputedStyle(loading).display !== 'none'))) {
+                // Only show error if app hasn't loaded (no window.app or app not initialized)
+                if (!window.app || !window.app.events || window.app.events.length === 0) {
+                    console.warn('Loading took longer than expected');
+                    if (loadingText) {
+                        loadingText.textContent = 'Завантаження триває...';
+                    }
+                    // Hide after additional 5 seconds if still not loaded
+                    setTimeout(function() {
+                        if (loading && (loading.style.display === 'flex' || window.getComputedStyle(loading).display !== 'none')) {
+                            if (!window.app || !window.app.events || window.app.events.length === 0) {
+                                console.error('Loading timeout - forcing hide');
+                                if (loadingText) {
+                                    loadingText.textContent = 'Помилка завантаження. Оновіть сторінку.';
+                                    loadingText.style.color = '#ef4444';
+                                }
+                                setTimeout(function() {
+                                    if (loading) loading.style.display = 'none';
+                                }, 2000);
+                            }
+                        }
+                    }, 5000);
+                }
             }
         }, 15000);
     </script>
