@@ -375,27 +375,40 @@
         </div>
     </div>
 
-    <!-- Emergency fallback to hide loading after 15 seconds -->
+    <!-- Emergency fallback to hide loading after 20 seconds -->
     <script>
-        // Safety mechanism: hide loading overlay after 15 seconds if still visible
+        // Safety mechanism: hide loading overlay after 20 seconds if app hasn't loaded
         setTimeout(function() {
             const loading = document.getElementById('loading');
             const loadingText = document.getElementById('loading-text');
-            // Check if app has loaded successfully
-            if (loading && (loading.style.display === 'flex' || (loading.style.display === '' && window.getComputedStyle(loading).display !== 'none'))) {
-                // Only show error if app hasn't loaded (no window.app or app not initialized)
-                if (!window.app || !window.app.events || window.app.events.length === 0) {
-                    console.warn('Loading took longer than expected');
+            if (!loading) return;
+            
+            // Check if loading is still visible
+            const computedStyle = window.getComputedStyle(loading);
+            const isVisible = computedStyle.display !== 'none' && computedStyle.display !== '';
+            
+            // Only proceed if loading is visible AND app hasn't loaded
+            if (isVisible) {
+                // Check if app has successfully loaded
+                const appLoaded = window.app && 
+                                 window.app.events && 
+                                 Array.isArray(window.app.events) && 
+                                 window.app.events.length > 0;
+                
+                if (!appLoaded) {
+                    // App hasn't loaded - show warning and hide after delay
+                    console.warn('Application loading is taking longer than expected');
                     if (loadingText) {
-                        loadingText.textContent = 'Завантаження триває...';
+                        loadingText.textContent = 'Завантаження триває довше ніж очікувалось...';
                     }
-                    // Hide after additional 5 seconds if still not loaded
+                    // Give it 5 more seconds, then hide
                     setTimeout(function() {
-                        if (loading && (loading.style.display === 'flex' || window.getComputedStyle(loading).display !== 'none')) {
-                            if (!window.app || !window.app.events || window.app.events.length === 0) {
-                                console.error('Loading timeout - forcing hide');
+                        if (loading && window.getComputedStyle(loading).display !== 'none') {
+                            const stillNotLoaded = !window.app || !window.app.events || window.app.events.length === 0;
+                            if (stillNotLoaded) {
+                                console.error('Application failed to load - hiding loading overlay');
                                 if (loadingText) {
-                                    loadingText.textContent = 'Помилка завантаження. Оновіть сторінку.';
+                                    loadingText.textContent = 'Помилка завантаження. Перевірте консоль браузера (F12).';
                                     loadingText.style.color = '#ef4444';
                                 }
                                 setTimeout(function() {
@@ -406,7 +419,7 @@
                     }, 5000);
                 }
             }
-        }, 15000);
+        }, 20000);
     </script>
 
     <!-- Toast Notifications -->
