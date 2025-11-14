@@ -375,6 +375,25 @@
         </div>
     </div>
 
+    <!-- Fix browser extension runtime errors -->
+    <script>
+        // Suppress browser extension runtime.lastError messages
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
+            const originalError = console.error;
+            console.error = function() {
+                const args = Array.from(arguments);
+                const errorMsg = args.join(' ');
+                // Filter out browser extension runtime errors
+                if (errorMsg.includes('runtime.lastError') || 
+                    errorMsg.includes('message channel closed') ||
+                    errorMsg.includes('Extension context invalidated')) {
+                    return; // Suppress these errors
+                }
+                originalError.apply(console, args);
+            };
+        }
+    </script>
+
     <!-- Emergency fallback to hide loading after 30 seconds -->
     <script>
         // Safety mechanism: silently hide loading overlay after 30 seconds if still visible
